@@ -81,7 +81,9 @@ def office():
         result = {'staff': [dict(x) for x in db.execute(
             'SELECT id,name,role,department,status,org_role,manager_id,delegation_permission,portrait_slot FROM staff ORDER BY department,name')]}
         result['tasks']=[dict(x) for x in db.execute("""SELECT t.*,
-            EXISTS(SELECT 1 FROM monthly_assignments m WHERE m.task_id=t.id) AS is_monthly
+            EXISTS(SELECT 1 FROM monthly_assignments m WHERE m.task_id=t.id) AS is_monthly,
+            EXISTS(SELECT 1 FROM task_series ts WHERE ts.origin_task_id=t.id
+                AND ts.id=t.series_id) AS is_series_origin
             FROM tasks t WHERE t.deleted_at IS NULL
             ORDER BY created DESC,id DESC LIMIT 1000""")]
         for table in ('lessons','audit'):
