@@ -96,14 +96,75 @@
 .workforce-department .workforce-director .avatar{border-radius:50%;border:2px solid white;box-shadow:0 2px 8px #26395420}
 @media(max-width:800px){.hq-viz-grid{grid-template-columns:1fr}.hq-hero{padding:20px 17px}.hq-hero-avatars{display:none}.hq-donut{width:134px;height:134px}.hq-donut:after{width:92px;height:92px;inset:21px}}
 @media(prefers-reduced-motion:reduce){.hq-bar-fill{transition:none}}
+
+/* Executive command desk: information hierarchy, true activity and approachable visuals. */
+#hq .hq-hero{min-height:170px;padding:clamp(21px,3vw,34px);border-radius:20px;
+ background:linear-gradient(117deg,#17283d 0%,#1f4662 53%,#5573a0 100%);
+ box-shadow:0 12px 32px #183f6622}
+#hq .hq-hero h2{font-size:clamp(21px,2.6vw,30px);font-weight:800;letter-spacing:-.055em}
+#hq .hq-hero p{font-size:13px}
+.hq-kicker{color:#9dd9d4;font-size:10px;letter-spacing:.19em;font-weight:800;margin-bottom:8px}
+.hq-hero-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:18px;position:relative;z-index:1}
+.hq-hero-actions button{font-size:12px;padding:9px 14px;border-radius:10px;font-weight:700;border:1px solid #ffffff35}
+.hq-hero-actions .hq-hero-cta{background:#e1f1ed;color:#1e4c5c;border-color:#e1f1ed}
+.hq-hero-actions .hq-hero-subtle{background:#ffffff13;color:#fff}
+.hq-hero-actions button:hover{filter:brightness(1.08)}
+#hq .hq-metric{min-height:153px;border:1px solid #e8eef4;border-top:0;padding:19px 21px;overflow:hidden;position:relative}
+#hq .hq-metric:after{content:"";width:96px;height:96px;border-radius:50%;position:absolute;right:-40px;top:-37px;background:var(--metric-accent);opacity:.12}
+.hq-metric-top{display:flex;align-items:center;gap:9px}
+.hq-metric-icon{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:color-mix(in srgb,var(--metric-accent) 14%,white);color:var(--metric-accent);font-size:15px;font-weight:800}
+#hq .hq-metric .metric{font-size:37px;margin-top:11px}
+.hq-command-row{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:18px;margin:18px 0}
+.hq-command-card{border:1px solid #e6ecf2;background:white;border-radius:16px;padding:21px;min-width:0}
+.hq-command-card .header{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:17px}
+.hq-command-card h3{font-size:15px;color:#233d55;line-height:1.35;margin:0}
+.hq-command-card .sub{font-size:11px;color:#8a98aa;margin:5px 0 0}
+.hq-small-link{background:#f2f7fa;border:1px solid #e0ebf2;color:#45687d;font-size:11px;padding:7px 10px;border-radius:9px;font-weight:700;white-space:nowrap}
+.hq-week-total{font-size:11px;color:#8293a3;margin-bottom:11px}
+.hq-week-total strong{font-size:18px;color:#304c61;margin-right:5px}
+.hq-week-chart{height:146px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));align-items:end;gap:9px;padding:0 1px}
+.hq-week-column{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:7px;min-width:0;height:100%}
+.hq-week-count{font-size:10px;font-weight:750;color:#526f83}
+.hq-week-track{width:min(100%,36px);height:92px;display:flex;align-items:flex-end;background:#f3f7f9;border-radius:7px;overflow:hidden}
+.hq-week-bar{width:100%;background:linear-gradient(180deg,#71b7b8,#437ca6);border-radius:7px 7px 0 0;min-height:0;transition:height .25s}
+.hq-week-label{font-size:10px;color:#8a97a4}
+.hq-brief-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-bottom:15px}
+.hq-brief-count{border:1px solid #e9eef4;background:#fafcfd;padding:12px 8px;border-radius:11px;text-align:center}
+.hq-brief-count strong{display:block;color:#244b65;font-size:23px;font-weight:800}
+.hq-brief-count span{display:block;color:#7d91a1;font-size:10px;margin-top:2px}
+.hq-brief-count.good strong{color:#338f85}
+.hq-brief-count.attention strong{color:#b87d42}
+.hq-brief-empty{color:#8a99a7;font-size:12px;padding:11px 0;line-height:1.6}
+.hq-brief-item{display:flex;gap:9px;padding:10px 0;border-top:1px solid #eff2f6;align-items:start}
+.hq-brief-dot{background:#f1b160;border-radius:50%;width:8px;height:8px;margin-top:5px;flex-shrink:0}
+.hq-brief-item strong{font-size:12px;color:#33485a;display:block;overflow-wrap:anywhere}
+.hq-brief-item small{font-size:10px;color:#8493a2;display:block;margin-top:3px}
+.hq-brief-item button{margin-left:auto;flex-shrink:0;font-size:11px;border:0;background:#f4f7fa;color:#476983;border-radius:7px;padding:6px 8px}
+.hq-command-caption{margin:11px 0 0;color:#96a2af;font-size:10px}
+@media (max-width:1000px){.hq-command-row{grid-template-columns:1fr}#hq .grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:600px){#hq .grid{grid-template-columns:1fr 1fr;gap:10px}#hq .hq-metric{min-height:137px;padding:13px}#hq .hq-metric .metric{font-size:29px}.hq-brief-summary{gap:5px}.hq-command-card{padding:15px}}
+@media (prefers-reduced-motion:reduce){.hq-week-bar{transition:none}}
 </style></head><body><div id="login" class="login"><div class="panel"><div class="eyebrow">PRIVATE EXECUTIVE WORKSPACE</div><h1>AI Private Office</h1><p>Welcome back. Sign in to access your executive workspace.</p><form id="loginForm"><label>CEO password</label><input id="password" type="password" autocomplete="current-password" required><div style="height:18px"></div><button class="primary" style="width:100%">Sign in securely</button><p id="loginError" class="err"></p></form><p style="font-size:11px">Authorized access only.</p></div></div>
-<div id="app" class="shell hidden"><aside><div class="brand">AI Private Office<small>EXECUTIVE WORKSPACE</small></div><div class="nav" id="nav"><button data-view="hq" class="active">◫ &nbsp; Executive HQ</button><button data-view="meita">✦ &nbsp; Meita AI</button><button data-view="memory">◈ &nbsp; Memory Centre</button><button data-view="workforce">♙ &nbsp; AI Workforce</button><button data-view="desks">▦ &nbsp; Live Desks</button><button data-view="tasks">☑ &nbsp; Task Centre</button><button data-view="monthly">▣ &nbsp; Monthly Workplan</button><button data-view="academy">▤ &nbsp; Learning Academy</button><button data-view="research">⌕ &nbsp; Research Intelligence</button><button data-view="finance">◈ &nbsp; Finance & Audit</button><button data-view="integrations">⌘ &nbsp; Integration Centre</button><button data-view="governance">◇ &nbsp; Governance</button></div><div class="bottom"><button class="secondary" id="logout">Sign out</button><p>Private office environment</p></div></aside><main><header class="top"><div><div class="eyebrow">YOUR EXECUTIVE WORKSPACE</div><h1 id="pageTitle">Good day, CEO.</h1><div class="muted" id="today"></div></div><span class="pill">● Private workspace</span></header>
+<div id="app" class="shell hidden"><aside><div class="brand">AI Private Office<small>EXECUTIVE WORKSPACE</small></div><div class="nav" id="nav"><button data-view="hq" class="active">◫ &nbsp; Executive HQ</button><button data-view="meita">✦ &nbsp; Meita AI</button><button data-view="memory">◈ &nbsp; Memory Centre</button><button data-view="workforce">♙ &nbsp; AI Workforce</button><button data-view="desks">▦ &nbsp; Live Desks</button><button data-view="tasks">☑ &nbsp; Task Centre</button><button data-view="monthly">▣ &nbsp; Monthly Workplan</button><button data-view="academy">▤ &nbsp; Learning Academy</button><button data-view="research">⌕ &nbsp; Research Intelligence</button><button data-view="finance">◈ &nbsp; Finance & Audit</button><button data-view="integrations">⌘ &nbsp; Integration Centre</button><button data-view="governance">◇ &nbsp; Governance</button></div><div class="bottom"><button class="secondary" id="logout">Sign out</button><p>Private office environment</p></div></aside><main><header class="top"><div><div class="eyebrow">YOUR EXECUTIVE WORKSPACE</div><h1 id="pageTitle">Executive HQ</h1><div class="muted" id="today"></div></div><span class="pill">● Private workspace</span></header>
 <section class="view active" id="hq">
 <div class="hq-hero">
- <div><h2>Good to have you back, CEO.</h2><p>Your private AI leadership team, projects and execution status in one place. Every chart below uses actual office records.</p></div>
+ <div><div class="hq-kicker">OBSCURA · EXECUTIVE COMMAND DESK</div>
+  <h2>Good to have you back, CEO.</h2>
+  <p>A clear view of your leadership, priorities and real AI execution. Everything here reflects your private office records.</p>
+  <div class="hq-hero-actions">
+   <button class="hq-hero-cta" type="button" onclick="show('meita');document.getElementById('meitaChatCard').scrollIntoView({behavior:'smooth',block:'start'})">Talk to Meita</button>
+   <button class="hq-hero-subtle" type="button" onclick="newOfficeTask()">+ Assign a task</button>
+   <button class="hq-hero-subtle" type="button" onclick="show('workforce')">View leadership team</button>
+  </div>
+ </div>
  <div class="hq-hero-avatars" id="hqHeroAvatars" aria-hidden="true"></div>
 </div>
-<div class="grid"><div class="card hq-metric" style="--metric-accent:#479b9e"><div class="muted">AI Workforce</div><div class="metric" id="kStaff">0</div><div class="muted">Configured team members</div></div><div class="card hq-metric" style="--metric-accent:#6f90cc"><div class="muted">Open tasks</div><div class="metric" id="kOpen">0</div><div class="muted">Awaiting completion</div></div><div class="card hq-metric" style="--metric-accent:#d6a35c"><div class="muted">For approval</div><div class="metric" id="kApproval">0</div><div class="muted">CEO attention required</div></div><div class="card hq-metric" style="--metric-accent:#9b85d3"><div class="muted">Knowledge sources</div><div class="metric" id="kLessons">0</div><div class="muted">Registered resources</div></div></div>
+<div class="grid">
+ <div class="card hq-metric" style="--metric-accent:#369d95"><div class="hq-metric-top"><div class="hq-metric-icon" aria-hidden="true">◉</div><div class="muted">AI Workforce</div></div><div class="metric" id="kStaff">0</div><div class="muted">Configured team members</div></div>
+ <div class="card hq-metric" style="--metric-accent:#5d83c9"><div class="hq-metric-top"><div class="hq-metric-icon" aria-hidden="true">↗</div><div class="muted">Open tasks</div></div><div class="metric" id="kOpen">0</div><div class="muted">Awaiting completion</div></div>
+ <div class="card hq-metric" style="--metric-accent:#d09a4e"><div class="hq-metric-top"><div class="hq-metric-icon" aria-hidden="true">!</div><div class="muted">For approval</div></div><div class="metric" id="kApproval">0</div><div class="muted">CEO attention required</div></div>
+ <div class="card hq-metric" style="--metric-accent:#9574c4"><div class="hq-metric-top"><div class="hq-metric-icon" aria-hidden="true">✦</div><div class="muted">Knowledge sources</div></div><div class="metric" id="kLessons">0</div><div class="muted">Registered resources</div></div>
+</div>
 <div class="hq-viz-grid" aria-label="Live executive analytics based on office records">
  <div class="hq-chart-card"><h3>Task pulse</h3><p class="chart-subtitle">Actual task states · no simulated activity</p>
   <div class="hq-donut-wrap"><div class="hq-donut" id="hqTaskDonut" role="img" aria-label="Task status distribution">
@@ -113,6 +174,18 @@
  <div class="hq-chart-card"><h3>Your team at a glance</h3><p class="chart-subtitle">AI specialists assigned per department</p>
    <div class="hq-bars" id="hqDepartmentBars"></div>
  </div>
+</div>
+<div class="hq-command-row" aria-label="Execution and CEO priority overview">
+ <section class="hq-command-card"><div class="header"><div><h3>7-day task intake</h3><p class="sub">Real assignments recorded over the last 7 Malaysia calendar days</p></div><button class="hq-small-link" type="button" onclick="show('tasks')">Task Centre</button></div>
+  <div class="hq-week-total"><strong id="hqWeeklyTotal">0</strong> tasks created this week</div>
+  <div class="hq-week-chart" id="hqWeeklyChart" role="img" aria-label="Tasks created daily during the last seven days"></div>
+  <p class="hq-command-caption">Counts are based on task creation timestamps. Not a measure of AI hours worked.</p>
+ </section>
+ <section class="hq-command-card"><div class="header"><div><h3>CEO priorities</h3><p class="sub">Real approvals, live AI execution and jobs needing attention</p></div><button class="hq-small-link" type="button" onclick="show('meita')">Meita</button></div>
+  <div class="hq-brief-summary"><div class="hq-brief-count attention"><strong id="hqBriefReview">0</strong><span>For approval</span></div><div class="hq-brief-count good"><strong id="hqBriefWorking">0</strong><span>AI working</span></div><div class="hq-brief-count"><strong id="hqBriefBlocked">0</strong><span>Needs attention</span></div></div>
+  <div id="hqBriefItems" aria-live="polite"></div>
+  <p class="hq-command-caption">AI activity is shown only when supported by real execution records.</p>
+ </section>
 </div>
 <div class="two"><div class="card"><div class="toolbar"><h2 class="sectiontitle">Meet your Directors</h2><button class="secondary" onclick="show('workforce')">Manage team</button></div><div class="hq-leaders" id="hqStaff"></div></div><div class="card"><h2 class="sectiontitle">Recent tasks</h2><div id="hqTasks"></div></div></div>
 <div class="card" style="margin-top:18px" id="hqNewsCard">
@@ -377,7 +450,7 @@ const $=id=>document.getElementById(id);let state={staff:[],tasks:[],lessons:[],
 async function api(path,options={}){const r=await fetch('/api/'+path,{credentials:'same-origin',headers:{'Content-Type':'application/json'},...options});if(r.status===401){$('app').classList.add('hidden');$('login').classList.remove('hidden');throw Error('Session expired. Please sign in.')}if(!r.ok){let j=await r.json().catch(()=>({}));throw Error(j.detail||'Request failed')}return r.json()}
 function msg(s){$('toast').textContent=s;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',3000)}
 function toggle(id){$(id).classList.toggle('hidden')}
-function show(id){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('active',e.id===id));document.querySelectorAll('[data-view]').forEach(e=>e.classList.toggle('active',e.dataset.view===id));$('pageTitle').textContent=({hq:'Good day, CEO.',meita:'Meita · Acting COO',memory:'Memory Centre',workforce:'Your AI Workforce',desks:'Live Desks',tasks:'Task Centre',monthly:'Monthly Workplan',academy:'Learning Academy',research:'Research Intelligence',finance:'Finance & Audit',integrations:'Integration Centre',governance:'Governance'})[id];window.scrollTo(0,0)}
+function show(id){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('active',e.id===id));document.querySelectorAll('[data-view]').forEach(e=>e.classList.toggle('active',e.dataset.view===id));$('pageTitle').textContent=({hq:'Executive HQ',meita:'Meita · Acting COO',memory:'Memory Centre',workforce:'Your AI Workforce',desks:'Live Desks',tasks:'Task Centre',monthly:'Monthly Workplan',academy:'Learning Academy',research:'Research Intelligence',finance:'Finance & Audit',integrations:'Integration Centre',governance:'Governance'})[id];window.scrollTo(0,0)}
 function staffPortrait(s){
   const slot=Number(s.portrait_slot);
   if(s.portrait_slot!==null && s.portrait_slot!==undefined && Number.isInteger(slot)&&slot>=0&&slot<9){
@@ -724,7 +797,68 @@ function renderLeadershipSpotlight(staff){
  }
 }
 
-function render(){const s=state.staff,t=state.tasks,l=state.lessons;$('kStaff').textContent=s.length;$('kOpen').textContent=t.filter(x=>x.status!=='Completed').length;$('kApproval').textContent=t.filter(x=>x.status==='For approval').length;$('kLessons').textContent=academyTotal===null?l.length:academyTotal;renderLeadershipSpotlight(s);renderOfficeCharts(s,t);renderWorkforceHierarchy(s);
+
+function hqDateMalaysia(timestamp){
+ const date=(typeof timestamp==='number' && Number.isFinite(timestamp))?
+    new Date(timestamp<1e12?timestamp*1000:timestamp):
+    (typeof timestamp==='string'&&timestamp.trim()?new Date(timestamp):null);
+ if(!date||Number.isNaN(date.getTime()))return null;
+ return date.toLocaleDateString('sv-SE',{timeZone:'Asia/Kuala_Lumpur'});
+}
+function renderExecutivePulse(tasks,jobs){
+ const today=new Date(Date.now()+8*3600000).toISOString().slice(0,10);
+ const base=new Date(today+'T00:00:00.000Z');
+ const days=Array.from({length:7},(_,i)=>{
+  const d=new Date(base.getTime()+(i-6)*86400000);
+  return {date:d.toISOString().slice(0,10),label:d.toLocaleDateString('en-US',{timeZone:'UTC',weekday:'short'}),count:0};
+ });
+ const byDate=new Map(days.map(d=>[d.date,d]));
+ for(const task of tasks){
+  const key=hqDateMalaysia(task.created);
+  if(byDate.has(key))byDate.get(key).count++;
+ }
+ const total=days.reduce((sum,d)=>sum+d.count,0),max=Math.max(1,...days.map(d=>d.count));
+ $('hqWeeklyTotal').textContent=String(total);
+ const graph=$('hqWeeklyChart');graph.textContent='';
+ graph.setAttribute('aria-label',days.map(d=>d.label+': '+d.count+' tasks').join(', '));
+ for(const day of days){
+  const column=document.createElement('div');column.className='hq-week-column';
+  const count=document.createElement('span');count.className='hq-week-count';count.textContent=String(day.count);
+  const track=document.createElement('div');track.className='hq-week-track';
+  const bar=document.createElement('div');bar.className='hq-week-bar';bar.style.height=(day.count?Math.max(8,day.count/max*100):0)+'%';
+  track.append(bar);
+  const label=document.createElement('span');label.className='hq-week-label';label.textContent=day.label;
+  column.title=day.date+' · '+day.count+' task(s)';column.append(count,track,label);graph.append(column);
+ }
+ const working=jobs.filter(j=>j.status==='Running');
+ const blocked=jobs.filter(j=>['Retry available','Needs verification'].includes(j.status));
+ const review=tasks.filter(t=>t.status==='For approval');
+ $('hqBriefReview').textContent=String(review.length);
+ $('hqBriefWorking').textContent=String(working.length);
+ $('hqBriefBlocked').textContent=String(blocked.length);
+ const root=$('hqBriefItems');root.textContent='';
+ const highlights=[
+  ...review.slice(0,2).map(t=>({name:t.title,detail:'Awaiting CEO approval',target:'tasks'})),
+  ...blocked.slice(0,2).map(j=>({name:j.title,detail:'AI execution needs attention',target:'meita'})),
+  ...working.slice(0,1).map(j=>({name:j.title,detail:'AI execution currently running',target:'desks'}))
+ ].slice(0,4);
+ if(!highlights.length){
+  const empty=document.createElement('p');empty.className='hq-brief-empty';
+  empty.textContent='No pending approvals or active execution alerts. New tasks will appear here automatically.';
+  root.append(empty);return;
+ }
+ for(const item of highlights){
+  const row=document.createElement('div');row.className='hq-brief-item';
+  const dot=document.createElement('span');dot.className='hq-brief-dot';dot.setAttribute('aria-hidden','true');
+  const details=document.createElement('div');details.style.flex='1';
+  const title=document.createElement('strong');title.textContent=item.name;
+  const caption=document.createElement('small');caption.textContent=item.detail;details.append(title,caption);
+  const button=document.createElement('button');button.type='button';button.textContent='Open';button.onclick=()=>show(item.target);
+  row.append(dot,details,button);root.append(row);
+ }
+}
+
+function render(){const s=state.staff,t=state.tasks,l=state.lessons;$('kStaff').textContent=s.length;$('kOpen').textContent=t.filter(x=>x.status!=='Completed').length;$('kApproval').textContent=t.filter(x=>x.status==='For approval').length;$('kLessons').textContent=academyTotal===null?l.length:academyTotal;renderLeadershipSpotlight(s);renderOfficeCharts(s,t);renderExecutivePulse(t,liveActivity);renderWorkforceHierarchy(s);
 const taskrow=x=>`<div class="item"><div><strong>${esc(x.title)}</strong><small>${esc(s.find(z=>z.id===x.assignee)?.name||'Unassigned')} · ${esc(x.status)}</small></div></div>`;$('hqTasks').innerHTML=t.length?t.slice(0,5).map(taskrow).join(''):'<p>No tasks yet.</p>';
 const assigneeSelect=$('assignee'),currentAssignee=assigneeSelect.value;
 assigneeSelect.textContent='';
