@@ -15,6 +15,7 @@ from fastapi import HTTPException
 from psycopg.types.json import Jsonb
 
 from backend import workforce
+from backend import references as office_references
 from backend import memory as office_memory
 
 logger=logging.getLogger("office.meita.autowork")
@@ -24,6 +25,7 @@ def init(db):
     from backend import delegation
     delegation.init(db)
     workforce.init(db)
+    office_references.init(db)
     db.execute("ALTER TABLE coo_proposals ADD COLUMN IF NOT EXISTS auto_execute BOOLEAN NOT NULL DEFAULT FALSE")
     db.execute("ALTER TABLE coo_jobs ADD COLUMN IF NOT EXISTS task_id TEXT UNIQUE")
     db.execute("ALTER TABLE coo_jobs ADD COLUMN IF NOT EXISTS started_at TIMESTAMPTZ")
@@ -61,12 +63,13 @@ def assign(db,proposal_id,staff,automatic=False):
         brief=item["brief"].strip()[:3000]
         # Delegated tasks are locked against a concurrent manual Task Centre
         # Run AI. Execution is driven only by the corresponding COO job.
-        task_status="In progress" if automatic else "To do"
+        task_status="To do"  # Queued is not executing: Live Desk must not show false activity.
         db.execute("""INSERT INTO tasks
             (id,title,description,category,assignee,priority,
-             status,recurrence,created,ai_run_started)
-            VALUES (%s,%s,%s,'General',%s,'Normal',%s,'None',%s,TRUE)""",
-            (task_id,title,brief,person["id"],task_status,int(time.time())))
+             status,recurrence,created,ai_run_started,reference_ids)
+            VALUES (%s,%s,%s,'General',%s,'Normal',%s,'None',%s,TRUE,%s)""",
+            (task_id,title,brief,person["id"],task_status,int(time.time()),
+             Jsonb(proposal.get('reference_ids') or [])))
         snapshot={key:person.get(key) or "" for key in
                   ("id","name","role","department","expertise")}
         db.execute("""INSERT INTO coo_jobs
@@ -142,12 +145,22 @@ def process_one(connect):
                 AND status='Available'""",(job["staff"]["id"],)).fetchone()
         if not person:
             raise RuntimeError("Assigned AI staff is no longer available")
+        reference_ids=[]
+        if job.get('task_id'):
+            with connect() as db:
+                source=db.execute('SELECT reference_ids FROM tasks WHERE id=%s',
+                                  (job['task_id'],)).fetchone()
+                reference_ids=(source or {}).get('reference_ids') or []
         task={"id":job["task_id"] or job["id"],
-              "title":job["title"],"brief":job["brief"],"category":"General"}
+              "title":job["title"],"brief":job["brief"],"category":"General",
+              "reference_ids":reference_ids}
         result=workforce.execute(task,dict(person))
     except Exception as error:
         logger.warning("Meita internal AI task failed: %s",type(error).__name__)
         with connect() as db:
+            if job.get('task_id'):
+                db.execute("""UPDATE tasks SET status='To do'
+                    WHERE id=%s AND status='In progress'""",(job['task_id'],))
             db.execute("""UPDATE coo_jobs
                 SET status='Retry available',updated_at=NOW()
                 WHERE id=%s AND status='Running'""",(job["id"],))
@@ -174,6 +187,9 @@ def recover_interrupted(connect):
             if existing:
                 _finish_success(db,dict(job),existing["id"],existing["result"])
             else:
+                if job.get('task_id'):
+                    db.execute("""UPDATE tasks SET status='To do'
+                        WHERE id=%s AND status='In progress'""",(job['task_id'],))
                 db.execute("""UPDATE coo_jobs SET status='Needs verification',
                     updated_at=NOW() WHERE id=%s""",(job["id"],))
                 db.execute("""INSERT INTO audit(action,detail,created)
@@ -199,7 +215,7 @@ async def autonomous_worker(connect):
 def history(db,limit=60):
     init(db)
     records=db.execute("""SELECT p.id,p.title,p.brief,p.status,p.auto_execute,
-        p.created_at,p.chat_message_id,
+        p.created_at,p.chat_message_id,p.reference_ids,
         j.id AS job_id,j.task_id,j.title AS job_title,j.brief AS job_brief,
         j.status AS job_status,j.workforce_run_id,
         j.staff->>'name' AS staff_name,
@@ -216,6 +232,7 @@ def history(db,limit=60):
             groups[pid]={"id":pid,"title":row["title"],"brief":row["brief"],
                  "status":row["status"],"automatic":row["auto_execute"],
                  "created_at":row["created_at"],"chat_message_id":row["chat_message_id"],
+                 "reference_ids":row["reference_ids"],
                  "jobs":[]}
         if row["job_id"]:
             groups[pid]["jobs"].append({
