@@ -141,6 +141,10 @@ def update(db,task_id,body):
         (body.title.strip(),body.description.strip(),assignee,body.priority,
          due,body.recurrence,new_series_id,
          due if new_series_id else None,task_id))
+    if from_monthly:
+        db.execute("""UPDATE monthly_assignments SET brief=%s,due_date=%s,
+            director_id=%s WHERE task_id=%s""",
+            (body.description.strip(),due,assignee,task_id))
     return {"ok":True}
 
 def generate_due(db,today=None,limit=120):
@@ -165,7 +169,7 @@ def generate_due(db,today=None,limit=120):
                 (id,title,description,assignee,priority,due_date,recurrence,
                  series_id,occurrence_date,status,created)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,'To do',%s)
-                ON CONFLICT (series_id,occurrence_date) DO NOTHING""",
+                ON CONFLICT DO NOTHING""",
                 (new_id,row["title"],row["description"],assignee,row["priority"],
                  due,row["frequency"],row["id"],due,int(time.time())))
             created+=result.rowcount
