@@ -39,8 +39,24 @@ def review(ident,status):
     try:
         with dbconn() as db:
             init(db)
-            row=db.execute("UPDATE workforce_runs SET status=%s,reviewed_at=NOW() WHERE id=%s AND status='For approval' RETURNING id",(status,ident)).fetchone()
+            row=db.execute("""UPDATE workforce_runs SET status=%s,reviewed_at=NOW()
+                WHERE id=%s AND status='For approval' RETURNING id,task_id""",
+                (status,ident)).fetchone()
             if not row: raise HTTPException(404,"Pending result not found")
+            approved=status=="Approved"
+            db.execute("""UPDATE tasks SET status=%s
+                WHERE id=%s AND ai_run_started=TRUE AND deleted_at IS NULL""",
+                ("Completed" if approved else "To do",row["task_id"]))
+            # Director and Meita job statuses are downstream of the same actual
+            # workforce run. Review is propagated, not simulated.
+            db.execute("""UPDATE director_jobs
+                SET status=%s,updated_at=NOW()
+                WHERE workforce_run_id=%s AND status='For approval'""",
+                ("Completed" if approved else "Retry available",ident))
+            db.execute("""UPDATE coo_jobs
+                SET status=%s,updated_at=NOW()
+                WHERE workforce_run_id=%s AND status='Delivered'""",
+                ("Completed" if approved else "Retry available",ident))
         return {"ok":True}
     except psycopg.Error: raise HTTPException(503,"Unable to review workforce result")
 
