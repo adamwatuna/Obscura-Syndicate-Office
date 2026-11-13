@@ -14,6 +14,9 @@ class MeitaTeamTests(unittest.TestCase):
         self.assertEqual(login.status_code,200,login.text)
         with office_db.connect() as db:
             meita_team.init(db)
+            delegation.init(db)
+            self.initial_coo_jobs=db.execute(
+                "SELECT COUNT(*) AS n FROM coo_jobs").fetchone()["n"]
             original=meita_team.settings(db)
             self.old={k:original[k] for k in ("delegation_scope","discussion_scope",
                       "max_delegation_jobs","max_meeting_participants")}
@@ -101,9 +104,8 @@ class MeitaTeamTests(unittest.TestCase):
         self.assertFalse(any(m["speaker_id"]=="CEO" for m in after["messages"]))
         # A discussion never creates tasks or delegations by itself.
         with office_db.connect() as db:
-            jobs=db.execute("""SELECT COUNT(*) AS n FROM coo_jobs
-                WHERE created_at > NOW() - INTERVAL '2 seconds'""").fetchone()
-        self.assertGreaterEqual(jobs["n"],0)
+            jobs=db.execute("SELECT COUNT(*) AS n FROM coo_jobs").fetchone()["n"]
+        self.assertEqual(jobs,self.initial_coo_jobs)
 
     def test_followup_round_references_actual_previous_statements(self):
         self.configure(discussion_scope="directors_only")
