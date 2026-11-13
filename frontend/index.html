@@ -100,6 +100,19 @@
    <p class="muted">Attach up to 6 references per instruction · 20 MB per file. Video analysis uses sampled frames only (no audio transcription). Drag files here or paste an image into the chat.</p>
  </form>
 </div>
+<div class="card" style="margin-top:20px" id="meitaAiHealth">
+ <div class="toolbar"><div><h3>AI Engine Health &amp; Queue</h3>
+ <p>See real provider errors, available credits diagnosis and worker activity before retrying failed tasks.</p></div>
+ <button type="button" class="secondary" onclick="loadAiDiagnostics()">Refresh status</button></div>
+ <div id="meitaAiHealthStatus" class="notice">Checking AI engine and queue…</div>
+ <div class="task-actions" style="margin-top:12px">
+ <button type="button" class="secondary" id="aiCheckConnection" onclick="checkAiConnection()">Check API key &amp; model (no generation charge)</button>
+ <button type="button" class="secondary" id="aiTestGeneration" onclick="testAiGeneration()">Test real AI generation (uses small API credits)</button>
+ <button type="button" class="primary hidden" id="aiResumeQueue" onclick="resumeAiQueue()">Resume queued AI jobs</button>
+ </div>
+ <div id="meitaAiTestFeedback" class="muted" role="status" aria-live="polite" style="margin-top:8px"></div>
+ <div id="meitaRecentAiFailures" style="margin-top:12px"></div>
+</div>
 <div class="card" style="margin-top:20px" id="meitaTaskHistory">
  <div class="toolbar"><div><h3>Task History</h3><p>Every CEO-requested task, assigned staff and live execution status.</p></div>
  <button type="button" class="secondary" onclick="loadMeitaTaskHistory()">Refresh tasks</button></div>
@@ -767,6 +780,68 @@ function meitaStatus(raw){
   })[raw]||raw;
 }
 async function refreshLiveActivity(){try{const data=await api('meita/live-activity');liveActivity=data.jobs||[];render()}catch(err){console.warn('Live activity unavailable',err)}}
+
+async function loadAiDiagnostics(){
+ const status=$('meitaAiHealthStatus'),recent=$('meitaRecentAiFailures');
+ if(!status)return;
+ try{
+  const data=await api('ai/diagnostics'),provider=data.provider||{};
+  const pause=provider.manual_resume_required? 'PAUSED — CEO action required':
+   provider.paused_until&&new Date(provider.paused_until)>new Date()?'Cooling down until '+new Date(provider.paused_until).toLocaleTimeString('en-MY',{timeZone:'Asia/Kuala_Lumpur'}):'Accepting queued tasks';
+  const heartbeat=provider.heartbeat_at?Math.max(0,Math.round((Date.now()-new Date(provider.heartbeat_at).getTime())/1000))+'s ago':'Not yet detected';
+  const jobs=Object.entries(data.job_counts||{}).map(([key,n])=>key+': '+n).join(' · ');
+  status.textContent='Model: '+data.model+' · AI '+(data.engine_enabled?'enabled':'disabled')+
+   ' · Key '+(data.key_present?'configured':'missing')+' · Worker '+(data.worker_enabled?'enabled':'disabled')+
+   ' · Queue '+pause+' · Worker heartbeat '+heartbeat+' · '+(jobs||'No jobs');
+  status.style.borderLeft=provider.manual_resume_required?'3px solid #b04d3b':'';
+  $('aiResumeQueue').classList.toggle('hidden',!provider.manual_resume_required &&
+    !(provider.paused_until&&new Date(provider.paused_until)>new Date()));
+  recent.textContent='';
+  const failures=data.recent_failures||[];
+  if(failures.length){
+   const label=meitaNode('strong','Recent AI job failures (safe diagnostics)');
+   recent.append(label);
+   for(const job of failures.slice(0,9)){
+    const item=meitaNode('div',undefined,'task-entry');
+    item.append(meitaNode('strong',job.title),
+                meitaNode('p',(job.failure_code||'unknown')+
+                ' · '+(job.failure_message||'Check Railway logs')+
+                ' · attempt '+(job.attempts||0),'muted'));
+    recent.append(item);
+   }
+  }
+ }catch(err){status.textContent='AI diagnostics unavailable: '+err.message}
+}
+async function checkAiConnection(){
+ const button=$('aiCheckConnection');button.disabled=true;
+ $('meitaAiTestFeedback').textContent='Checking OpenAI model access without generating AI output…';
+ try{
+  const result=await api('ai/diagnostics/connection');
+  $('meitaAiTestFeedback').textContent=(result.connected?'Model accessible. ':'Connection issue: ')+result.advice;
+ }catch(err){$('meitaAiTestFeedback').textContent=err.message}
+ finally{button.disabled=false;await loadAiDiagnostics()}
+}
+async function testAiGeneration(){
+ if(!confirm('This will call OpenAI with a minimal prompt and may use a small amount of API credits. Proceed?'))return;
+ const button=$('aiTestGeneration');button.disabled=true;
+ $('meitaAiTestFeedback').textContent='Testing real AI generation…';
+ try{
+  const data=await api('ai/diagnostics/test',{method:'POST'});
+  $('meitaAiTestFeedback').textContent=data.status;
+ }catch(err){$('meitaAiTestFeedback').textContent='AI generation failed: '+err.message}
+ finally{button.disabled=false;await loadAiDiagnostics()}
+}
+async function resumeAiQueue(){
+ if(!confirm('Resume queued internal AI jobs? Every queued AI execution may consume OpenAI API credits. Existing failed jobs will NOT be retried automatically.'))return;
+ const button=$('aiResumeQueue');button.disabled=true;
+ try{
+  await api('ai/diagnostics/resume',{method:'POST'});
+  $('meitaAiTestFeedback').textContent='Queue resumed. Failed jobs require individual approval to retry.';
+  await loadAiDiagnostics();
+ }catch(err){$('meitaAiTestFeedback').textContent=err.message}
+ finally{button.disabled=false}
+}
+
 async function loadMeitaTaskHistory(){
   const root=$('meitaTaskList');
   try{
@@ -794,6 +869,12 @@ async function loadMeitaTaskHistory(){
         const record=meitaNode('p',task.staff_name+' · '+task.title+
           ' — '+meitaStatus(task.status));
         record.style.margin='6px 0';tasks.append(record);
+        if(task.failure_code){
+          const reason=meitaNode('span',' · '+task.failure_code+
+            (task.failure_message?' — '+task.failure_message:''),'muted');
+          reason.style.cssText='display:block;margin-left:12px;overflow-wrap:anywhere';
+          record.append(reason);
+        }
         if(task.task_id){const jump=meitaNode('button','Open task','secondary');jump.type='button';jump.style.marginLeft='8px';jump.onclick=()=>show('tasks');record.append(jump);}
         if(task.status==='Retry available'){
           const retry=meitaNode('button','Retry AI task','secondary');
@@ -1919,9 +2000,9 @@ function renderResearchRoster(){
 }
 async function refresh(){state=await api('office');render();renderDirectorSelect()}
 async function updateTask(id,status){try{await api('tasks/'+id,{method:'PATCH',body:JSON.stringify({status})});await refresh();msg('Task updated')}catch(e){msg(e.message);await refresh()}}
-$('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){show(b.dataset.view);if(b.dataset.view==='hq')loadNewsBriefings();if(b.dataset.view==='integrations')loadSocial();if(b.dataset.view==='academy')loadAcademyLibrary();if(b.dataset.view==='finance')loadFinancePlanning()}});
+$('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){show(b.dataset.view);if(b.dataset.view==='hq')loadNewsBriefings();if(b.dataset.view==='integrations')loadSocial();if(b.dataset.view==='academy')loadAcademyLibrary();if(b.dataset.view==='finance')loadFinancePlanning();if(b.dataset.view==='meita')loadAiDiagnostics()}});
 $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').textContent='';try{await api('login',{method:'POST',body:JSON.stringify({password:$('password').value})});$('password').value='';await enter()}catch(err){$('loginError').textContent=err.message}});
-async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await refreshLiveActivity();await loadMeita();await loadMeitaConfiguration();await loadMeitaTaskHistory();await loadMeitaDeck();await loadMemory();await loadAcademyLibrary();await loadFinancePlanning();await loadRuns();await loadDirectorPlans();$('monthlyPeriod').value=malaysiaPeriod();await loadMonthly();await loadNewsBriefings();await loadSocial();const oauthParams=new URLSearchParams(window.location.search);
+async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await refreshLiveActivity();await loadMeita();await loadMeitaConfiguration();await loadMeitaTaskHistory();await loadAiDiagnostics();await loadMeitaDeck();await loadMemory();await loadAcademyLibrary();await loadFinancePlanning();await loadRuns();await loadDirectorPlans();$('monthlyPeriod').value=malaysiaPeriod();await loadMonthly();await loadNewsBriefings();await loadSocial();const oauthParams=new URLSearchParams(window.location.search);
 const integ=oauthParams.get('integration');
 if(integ){
   const reasons={
