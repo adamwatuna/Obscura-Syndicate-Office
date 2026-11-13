@@ -31,6 +31,9 @@ class LibraryReferenceEdit(BaseModel):
     archived: bool = False
 
 
+from backend import schema_state
+
+@schema_state.bootstrap_only
 def init(db):
     references.init(db)
     db.execute("ALTER TABLE meita_references ADD COLUMN IF NOT EXISTS academy_title TEXT NOT NULL DEFAULT ''")
