@@ -2,7 +2,7 @@ import os, json, hmac, hashlib, secrets, time, urllib.request, urllib.error, asy
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Depends, Request
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from starlette.middleware.sessions import SessionMiddleware
 from backend import memory as office_memory
@@ -15,6 +15,7 @@ from backend import task_schedule
 from backend import news_briefings
 from backend import meita_team
 from backend import meita_chat_delegate
+from backend import meita_autowork, meita_decks
 from backend import social, social_publish
 
 ROOT=Path(__file__).resolve().parent.parent
@@ -31,12 +32,16 @@ async def lifespan(app):
     # The database bootstrap has already generated any missing current-month tasks.
     # This clock keeps assignments recurring even if the CEO does not open the UI.
     ticker=asyncio.create_task(monthly.monthly_clock(connect))
+    assistant_worker=asyncio.create_task(meita_autowork.autonomous_worker(connect))
     try:
         yield
     finally:
         ticker.cancel()
+        assistant_worker.cancel()
         with suppress(asyncio.CancelledError):
             await ticker
+        with suppress(asyncio.CancelledError):
+            await assistant_worker
 
 app=FastAPI(title='AI Private Office',docs_url=None,redoc_url=None,lifespan=lifespan)
 app.add_middleware(SessionMiddleware,secret_key=SECRET,https_only=os.environ.get('COOKIE_SECURE','true').lower()=='true',same_site='lax',max_age=28800)
@@ -233,7 +238,8 @@ def meita_history():
         office_delegation.init(db)
         rows=db.execute("""SELECT m.id,m.role,m.content,m.created,
             p.id AS proposal_id,p.status AS proposal_status,
-            p.title AS proposal_title,p.plan AS proposal_plan
+            p.title AS proposal_title,p.plan AS proposal_plan,
+            p.auto_execute AS proposal_automatic
             FROM meita_messages m
             LEFT JOIN coo_proposals p ON p.chat_message_id=m.id
             ORDER BY m.created DESC,m.id DESC LIMIT 30""").fetchall()
@@ -244,7 +250,8 @@ def meita_history():
             message["proposal"]={"id":r["proposal_id"],
                 "status":r["proposal_status"],
                 "title":r["proposal_title"],
-                "plan":r["proposal_plan"]}
+                "plan":r["proposal_plan"],
+                "automatic":r["proposal_automatic"]}
         messages.append(message)
     return {"messages":messages}
 
@@ -289,14 +296,79 @@ def meita_chat(body:MeitaMessage):
             (routed["reply"],now)).fetchone()
         proposal=None
         if proposal_plan:
+            config=meita_team.settings(db)
+            eligible={p["id"] for p in meita_team.available_staff(
+                db,config["delegation_scope"])}
+            latest=[dict(row) for row in db.execute(
+                "SELECT * FROM staff WHERE status='Available'")
+                if row["id"] in eligible]
+            latest_ids={p["id"] for p in latest}
+            if any(j["staff_id"] not in latest_ids for j in proposal_plan["jobs"]):
+                raise HTTPException(409,
+                    "Team configuration changed; please repeat the instruction")
             proposal=office_delegation.save_proposal(
                 db,routed["delegation_brief"],proposal_plan,
                 chat_message_id=message["id"])
-            audit(db,"meita.chat.delegation_proposed",proposal["id"])
+            if config["auto_execute_internal"]:
+                if os.getenv("MEITA_AUTO_WORKER_ENABLED","true").lower()!="true":
+                    raise HTTPException(503,"Meita internal auto-worker is disabled")
+                assigned=meita_autowork.auto_assign_chat(db,proposal["id"],latest)
+                proposal.update({"status":"Approved","automatic":True,
+                                 "assigned_tasks":assigned["jobs"]})
+                routed["reply"]=(
+                    f"Baik CEO. Saya dah agihkan {len(assigned['jobs'])} tugasan "
+                    "kepada AI team dan masukkan ke execution queue. "
+                    "Semak Task History untuk progress dan Deliverables untuk hasil.")
+                db.execute("""UPDATE meita_messages SET content=%s WHERE id=%s""",
+                           (routed["reply"],message["id"]))
+                audit(db,"meita.chat.auto_assigned",proposal["id"])
+            else:
+                proposal["automatic"]=False
+                audit(db,"meita.chat.delegation_proposed",proposal["id"])
         else:
             audit(db,"meita.chat","CEO chatted with Meita")
     return {"reply":routed["reply"],"model":routed["model"],
             "proposal":proposal}
+
+@app.get('/api/meita/task-history',dependencies=[Depends(guard)])
+def meita_task_history():
+    with connect() as db:
+        return meita_autowork.history(db)
+
+@app.get('/api/meita/deliverables/{ident}',dependencies=[Depends(guard)])
+def meita_delivery_slides(ident:str):
+    with connect() as db:
+        return meita_decks.from_db(db,ident)
+
+@app.get('/api/meita/deliverables/{ident}/powerpoint',
+         dependencies=[Depends(guard)])
+def download_meita_powerpoint(ident:str):
+    with connect() as db:
+        deck=meita_decks.from_db(db,ident)
+    stream=meita_decks.as_pptx(deck)
+    safe="".join(c for c in deck["title"] if c.isalnum() or c in " -_")
+    filename=(safe.strip() or "Meita-Executive-Delivery")[:65].replace(" ","-")
+    return StreamingResponse(stream,
+        media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        headers={"Content-Disposition":f'attachment; filename="{filename}.pptx"',
+                 "Cache-Control":"no-store"})
+
+@app.post('/api/meita/jobs/{ident}/retry',dependencies=[Depends(guard)])
+def meita_retry_internal_job(ident:str):
+    with connect() as db:
+        meita_autowork.init(db)
+        job=db.execute("""SELECT j.id,j.status,j.task_id,j.staff
+            FROM coo_jobs j WHERE j.id=%s FOR UPDATE""",(ident,)).fetchone()
+        if not job:raise HTTPException(404,"Meita task not found")
+        if job["status"]!="Retry available":
+            raise HTTPException(409,"Only confirmed failed AI jobs can be retried")
+        current=db.execute("""SELECT 1 FROM staff WHERE id=%s
+            AND status='Available'""",(job["staff"]["id"],)).fetchone()
+        if not current:raise HTTPException(409,"Assigned AI staff is unavailable")
+        db.execute("""UPDATE coo_jobs SET status='Queued',updated_at=NOW()
+            WHERE id=%s""",(ident,))
+        audit(db,'meita.autorun.retry_requested',ident)
+    return {"ok":True,"status":"Queued"}
 
 @app.get('/api/memory',dependencies=[Depends(guard)])
 def list_memory():

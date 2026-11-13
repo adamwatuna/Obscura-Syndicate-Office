@@ -25,6 +25,7 @@ class MeitaSettings(BaseModel):
     discussion_scope: str = "all_staff"
     max_delegation_jobs: int = Field(ge=1,le=9,default=9)
     max_meeting_participants: int = Field(ge=1,le=20,default=20)
+    auto_execute_internal: bool = True
 
 class MeetingBrief(BaseModel):
     topic: str = Field(min_length=8,max_length=2500)
@@ -39,7 +40,9 @@ def init(db):
         discussion_scope TEXT NOT NULL DEFAULT 'all_staff',
         max_delegation_jobs SMALLINT NOT NULL DEFAULT 9,
         max_meeting_participants SMALLINT NOT NULL DEFAULT 20,
+        auto_execute_internal BOOLEAN NOT NULL DEFAULT TRUE,
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())""")
+    db.execute("ALTER TABLE meita_configuration ADD COLUMN IF NOT EXISTS auto_execute_internal BOOLEAN NOT NULL DEFAULT TRUE")
     db.execute("""INSERT INTO meita_configuration(id)
         VALUES(1) ON CONFLICT(id) DO NOTHING""")
     db.execute("""CREATE TABLE IF NOT EXISTS meita_meetings (
@@ -77,9 +80,11 @@ def save_settings(db,body):
     db.execute("""UPDATE meita_configuration SET
         delegation_scope=%s,discussion_scope=%s,
         max_delegation_jobs=%s,max_meeting_participants=%s,
+        auto_execute_internal=%s,
         updated_at=NOW() WHERE id=1""",
         (body.delegation_scope,body.discussion_scope,
-         body.max_delegation_jobs,body.max_meeting_participants))
+         body.max_delegation_jobs,body.max_meeting_participants,
+         body.auto_execute_internal))
     return {"ok":True,"settings":settings(db)}
 
 def available_staff(db,scope):

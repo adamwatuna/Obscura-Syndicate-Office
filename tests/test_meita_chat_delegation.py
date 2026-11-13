@@ -26,7 +26,9 @@ class MeitaChatDelegationTests(unittest.TestCase):
             current=meita_team.settings(db)
             self.config={key:current[key] for key in (
                 "delegation_scope","discussion_scope","max_delegation_jobs",
-                "max_meeting_participants")}
+                "max_meeting_participants","auto_execute_internal")}
+            meita_team.save_settings(db,meita_team.MeitaSettings(
+                **{**self.config,"auto_execute_internal":False}))
             self.base=db.execute(
                 "SELECT COALESCE(MAX(id),0) AS last FROM meita_messages"
             ).fetchone()["last"]
@@ -40,6 +42,11 @@ class MeitaChatDelegationTests(unittest.TestCase):
 
     def tearDown(self):
         with office_db.connect() as db:
+            db.execute("""DELETE FROM tasks WHERE id IN (
+                SELECT j.task_id FROM coo_jobs j JOIN coo_proposals p
+                  ON p.id=j.proposal_id
+                WHERE p.chat_message_id>%s AND j.task_id IS NOT NULL)""",
+                (self.base,))
             db.execute("""DELETE FROM coo_jobs WHERE proposal_id IN
                 (SELECT id FROM coo_proposals WHERE chat_message_id>%s)""",
                 (self.base,))
@@ -154,7 +161,7 @@ class MeitaChatDelegationTests(unittest.TestCase):
         with office_db.connect() as db:
             meita_team.save_settings(db,meita_team.MeitaSettings(
                 **{**self.config,"delegation_scope":"directors_only",
-                   "max_delegation_jobs":2}))
+                   "max_delegation_jobs":2,"auto_execute_internal":False}))
         with patch("backend.main.office_delegation.prepare_plan",
                    return_value=self._staff_plan()) as plan:
             result=self.send("delegate","Pending for CEO approval.",

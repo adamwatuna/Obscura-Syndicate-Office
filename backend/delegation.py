@@ -166,37 +166,25 @@ def list_all():
         raise HTTPException(503, "Unable to load delegations")
 
 def decide(ident, approved, staff):
-    crew = {s["id"]: s for s in staff}
+    """Legacy/manual proposals also create real Task Centre assignments."""
+    from backend import meita_autowork
     try:
         with conn() as db:
             init(db)
-            item = db.execute(
-                "SELECT * FROM coo_proposals WHERE id=%s FOR UPDATE", (ident,)).fetchone()
-            if not item:
-                raise HTTPException(404, "Delegation plan not found")
-            if item["status"] != "Pending approval":
-                raise HTTPException(409, "Delegation plan already reviewed")
-            plan = item["plan"]
+            item=db.execute("""SELECT status FROM coo_proposals
+                WHERE id=%s FOR UPDATE""",(ident,)).fetchone()
+            if not item:raise HTTPException(404,"Delegation plan not found")
+            if item["status"]!="Pending approval":
+                raise HTTPException(409,"Delegation plan already reviewed")
             if approved:
-                # Validates assignments a second time at CEO approval.
-                for task in plan["jobs"]:
-                    if task["staff_id"] not in crew:
-                        raise HTTPException(409, "Assigned staff no longer exists")
-                for task in plan["jobs"]:
-                    person = crew[task["staff_id"]]
-                    snapshot = {k: person[k] for k in (
-                        "id", "name", "role", "department", "expertise")}
-                    db.execute("""INSERT INTO coo_jobs
-                        (id,proposal_id,title,brief,staff)
-                        VALUES (%s,%s,%s,%s,%s)""",
-                        (secrets.token_hex(12), ident, task["title"],
-                         task["brief"], Jsonb(snapshot)))
-            status = "Approved" if approved else "Rejected"
-            db.execute("""UPDATE coo_proposals
-                SET status=%s,reviewed_at=NOW() WHERE id=%s""", (status,ident))
-        return {"ok": True, "status": status}
+                result=meita_autowork.assign(db,ident,staff,automatic=False)
+                return {"ok":True,"status":"Approved",
+                        "created_tasks":[j["task_id"] for j in result["jobs"]]}
+            db.execute("""UPDATE coo_proposals SET status='Rejected',
+                reviewed_at=NOW() WHERE id=%s""",(ident,))
+            return {"ok":True,"status":"Rejected"}
     except psycopg.Error:
-        raise HTTPException(503, "Unable to review delegation")
+        raise HTTPException(503,"Unable to review delegation")
 
 def run(ident):
     try:
@@ -210,7 +198,12 @@ def run(ident):
                 raise HTTPException(409, "Job is not approved or already running")
     except psycopg.Error:
         raise HTTPException(503, "Unable to start delegated job")
-    task = {"id":job["id"],"title":job["title"],"brief":job["brief"]}
+    with conn() as db:
+        if job.get("task_id"):
+            db.execute("""UPDATE tasks SET status='In progress',ai_run_started=TRUE
+                WHERE id=%s""",(job["task_id"],))
+    task = {"id":job.get("task_id") or job["id"],
+            "title":job["title"],"brief":job["brief"],"category":"General"}
     try:
         result = workforce.execute(task, job["staff"])
     except Exception:
@@ -226,6 +219,9 @@ def run(ident):
             db.execute("""UPDATE coo_jobs SET status='For approval',
                 workforce_run_id=%s,updated_at=NOW()
                 WHERE id=%s AND status='Running'""", (result["id"],ident))
+            if job.get("task_id"):
+                db.execute("""UPDATE tasks SET status='For approval',ai_run_started=TRUE
+                    WHERE id=%s""",(job["task_id"],))
     except psycopg.Error:
         # Generated result exists in workforce_runs even if linking fails.
         raise HTTPException(503, "Deliverable saved but delegation status update failed")
