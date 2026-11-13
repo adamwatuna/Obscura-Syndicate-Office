@@ -8,6 +8,7 @@ import os
 import urllib.error
 import urllib.request
 
+from backend import ai_provider
 from fastapi import HTTPException
 
 _CHAT_SCHEMA={
@@ -115,17 +116,6 @@ def respond(message,history,leadership,config,team_context=None,memories=None,
         "max_output_tokens":int(os.getenv("AI_MAX_OUTPUT_TOKENS","4000")),
         "store":False,
     }
-    request=urllib.request.Request("https://api.openai.com/v1/responses",
-        data=json.dumps(payload).encode(),headers={
-            "Authorization":"Bearer "+key,"Content-Type":"application/json"},
-        method="POST")
-    try:
-        with urllib.request.urlopen(request,timeout=55) as response:
-            data=json.load(response)
-    except urllib.error.HTTPError as exc:
-        raise HTTPException(502,"Meita chat failed (HTTP "+str(exc.code)+
-                            "). Check model access, billing and Railway logs.")
-    except (urllib.error.URLError,TimeoutError,ValueError):
-        raise HTTPException(502,"Meita chat connection failed. Check Railway logs.")
+    data=ai_provider.response(payload,operation="meita_chat",timeout=78)
     routed=parse_response(data)
     return {**routed,"model":model}
