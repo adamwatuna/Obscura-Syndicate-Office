@@ -1,8 +1,9 @@
-import os, json, hmac, hashlib, secrets, time, urllib.request, urllib.error, asyncio
+import os, json, hmac, hashlib, secrets, time, urllib.request, urllib.error, asyncio, logging
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Depends, Request, UploadFile, File
 from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse, Response
+from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 from psycopg.types.json import Jsonb
 from starlette.middleware.sessions import SessionMiddleware
@@ -282,10 +283,32 @@ def home():return FileResponse(ROOT/'frontend'/'index.html')
 
 @app.post('/api/meita/references/upload',dependencies=[Depends(guard)])
 async def upload_meita_reference(file:UploadFile=File(...)):
-    data=await file.read(office_references.MAX_BYTES+1)
-    await file.close()
-    with connect() as db:
-        return office_references.save_file(db,file.filename or 'reference',data)
+    """CEO-only uploads. Keep image/video parsing and database I/O off the event loop."""
+    upload_id=secrets.token_hex(6)
+    name=file.filename or 'reference'
+    try:
+        if file.size is not None and file.size>office_references.MAX_BYTES:
+            raise HTTPException(413,"File exceeds 20 MB. Compress it or attach a smaller reference.")
+        data=await file.read(office_references.MAX_BYTES+1)
+    finally:
+        await file.close()
+    if not data:
+        raise HTTPException(400,"Selected file is empty.")
+    if len(data)>office_references.MAX_BYTES:
+        raise HTTPException(413,"File exceeds 20 MB. Compress it or attach a smaller reference.")
+    def persist():
+        with connect() as db:
+            return office_references.save_file(db,name,data)
+    try:
+        return await run_in_threadpool(persist)
+    except HTTPException:
+        raise
+    except Exception:
+        logging.getLogger("office.meita.upload").exception(
+            "Meita upload failed, reference=%s filename=%r bytes=%s",
+            upload_id,name,len(data))
+        raise HTTPException(503,
+            "File could not be saved. Try again or ask the administrator to check upload ID "+upload_id)
 
 @app.post('/api/meita/references/link',dependencies=[Depends(guard)])
 def link_meita_reference(body:ReferenceUrl):
