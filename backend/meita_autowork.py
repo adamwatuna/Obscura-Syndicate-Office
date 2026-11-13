@@ -21,6 +21,9 @@ from backend import memory as office_memory
 
 logger=logging.getLogger("office.meita.autowork")
 
+from backend import schema_state
+
+@schema_state.bootstrap_only
 def init(db):
     # Legacy existing delegation tables remain available for old work.
     from backend import delegation

@@ -25,6 +25,8 @@ from backend import references as office_references
 from backend import academy as office_academy
 from backend import finance_planning
 from backend import ai_provider
+from backend import ceo_security
+from backend import deliverables as staff_deliverables
 
 ROOT=Path(__file__).resolve().parent.parent
 PASSWORD=os.environ.get('CEO_PASSWORD')
@@ -52,7 +54,7 @@ async def lifespan(app):
             await assistant_worker
 
 app=FastAPI(title='AI Private Office',docs_url=None,redoc_url=None,lifespan=lifespan)
-app.add_middleware(SessionMiddleware,secret_key=SECRET,https_only=os.environ.get('COOKIE_SECURE','true').lower()=='true',same_site='lax',max_age=28800)
+app.add_middleware(SessionMiddleware,secret_key=SECRET,session_cookie="__Host-office-session" if os.environ.get("COOKIE_SECURE","true").lower()=="true" else "office_session",https_only=os.environ.get("COOKIE_SECURE","true").lower()=="true",same_site="lax",max_age=28800)
 
 
 @app.middleware("http")
@@ -90,7 +92,19 @@ def health_ready():
         raise HTTPException(503,"Database is not ready")
     return {"status":"ready","database":"connected"}
 
-class Login(BaseModel):password:str
+class Login(BaseModel):
+    password: str = Field(min_length=1,max_length=256)
+    otp: str = Field(default="",max_length=32)
+
+class CEOPassword(BaseModel):
+    password: str = Field(min_length=1,max_length=256)
+
+class MFACode(BaseModel):
+    code: str = Field(min_length=6,max_length=32)
+
+class MFADisable(BaseModel):
+    password: str = Field(min_length=1,max_length=256)
+    code: str = Field(min_length=6,max_length=32)
 class SocialGrant(BaseModel):
     staff_id: str = Field(min_length=1,max_length=120)
     account_id: str = Field(min_length=1,max_length=120)
@@ -136,21 +150,32 @@ class ReferenceUrl(BaseModel):
     url: str = Field(min_length=10,max_length=1800)
 
 def guard(req:Request):
-    if req.session.get('authorized') is not True:raise HTTPException(401,'Login required')
+    if req.session.get('authorized') is not True:
+        raise HTTPException(401,'Login required')
+    with connect() as db:
+        valid=ceo_security.valid_session(db,req.session)
+    if not valid:
+        req.session.clear()
+        raise HTTPException(401,'Session expired. Please sign in again')
 def audit(db,action,detail):db.execute('INSERT INTO audit(action,detail,created) VALUES(%s,%s,%s)',(action,detail,int(time.time())))
 @app.post('/api/login')
 def login(body:Login,req:Request):
-    # Store only an HMAC-derived client fingerprint, never an IP or raw password.
+    # Password + optional CEO TOTP/recovery; all failures count toward one
+    # persistent rate limit, without leaking whether the password was correct.
     client=(req.client.host if req.client else "unknown")
     fingerprint=hmac.new(SECRET.encode(),client.encode(),hashlib.sha256).hexdigest()
+    version=None
     with connect() as db:
         office_db.ensure_login_security(db)
+        ceo_security.init(db)
         record=db.execute("""SELECT failures,blocked_until>NOW() AS blocked
             FROM ceo_login_attempts WHERE fingerprint=%s FOR UPDATE""",
             (fingerprint,)).fetchone()
         if record and record["blocked"]:
             raise HTTPException(429,"Too many sign-in attempts. Try again in 15 minutes.")
-        if not hmac.compare_digest(body.password.encode(),PASSWORD.encode()):
+        if ceo_security.password_valid(body.password):
+            version=ceo_security.verify_login(db,body.otp)
+        if version is None:
             db.execute("""INSERT INTO ceo_login_attempts(fingerprint,failures,last_attempt,blocked_until)
                 VALUES (%s,1,NOW(),NULL)
                 ON CONFLICT(fingerprint) DO UPDATE SET
@@ -161,19 +186,64 @@ def login(body:Login,req:Request):
                     WHEN ceo_login_attempts.failures>=11
                     AND ceo_login_attempts.last_attempt>=NOW()-INTERVAL '15 minutes'
                     THEN NOW()+INTERVAL '15 minutes' ELSE NULL END""",(fingerprint,))
-            # Do not return a 401 inside the transaction: it would roll back the attempt.
-            valid=False
         else:
             db.execute("DELETE FROM ceo_login_attempts WHERE fingerprint=%s",(fingerprint,))
-            valid=True
-    if not valid:
+    if version is None:
         raise HTTPException(401,'Invalid credentials')
-    req.session.clear();req.session['authorized']=True
+    req.session.clear()
+    req.session.update({'authorized':True,'session_version':version})
     return {'ok':True}
+
+@app.get('/api/security/login-options')
+def security_login_options():
+    with connect() as db:
+        return {"mfa_required":ceo_security.enabled(db)["enabled"]}
+
+@app.get('/api/security/status',dependencies=[Depends(guard)])
+def security_status():
+    with connect() as db:
+        status=ceo_security.enabled(db)
+    return {"mfa_enabled":status["enabled"],
+            "recovery_codes_remaining":status["recovery_remaining"],
+            "session_max_age_hours":8}
+
+@app.post('/api/security/mfa/setup',dependencies=[Depends(guard)])
+def security_mfa_setup(body:CEOPassword):
+    with connect() as db:
+        value=ceo_security.start_setup(db,body.password)
+        audit(db,'ceo.mfa.setup_started','CEO started authenticator enrollment')
+    return value
+
+@app.post('/api/security/mfa/verify',dependencies=[Depends(guard)])
+def security_mfa_verify(body:MFACode,req:Request):
+    with connect() as db:
+        value=ceo_security.confirm_setup(db,body.code)
+        if value["ok"]:
+            audit(db,'ceo.mfa.enabled','CEO enabled authenticator MFA')
+    if value["ok"]:
+        req.session['session_version']=value.pop("session_version")
+    return value
+
+@app.post('/api/security/mfa/disable',dependencies=[Depends(guard)])
+def security_mfa_disable(body:MFADisable,req:Request):
+    with connect() as db:
+        value=ceo_security.disable(db,body.password,body.code)
+        if value["ok"]:
+            audit(db,'ceo.mfa.disabled','CEO disabled authenticator MFA')
+    if value["ok"]:
+        req.session['session_version']=value.pop("session_version")
+    return value
 @app.post('/api/logout')
 def logout(req:Request):req.session.clear();return {'ok':True}
 @app.get('/api/me')
-def me(req:Request):return {'authenticated':req.session.get('authorized') is True}
+def me(req:Request):
+    if req.session.get('authorized') is not True:
+        return {'authenticated':False}
+    with connect() as db:
+        valid=ceo_security.valid_session(db,req.session)
+    if not valid:
+        req.session.clear()
+    return {'authenticated':valid}
 @app.get('/api/office',dependencies=[Depends(guard)])
 def office():
     with connect() as db:
@@ -672,6 +742,63 @@ def delete_memory(ident:str):
     with connect() as db: audit(db,'memory.deleted',ident)
     return result
 
+
+
+@app.get('/api/deliverables',dependencies=[Depends(guard)])
+def delivery_inbox():
+    with connect() as db:
+        return staff_deliverables.list_deliverables(db)
+
+@app.get('/api/deliverables/{ident}',dependencies=[Depends(guard)])
+def delivery_details(ident:str):
+    with connect() as db:
+        return staff_deliverables.get_deliverable(db,ident)
+
+@app.post('/api/deliverables/{ident}/files',dependencies=[Depends(guard)])
+async def upload_delivery_file(ident:str,file:UploadFile=File(...)):
+    """CEO attaches an actual completed output to an existing AI run."""
+    if file.size is not None and file.size>staff_deliverables.MAX_ASSET_BYTES:
+        raise HTTPException(413,"Output file exceeds 20 MB")
+    data=await file.read(staff_deliverables.MAX_ASSET_BYTES+1)
+    await file.close()
+    def store():
+        with connect() as db:
+            result=staff_deliverables.save_asset(db,ident,file.filename or "output-file",data)
+            audit(db,'deliverable.file.attached',ident+" · "+result["id"])
+            return result
+    return await run_in_threadpool(store)
+
+@app.get('/api/deliverables/{ident}/files/{asset_id}',dependencies=[Depends(guard)])
+def download_delivery_file(ident:str,asset_id:str,preview:bool=False):
+    with connect() as db:
+        row=staff_deliverables.get_asset(db,ident,asset_id)
+    name=row["filename"]
+    # The filename stored in the database is sanitized on upload and cannot
+    # inject response headers. Browsers still get a forced attachment.
+    from urllib.parse import quote as url_quote
+    return Response(content=bytes(row["content"]),media_type=row["media_type"],
+       headers={"Content-Disposition":("inline" if preview and row["kind"] in ("image","video")
+                                   else "attachment; filename*=UTF-8''"+url_quote(name,safe="")),
+                "X-Content-Type-Options":"nosniff","Cache-Control":"private, no-store"})
+
+@app.get('/api/deliverables/{ident}/report.txt',dependencies=[Depends(guard)])
+def download_delivery_report(ident:str):
+    with connect() as db:
+        report=staff_deliverables.get_deliverable(db,ident)
+    text=report["task_title"]+"\nStaff: "+report["staff_name"]+"\nStatus: "+report["status"]+"\n\n"+report["result"]
+    return Response(content=text,media_type="text/plain; charset=utf-8",
+        headers={"Content-Disposition":"attachment; filename=AI-Staff-Report.txt",
+                 "Cache-Control":"private, no-store"})
+
+@app.get('/api/deliverables/{ident}/presentation.pptx',dependencies=[Depends(guard)])
+def download_delivery_presentation(ident:str):
+    with connect() as db:
+        report=staff_deliverables.get_deliverable(db,ident)
+    deck=staff_deliverables.presentation(report)
+    return StreamingResponse(deck,
+        media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        headers={"Content-Disposition":"attachment; filename=AI-Staff-Delivery.pptx",
+                 "Cache-Control":"private, no-store"})
 
 @app.get('/api/workforce/runs',dependencies=[Depends(guard)])
 def workforce_runs():

@@ -155,6 +155,9 @@ def after_staff_saved(db,ident,old=None):
             WHERE department=%s AND org_role='Specialist'
               AND manager_id IS NULL""",(ident,current["department"]))
 
+from backend import schema_state
+
+@schema_state.bootstrap_only
 def init_plans(db):
     db.execute("""CREATE TABLE IF NOT EXISTS director_plans (
         id TEXT PRIMARY KEY,director_id TEXT NOT NULL,

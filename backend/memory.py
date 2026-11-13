@@ -22,6 +22,9 @@ def connect():
     try: return psycopg.connect(url, row_factory=dict_row, connect_timeout=8)
     except psycopg.Error: raise HTTPException(503,'Memory database is unavailable')
 
+from backend import schema_state
+
+@schema_state.bootstrap_only
 def setup(db):
     db.execute("""CREATE TABLE IF NOT EXISTS meita_memories (
         id TEXT PRIMARY KEY, title TEXT NOT NULL, content TEXT NOT NULL,

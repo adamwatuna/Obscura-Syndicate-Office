@@ -38,6 +38,9 @@ MIME = {
 }
 
 
+from backend import schema_state
+
+@schema_state.bootstrap_only
 def init(db):
     db.execute("""CREATE TABLE IF NOT EXISTS meita_references (
         id TEXT PRIMARY KEY, filename TEXT NOT NULL, kind TEXT NOT NULL,

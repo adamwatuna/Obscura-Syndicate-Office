@@ -38,6 +38,9 @@ def validate(body):
     due=parse_due(body.due_date,body.recurrence!="None")
     return due
 
+from backend import schema_state
+
+@schema_state.bootstrap_only
 def setup(db):
     db.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT ''")
     db.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'General'")

@@ -28,6 +28,9 @@ def conn():
     except psycopg.Error:
         raise HTTPException(503, "Delegation database unavailable")
 
+from backend import schema_state
+
+@schema_state.bootstrap_only
 def init(db):
     db.execute("""CREATE TABLE IF NOT EXISTS coo_proposals (
         id TEXT PRIMARY KEY, title TEXT NOT NULL, brief TEXT NOT NULL,
