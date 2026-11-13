@@ -175,7 +175,9 @@
 .task-more-menu>button.danger{color:#af5151}
 .task-more-menu>button.danger:hover{background:#fff0ef}
 .task-entry:has(.task-more[open]),.meita-task-card:has(.task-more[open]){position:relative;z-index:9}
-</style></head><body><div id="login" class="login"><div class="panel"><div class="eyebrow">PRIVATE EXECUTIVE WORKSPACE</div><h1>AI Private Office</h1><p>Welcome back. Sign in to access your executive workspace.</p><form id="loginForm"><label>CEO password</label><input id="password" type="password" autocomplete="current-password" required><div style="height:18px"></div><button class="primary" style="width:100%">Sign in securely</button><p id="loginError" class="err"></p></form><p style="font-size:11px">Authorized access only.</p></div></div>
+</style></head><body><div id="login" class="login"><div class="panel"><div class="eyebrow">PRIVATE EXECUTIVE WORKSPACE</div><h1>AI Private Office</h1><p>Welcome back. Sign in to access your executive workspace.</p><form id="loginForm"><label for="password">CEO password</label><input id="password" type="password" autocomplete="current-password" required>
+ <div id="loginMfaWrap" class="hidden" style="margin-top:14px"><label for="loginMfaCode">Authenticator or recovery code</label><input id="loginMfaCode" type="text" autocomplete="one-time-code" inputmode="text" maxlength="32" placeholder="6-digit code or saved recovery code"><p class="muted">Enter the code from your authenticator app. Recovery codes work once.</p></div>
+ <div style="height:18px"></div><button class="primary" style="width:100%">Sign in securely</button><p id="loginError" class="err"></p></form><p style="font-size:11px">Authorized access only.</p></div></div>
 <div id="app" class="shell hidden"><aside><div class="brand">AI Private Office<small>EXECUTIVE WORKSPACE</small></div><div class="nav" id="nav"><button data-view="hq" class="active">◫ &nbsp; Executive HQ</button><button data-view="meita">✦ &nbsp; Meita AI</button><button data-view="memory">◈ &nbsp; Memory Centre</button><button data-view="workforce">♙ &nbsp; AI Workforce</button><button data-view="desks">▦ &nbsp; Live Desks</button><button data-view="tasks">☑ &nbsp; Task Centre</button><button data-view="monthly">▣ &nbsp; Monthly Workplan</button><button data-view="academy">▤ &nbsp; Learning Academy</button><button data-view="research">⌕ &nbsp; Research Intelligence</button><button data-view="finance">◈ &nbsp; Finance & Audit</button><button data-view="integrations">⌘ &nbsp; Integration Centre</button><button data-view="governance">◇ &nbsp; Governance</button></div><div class="bottom"><button class="secondary" id="logout">Sign out</button><p>Private office environment</p></div></aside><main><header class="top"><div><div class="eyebrow">YOUR EXECUTIVE WORKSPACE</div><h1 id="pageTitle">Executive HQ</h1><div class="muted" id="today"></div></div><span class="pill">● Private workspace</span></header>
 <section class="view active" id="hq">
 <div class="hq-hero">
@@ -474,10 +476,110 @@
 <div class="card" style="margin-top:20px"><div class="toolbar"><div><h3>Publishing Queue & Audit</h3><p>Review the exact caption and target account before any public posting.</p></div><button class="secondary" onclick="loadSocial()">Refresh posts</button></div>
 <div id="socialPostList"><p class="muted">No social post drafts yet.</p></div></div>
 </section>
-<section class="view" id="governance"><div class="card"><h3>Security status</h3><p>Password-protected session is active. Multi-factor authentication, multi-user roles, account recovery and emergency stop are planned and must be implemented before production use.</p><h3>Recent audit activity</h3><div id="auditList"></div></div></section>
+<section class="view" id="governance">
+ <div class="card" id="ceoSecurityCard">
+  <div class="toolbar"><div><h3>CEO Security</h3><p>Protect this personal executive workspace with an authenticator app and one-time recovery codes.</p></div><button type="button" class="secondary" onclick="loadCEOSecurityStatus()">Refresh</button></div>
+  <div id="ceoMfaStatus" class="notice" aria-live="polite">Loading security status…</div>
+  <div id="ceoMfaSetup">
+    <p class="muted">Optional two-factor authentication. Your password continues to work until you complete verification.</p>
+    <label for="ceoSetupPassword">Confirm CEO password</label><input type="password" autocomplete="current-password" id="ceoSetupPassword" placeholder="Current CEO password">
+    <div class="task-actions" style="margin-top:12px"><button type="button" class="primary" onclick="beginCEOMFA()">Set up authenticator</button></div>
+    <div class="hidden" id="ceoMfaEnroll" style="margin-top:16px">
+      <p>Enter this secret manually in Google Authenticator, Microsoft Authenticator, 1Password or any TOTP authenticator:</p>
+      <label for="ceoMfaSecret">Authenticator setup secret</label><input id="ceoMfaSecret" readonly autocomplete="off">
+      <p class="muted">This secret is shown only for setup. Never share or post it. Setup expires after 10 minutes.</p>
+      <label for="ceoMfaVerifyCode">Current 6-digit code</label><input id="ceoMfaVerifyCode" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000">
+      <div class="task-actions" style="margin-top:12px"><button type="button" class="primary" onclick="confirmCEOMFA()">Verify &amp; enable MFA</button></div>
+    </div>
+  </div>
+  <div id="ceoMfaDisable" class="hidden">
+   <p class="muted">Authenticator MFA is enabled. Keep your one-time recovery codes in a secure password manager.</p>
+   <label for="ceoDisablePassword">Current CEO password</label><input id="ceoDisablePassword" type="password" autocomplete="current-password">
+   <label for="ceoDisableCode">Authenticator or unused recovery code</label><input id="ceoDisableCode" maxlength="32" autocomplete="one-time-code">
+   <div class="task-actions" style="margin-top:12px"><button type="button" class="secondary" onclick="disableCEOMFA()">Disable MFA (requires verification)</button></div>
+  </div>
+  <div id="ceoRecoveryCodes" class="hidden" style="margin-top:16px">
+    <h3>Recovery codes — save once</h3><p class="muted">These codes are shown only now. Save them outside AI Private Office; each works once if your authenticator is unavailable.</p>
+    <textarea id="ceoRecoveryText" rows="6" readonly aria-label="One-time recovery codes"></textarea>
+    <button type="button" class="secondary" onclick="copyCEORecoveryCodes()">Copy recovery codes</button>
+  </div>
+  <p id="ceoSecurityFeedback" class="muted" role="status" aria-live="polite" style="margin-top:10px"></p>
+ </div>
+ <div class="card" style="margin-top:18px">
+  <h3>PostgreSQL backup &amp; recovery</h3>
+  <p>The production database uses a persistent Railway volume, which is not a backup. Enable Railway native daily and weekly backups for your PostgreSQL volume and test restore into a separate database first.</p>
+  <p class="muted">Backup schedule status cannot be verified using the currently connected Railway management permissions. Do not assume backups are enabled.</p>
+  <div class="task-actions"><a href="https://railway.com/project/a4efe6b2-5b92-4146-99aa-2992c92c5874/service/0cc38e76-a9ce-47bb-ba1c-7db12d9a2071?environmentId=716d6622-3ee0-4c68-bd2d-0f5165d9975e" target="_blank" rel="noopener noreferrer">Open Railway Postgres backups</a></div>
+ </div>
+ <div class="card" style="margin-top:18px"><h3>Recent audit activity</h3><div id="auditList"></div></div>
+</section>
 </main></div><div id="toast"></div><script>
 const EXECUTIVE_ATLAS = "data:image/webp;base64,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";
 const $=id=>document.getElementById(id);let state={staff:[],tasks:[],lessons:[],audit:[]};let liveActivity=[];let academyTotal=null;let academyLibraryItems=[];const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+async function loadLoginSecurityOptions(){
+ try{
+  const data=await api('security/login-options');
+  $('loginMfaWrap').classList.toggle('hidden',!data.mfa_required);
+ }catch(err){console.warn('MFA status unavailable',err)}
+}
+async function loadCEOSecurityStatus(){
+ const status=$('ceoMfaStatus');
+ try{
+  const state=await api('security/status');
+  status.textContent=state.mfa_enabled?
+    'Authenticator MFA is enabled · '+state.recovery_codes_remaining+' recovery codes remaining · CEO session up to '+state.session_max_age_hours+' hours.':
+    'Password-only sign-in. Add an authenticator to protect your private office.';
+  $('ceoMfaSetup').classList.toggle('hidden',state.mfa_enabled);
+  $('ceoMfaDisable').classList.toggle('hidden',!state.mfa_enabled);
+  $('loginMfaWrap').classList.toggle('hidden',!state.mfa_enabled);
+ }catch(err){status.textContent='Security status unavailable: '+err.message}
+}
+async function beginCEOMFA(){
+ const password=$('ceoSetupPassword').value;
+ if(!password){$('ceoSecurityFeedback').textContent='Confirm your CEO password first.';return}
+ try{
+  const result=await api('security/mfa/setup',{method:'POST',body:JSON.stringify({password})});
+  $('ceoSetupPassword').value='';
+  $('ceoMfaSecret').value=result.secret;
+  $('ceoMfaVerifyCode').value='';
+  $('ceoMfaEnroll').classList.remove('hidden');
+  $('ceoSecurityFeedback').textContent='Add the secret to your authenticator, then verify a six-digit code.';
+ }catch(err){$('ceoSecurityFeedback').textContent=err.message}
+}
+async function confirmCEOMFA(){
+ try{
+  const result=await api('security/mfa/verify',{method:'POST',body:JSON.stringify({
+   code:$('ceoMfaVerifyCode').value.trim()
+  })});
+  if(!result.ok){$('ceoSecurityFeedback').textContent=result.error;return}
+  $('ceoMfaSecret').value='';$('ceoMfaVerifyCode').value='';
+  $('ceoMfaEnroll').classList.add('hidden');
+  $('ceoRecoveryText').value=result.recovery_codes.join('\n');
+  $('ceoRecoveryCodes').classList.remove('hidden');
+  $('ceoSecurityFeedback').textContent='MFA enabled. Save the ten recovery codes now; they will not be displayed again.';
+  await loadCEOSecurityStatus();
+ }catch(err){$('ceoSecurityFeedback').textContent=err.message}
+}
+async function disableCEOMFA(){
+ if(!confirm('Disable authenticator MFA? Your CEO account will return to password-only sign-in.'))return;
+ try{
+  const result=await api('security/mfa/disable',{method:'POST',body:JSON.stringify({
+   password:$('ceoDisablePassword').value,code:$('ceoDisableCode').value.trim()
+  })});
+  if(!result.ok){$('ceoSecurityFeedback').textContent=result.error;return}
+  $('ceoDisablePassword').value='';$('ceoDisableCode').value='';
+  $('ceoRecoveryCodes').classList.add('hidden');$('ceoRecoveryText').value='';
+  $('ceoSecurityFeedback').textContent='MFA disabled. Other sessions were revoked.';
+  await loadCEOSecurityStatus();
+ }catch(err){$('ceoSecurityFeedback').textContent=err.message}
+}
+async function copyCEORecoveryCodes(){
+ try{await navigator.clipboard.writeText($('ceoRecoveryText').value);
+     $('ceoSecurityFeedback').textContent='Recovery codes copied. Store them in a safe password manager.'}
+ catch(err){$('ceoSecurityFeedback').textContent='Clipboard access unavailable. Select and copy the codes manually.'}
+}
+
 async function api(path,options={}){const r=await fetch('/api/'+path,{credentials:'same-origin',headers:{'Content-Type':'application/json'},...options});if(r.status===401){$('app').classList.add('hidden');$('login').classList.remove('hidden');throw Error('Session expired. Please sign in.')}if(!r.ok){let j=await r.json().catch(()=>({}));throw Error(j.detail||'Request failed')}return r.json()}
 function msg(s){$('toast').textContent=s;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',3000)}
 function toggle(id){$(id).classList.toggle('hidden')}
@@ -2342,9 +2444,9 @@ function renderResearchRoster(){
 }
 async function refresh(){state=await api('office');render();renderDirectorSelect()}
 async function updateTask(id,status){try{await api('tasks/'+id,{method:'PATCH',body:JSON.stringify({status})});await refresh();msg('Task updated')}catch(e){msg(e.message);await refresh()}}
-$('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){show(b.dataset.view);if(b.dataset.view==='hq')loadNewsBriefings();if(b.dataset.view==='integrations')loadSocial();if(b.dataset.view==='academy')loadAcademyLibrary();if(b.dataset.view==='finance')loadFinancePlanning();if(b.dataset.view==='meita')loadAiDiagnostics()}});
-$('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').textContent='';try{await api('login',{method:'POST',body:JSON.stringify({password:$('password').value})});$('password').value='';await enter()}catch(err){$('loginError').textContent=err.message}});
-async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await refreshLiveActivity();await loadMeita();await loadMeitaConfiguration();await loadMeitaTaskHistory();await loadAiDiagnostics();await loadMeitaDeck();await loadMemory();await loadAcademyLibrary();await loadFinancePlanning();await loadRuns();await loadDirectorPlans();$('monthlyPeriod').value=malaysiaPeriod();await loadMonthly();await loadNewsBriefings();await loadSocial();const oauthParams=new URLSearchParams(window.location.search);
+$('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){show(b.dataset.view);if(b.dataset.view==='hq')loadNewsBriefings();if(b.dataset.view==='integrations')loadSocial();if(b.dataset.view==='academy')loadAcademyLibrary();if(b.dataset.view==='finance')loadFinancePlanning();if(b.dataset.view==='meita')loadAiDiagnostics();if(b.dataset.view==='governance')loadCEOSecurityStatus()}});
+$('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').textContent='';try{await api('login',{method:'POST',body:JSON.stringify({password:$('password').value,otp:$('loginMfaCode').value.trim()})});$('password').value='';$('loginMfaCode').value='';await enter()}catch(err){$('loginError').textContent=err.message}});
+async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await refreshLiveActivity();await loadMeita();await loadMeitaConfiguration();await loadMeitaTaskHistory();await loadAiDiagnostics();await loadCEOSecurityStatus();await loadMeitaDeck();await loadMemory();await loadAcademyLibrary();await loadFinancePlanning();await loadRuns();await loadDirectorPlans();$('monthlyPeriod').value=malaysiaPeriod();await loadMonthly();await loadNewsBriefings();await loadSocial();const oauthParams=new URLSearchParams(window.location.search);
 const integ=oauthParams.get('integration');
 if(integ){
   const reasons={
