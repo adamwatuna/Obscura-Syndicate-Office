@@ -5,6 +5,7 @@ import time
 import unittest
 
 from fastapi.testclient import TestClient
+from psycopg.types.json import Jsonb
 from backend import academy, office_db, references
 from backend.main import app
 
@@ -17,9 +18,13 @@ class SharedAcademyTests(unittest.TestCase):
         self.reference_ids=[]
         self.lesson_ids=[]
         self.message_ids=[]
+        self.proposal_ids=[]
 
     def tearDown(self):
         with office_db.connect() as db:
+            for ident in self.proposal_ids:
+                db.execute("DELETE FROM coo_jobs WHERE proposal_id=%s",(ident,))
+                db.execute("DELETE FROM coo_proposals WHERE id=%s",(ident,))
             for ident in self.lesson_ids:
                 db.execute("DELETE FROM lessons WHERE id=%s",(ident,))
             for ident in self.message_ids:
@@ -85,6 +90,25 @@ class SharedAcademyTests(unittest.TestCase):
         self.assertNotIn(ident,[x["id"] for x in self.client.get("/api/academy/library").json()["items"]])
         self.assertIn(ident,[x["id"] for x in self.client.get(
             "/api/academy/library?include_archived=true").json()["items"]])
+
+    def test_project_vision_automatically_indexed_and_reused(self):
+        with office_db.connect() as db:
+            msg=db.execute("""INSERT INTO meita_messages(role,content,created)
+                VALUES('user',%s,%s) RETURNING id""",
+                ("Project vision for cinematic Bollywood stage",int(time.time()))).fetchone()
+            self.message_ids.append(msg["id"])
+            ident=secrets.token_hex(12)
+            db.execute("""INSERT INTO coo_proposals
+                (id,title,brief,plan,chat_message_id)
+                VALUES(%s,%s,%s,%s,%s)""",
+                (ident,"Bollywood Stage Vision",
+                 "Keep violet pleated fabrics and pink lighting in the Bollywood set.",
+                 Jsonb({"title":"Bollywood Stage Vision","jobs":[]}),msg["id"]))
+            self.proposal_ids.append(ident)
+            know=academy.relevant(db,"Bollywood stage violet pleated fabric")
+        self.assertIn("Bollywood Stage Vision",know["context"])
+        items=self.client.get("/api/academy/library?search=Bollywood").json()["items"]
+        self.assertTrue(any(x["id"]==ident and x["type"]=="project" for x in items))
 
     def test_ceo_chat_vision_can_be_promoted_once(self):
         with office_db.connect() as db:
