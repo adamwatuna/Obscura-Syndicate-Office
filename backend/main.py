@@ -2,7 +2,7 @@ import os, json, hmac, hashlib, secrets, time, urllib.request, urllib.error, asy
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Depends, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel, Field
 from starlette.middleware.sessions import SessionMiddleware
 from backend import memory as office_memory
@@ -13,6 +13,7 @@ from backend import organization as org
 from backend import monthly
 from backend import task_schedule
 from backend import news_briefings
+from backend import social, social_publish
 
 ROOT=Path(__file__).resolve().parent.parent
 PASSWORD=os.environ.get('CEO_PASSWORD')
@@ -39,6 +40,23 @@ app=FastAPI(title='AI Private Office',docs_url=None,redoc_url=None,lifespan=life
 app.add_middleware(SessionMiddleware,secret_key=SECRET,https_only=os.environ.get('COOKIE_SECURE','true').lower()=='true',same_site='lax',max_age=28800)
 
 class Login(BaseModel):password:str
+class SocialGrant(BaseModel):
+    staff_id: str = Field(min_length=1,max_length=120)
+    account_id: str = Field(min_length=1,max_length=120)
+    mode: str
+class SocialDraft(BaseModel):
+    staff_id: str = Field(min_length=1,max_length=120)
+    account_id: str = Field(min_length=1,max_length=120)
+    caption: str = Field(min_length=1,max_length=2200)
+    media_url: str | None = None
+class SocialRunDraft(BaseModel):
+    run_id: str = Field(min_length=1,max_length=120)
+    account_id: str = Field(min_length=1,max_length=120)
+    media_url: str | None = None
+class SocialDraftEdit(BaseModel):
+    caption: str = Field(min_length=1,max_length=2200)
+    media_url: str | None = None
+
 class Staff(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     role: str = Field(min_length=1, max_length=120)
@@ -447,3 +465,126 @@ def executive_news_briefings():
     """Authenticated HQ: actual web-sourced staff news deliverables for CEO review."""
     with connect() as db:
         return news_briefings.list_for_ceo(db)
+
+
+@app.get('/api/social/status',dependencies=[Depends(guard)])
+def social_status():
+    with connect() as db:
+        data=social.account_summary(db)
+        data.update(social_publish.list_posts(db))
+        return data
+
+@app.post('/api/social/oauth/{provider}/start',dependencies=[Depends(guard)])
+def social_oauth_start(provider:str,req:Request):
+    with connect() as db:
+        authorize=social.oauth_start(db,provider,req.session)
+        audit(db,'social.oauth.started',provider)
+    return {'authorization_url':authorize}
+
+@app.get('/api/social/oauth/{provider}/callback')
+def social_oauth_callback(provider:str,req:Request,
+                          state:str|None=None,code:str|None=None,error:str|None=None):
+    # Provider callback is a browser navigation; maintain CEO session + one-use state.
+    try:
+        with connect() as db:
+            social.consume_state(db,provider,state,req.session)
+            if error:
+                audit(db,'social.oauth.denied',provider)
+                return RedirectResponse('/?integration=cancelled',status_code=303)
+            added=social.oauth_complete(db,provider,code)
+            audit(db,'social.oauth.connected',f'{provider}: {added} account(s)')
+        return RedirectResponse('/?integration=connected',status_code=303)
+    except HTTPException:
+        return RedirectResponse('/?integration=failed',status_code=303)
+    except Exception:
+        return RedirectResponse('/?integration=failed',status_code=303)
+
+@app.post('/api/social/grants',dependencies=[Depends(guard)])
+def social_grant(body:SocialGrant):
+    with connect() as db:
+        result=social.set_permission(db,body.staff_id,body.account_id,body.mode)
+        audit(db,'social.permission.changed',
+              f'{body.staff_id} => {body.account_id}: {body.mode}')
+    return result
+
+@app.delete('/api/social/accounts/{account_id}',dependencies=[Depends(guard)])
+def social_disconnect(account_id:str):
+    with connect() as db:
+        result=social.disconnect(db,account_id)
+        audit(db,'social.account.disconnected',account_id)
+    return result
+
+@app.post('/api/social/posts',dependencies=[Depends(guard)])
+def social_create_draft(body:SocialDraft):
+    with connect() as db:
+        result=social_publish.create(db,body.staff_id,body.account_id,
+                                     body.caption,body.media_url)
+        audit(db,'social.draft.created',f'{result["id"]} by {body.staff_id}')
+    return result
+
+@app.get('/api/social/approved-runs',dependencies=[Depends(guard)])
+def social_approved_runs():
+    with connect() as db:
+        office_workforce.init(db)
+        rows=db.execute("""SELECT r.id,r.staff_id,r.staff_name,r.task_title,
+            LEFT(r.result,220) AS excerpt,r.created_at
+            FROM workforce_runs r JOIN staff s ON s.id=r.staff_id
+            WHERE r.status='Approved'
+            ORDER BY r.created_at DESC LIMIT 70""").fetchall()
+    return {'runs':[dict(x) for x in rows]}
+
+@app.post('/api/social/posts/from-run',dependencies=[Depends(guard)])
+def social_create_from_run(body:SocialRunDraft):
+    with connect() as db:
+        office_workforce.init(db)
+        run=db.execute("""SELECT id,staff_id,result FROM workforce_runs
+            WHERE id=%s AND status='Approved'""",(body.run_id,)).fetchone()
+        if not run:raise HTTPException(404,"CEO-approved AI deliverable not found")
+        caption=run['result'].strip()
+        if len(caption)>2200:
+            raise HTTPException(400,"AI deliverable too long for a social post; prepare a concise caption")
+        result=social_publish.create(db,run['staff_id'],body.account_id,
+                                     caption,body.media_url)
+        audit(db,'social.draft.from_ai',
+              f'{result["id"]} from run {body.run_id}')
+    return result
+
+@app.put('/api/social/posts/{ident}',dependencies=[Depends(guard)])
+def social_edit_draft(ident:str,body:SocialDraftEdit):
+    with connect() as db:
+        result=social_publish.update(db,ident,body.caption,body.media_url)
+        audit(db,'social.draft.edited',ident)
+    return result
+
+@app.post('/api/social/posts/{ident}/approve',dependencies=[Depends(guard)])
+def social_approve_post(ident:str):
+    with connect() as db:
+        result=social_publish.approve(db,ident)
+        audit(db,'social.post.approved',ident)
+    return result
+
+@app.post('/api/social/posts/{ident}/reject',dependencies=[Depends(guard)])
+def social_reject_post(ident:str):
+    with connect() as db:
+        result=social_publish.reject(db,ident)
+        audit(db,'social.post.rejected',ident)
+    return result
+
+@app.post('/api/social/posts/{ident}/publish',dependencies=[Depends(guard)])
+def social_publish_post(ident:str):
+    # Persist one-use claim before contacting provider to prevent double posting.
+    with connect() as db:
+        post,token=social_publish.claim(db,ident)
+        audit(db,'social.post.publishing',ident)
+    try:
+        platform_id=social_publish.publish_claimed(post,token)
+    except Exception as exc:
+        with connect() as db:
+            social_publish.finish(db,ident,error='Provider response unconfirmed; check account manually')
+            audit(db,'social.post.needs_verification',ident)
+        if isinstance(exc,HTTPException):raise
+        raise HTTPException(502,"Social publishing outcome unconfirmed; verify at provider")
+    with connect() as db:
+        social_publish.finish(db,ident,external_id=platform_id)
+        audit(db,'social.post.published',f'{ident}: {post["platform"]}')
+    return {'ok':True,'status':'Published','platform_post_id':platform_id}

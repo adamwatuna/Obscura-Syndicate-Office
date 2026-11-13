@@ -1,5 +1,5 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AI Private Office</title><style>
-:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;color:#202b35;background:#f7f8fa}*{box-sizing:border-box}body{margin:0}button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:none!important}.login{min-height:100vh;display:grid;place-items:center;background:#f9fafb}.login .panel{width:min(420px,92vw);background:white;padding:42px;border:1px solid #e9edf0;border-radius:22px;box-shadow:0 18px 65px #25334b0b}.eyebrow{font-size:11px;letter-spacing:.19em;font-weight:800;color:#8b96a3;text-transform:uppercase}h1{font-size:30px;letter-spacing:-1.1px;margin:12px 0}p{color:#7c8795;line-height:1.65}input,select,textarea{background:white;border:1px solid #e2e7ec;border-radius:10px;padding:12px;width:100%;outline-color:#b7c6d8}label{display:block;font-size:12px;font-weight:700;color:#657080;margin:15px 0 7px}.primary{background:#283b51;color:white;border:0;padding:12px 18px;border-radius:10px;font-weight:650}.secondary{background:white;border:1px solid #e0e5ea;color:#46556a;padding:10px 14px;border-radius:10px}.shell{display:grid;grid-template-columns:238px 1fr;min-height:100vh}aside{background:white;border-right:1px solid #e8ecf0;padding:30px 18px;display:flex;flex-direction:column;gap:24px}.brand{font-weight:800;font-size:19px;letter-spacing:-.65px;padding:6px 12px}.brand small{display:block;font-size:10px;letter-spacing:.22em;color:#99a2ac;margin-top:5px}.nav{display:grid;gap:5px}.nav button{background:transparent;border:0;text-align:left;padding:12px 14px;color:#697788;border-radius:10px;font-weight:600;font-size:13px}.nav button.active,.nav button:hover{background:#eef3f7;color:#283b51}.bottom{margin-top:auto;padding:12px;color:#8b96a3;font-size:12px}main{padding:36px clamp(22px,4vw,64px);max-width:1600px;width:100%;margin:auto}.top{display:flex;justify-content:space-between;align-items:center;gap:20px}.top h1{margin:5px 0}.pill{border:1px solid #dfe8e5;background:#f5faf8;color:#477365;border-radius:50px;padding:9px 13px;font-size:12px;font-weight:700}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:28px 0}.card{background:white;border:1px solid #e8ecf0;border-radius:16px;padding:22px;box-shadow:0 6px 24px #1f354207}.metric{font-size:30px;font-weight:750;letter-spacing:-1px;margin-top:16px}.muted{color:#8a95a2;font-size:12px}.two{display:grid;grid-template-columns:1.45fr 1fr;gap:18px}.sectiontitle{font-size:16px;font-weight:750;margin:0 0 18px}.staffgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}.person{border:1px solid #e9edf1;border-radius:13px;padding:18px;background:white}.avatar{height:42px;width:42px;display:grid;place-items:center;background-color:#e9f0f5;color:#48647d;border-radius:12px;font-weight:800;margin-bottom:12px}.avatar.avatar-photo{width:76px;height:76px;background-size:300% 300%;background-repeat:no-repeat;background-color:#e8edf2;border:1px solid #e7ebef;background-origin:padding-box}.person strong{display:block}.tag{display:inline-block;background:#f3f6f8;color:#738294;padding:5px 9px;border-radius:7px;font-size:11px;margin-top:9px}.item{display:flex;justify-content:space-between;gap:10px;padding:13px 0;border-bottom:1px solid #f0f2f4;align-items:center}.item:last-child{border-bottom:0}.task-entry{padding:17px 0;border-bottom:1px solid #edf0f3}.task-entry:last-child{border-bottom:0}.task-entry p{margin:7px 0;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere;color:#697889}.task-meta{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.task-meta span{background:#f3f6f8;color:#657488;border-radius:6px;padding:5px 8px;font-size:11px}.task-meta .urgent{background:#fff2f0;color:#ba3d35}.task-meta .overdue{background:#fff2f0;color:#ba3d35}.task-entry .toolbar{align-items:flex-start}.news-entry{padding:16px 0;border-bottom:1px solid #edf0f3}.news-entry:last-child{border-bottom:0}.news-entry .news-snippet{color:#465568;font-size:13px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere;margin:9px 0}.news-meta{color:#8794a3;font-size:11px;margin-top:6px}.news-sources{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}.news-sources a{font-size:12px;color:#426789;overflow-wrap:anywhere}.news-report{max-height:360px;overflow:auto;white-space:pre-wrap;font-family:inherit;font-size:13px;background:#f8fafb;padding:12px;border-radius:10px}.task-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.item strong{font-size:13px}.item small{display:block;color:#8b96a3;margin-top:5px}.view{display:none}.view.active{display:block}.actions{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 15px}.formgrid .wide{grid-column:1/-1}.deskgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.desk{min-height:175px;border:1px solid #e8edf0;border-radius:14px;padding:18px;background:linear-gradient(145deg,#fff,#f7f9fb)}.desk .surface{height:7px;background:#e4eaf0;border-radius:9px;margin:23px 0 10px}.notice{background:#f8fafb;border:1px solid #e5ebf0;padding:14px;border-radius:12px;color:#758293;font-size:12px;line-height:1.6;margin:15px 0}.err{color:#bd4d4d;font-size:13px}.toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}#toast{position:fixed;bottom:22px;right:22px;background:#293b50;color:white;padding:12px 18px;border-radius:10px;display:none;z-index:5}@media(max-width:1050px){.grid{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.deskgrid{grid-template-columns:repeat(2,1fr)}}@media(max-width:700px){.shell{display:block}aside{padding:15px;border-right:0;border-bottom:1px solid #eee}.nav{display:flex;overflow:auto}.nav button{white-space:nowrap}.bottom{display:none}main{padding:22px 16px}.grid,.deskgrid,.formgrid{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}}
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;color:#202b35;background:#f7f8fa}*{box-sizing:border-box}body{margin:0}button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:none!important}.login{min-height:100vh;display:grid;place-items:center;background:#f9fafb}.login .panel{width:min(420px,92vw);background:white;padding:42px;border:1px solid #e9edf0;border-radius:22px;box-shadow:0 18px 65px #25334b0b}.eyebrow{font-size:11px;letter-spacing:.19em;font-weight:800;color:#8b96a3;text-transform:uppercase}h1{font-size:30px;letter-spacing:-1.1px;margin:12px 0}p{color:#7c8795;line-height:1.65}input,select,textarea{background:white;border:1px solid #e2e7ec;border-radius:10px;padding:12px;width:100%;outline-color:#b7c6d8}label{display:block;font-size:12px;font-weight:700;color:#657080;margin:15px 0 7px}.primary{background:#283b51;color:white;border:0;padding:12px 18px;border-radius:10px;font-weight:650}.secondary{background:white;border:1px solid #e0e5ea;color:#46556a;padding:10px 14px;border-radius:10px}.shell{display:grid;grid-template-columns:238px 1fr;min-height:100vh}aside{background:white;border-right:1px solid #e8ecf0;padding:30px 18px;display:flex;flex-direction:column;gap:24px}.brand{font-weight:800;font-size:19px;letter-spacing:-.65px;padding:6px 12px}.brand small{display:block;font-size:10px;letter-spacing:.22em;color:#99a2ac;margin-top:5px}.nav{display:grid;gap:5px}.nav button{background:transparent;border:0;text-align:left;padding:12px 14px;color:#697788;border-radius:10px;font-weight:600;font-size:13px}.nav button.active,.nav button:hover{background:#eef3f7;color:#283b51}.bottom{margin-top:auto;padding:12px;color:#8b96a3;font-size:12px}main{padding:36px clamp(22px,4vw,64px);max-width:1600px;width:100%;margin:auto}.top{display:flex;justify-content:space-between;align-items:center;gap:20px}.top h1{margin:5px 0}.pill{border:1px solid #dfe8e5;background:#f5faf8;color:#477365;border-radius:50px;padding:9px 13px;font-size:12px;font-weight:700}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:28px 0}.card{background:white;border:1px solid #e8ecf0;border-radius:16px;padding:22px;box-shadow:0 6px 24px #1f354207}.metric{font-size:30px;font-weight:750;letter-spacing:-1px;margin-top:16px}.muted{color:#8a95a2;font-size:12px}.two{display:grid;grid-template-columns:1.45fr 1fr;gap:18px}.sectiontitle{font-size:16px;font-weight:750;margin:0 0 18px}.staffgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}.person{border:1px solid #e9edf1;border-radius:13px;padding:18px;background:white}.avatar{height:42px;width:42px;display:grid;place-items:center;background-color:#e9f0f5;color:#48647d;border-radius:12px;font-weight:800;margin-bottom:12px}.avatar.avatar-photo{width:76px;height:76px;background-size:300% 300%;background-repeat:no-repeat;background-color:#e8edf2;border:1px solid #e7ebef;background-origin:padding-box}.person strong{display:block}.tag{display:inline-block;background:#f3f6f8;color:#738294;padding:5px 9px;border-radius:7px;font-size:11px;margin-top:9px}.item{display:flex;justify-content:space-between;gap:10px;padding:13px 0;border-bottom:1px solid #f0f2f4;align-items:center}.item:last-child{border-bottom:0}.task-entry{padding:17px 0;border-bottom:1px solid #edf0f3}.task-entry:last-child{border-bottom:0}.task-entry p{margin:7px 0;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere;color:#697889}.task-meta{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.task-meta span{background:#f3f6f8;color:#657488;border-radius:6px;padding:5px 8px;font-size:11px}.task-meta .urgent{background:#fff2f0;color:#ba3d35}.task-meta .overdue{background:#fff2f0;color:#ba3d35}.task-entry .toolbar{align-items:flex-start}.news-entry{padding:16px 0;border-bottom:1px solid #edf0f3}.news-entry:last-child{border-bottom:0}.news-entry .news-snippet{color:#465568;font-size:13px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere;margin:9px 0}.news-meta{color:#8794a3;font-size:11px;margin-top:6px}.news-sources{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}.news-sources a{font-size:12px;color:#426789;overflow-wrap:anywhere}.social-status{font-size:12px;color:#6b798b;margin-top:8px}.social-status.warning{color:#a76a38}.social-status.ready{color:#387257}.social-post{padding:16px 0;border-bottom:1px solid #edf0f3}.social-post:last-child{border-bottom:0}.social-post pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;background:#f8fafb;border-radius:8px;padding:12px}.social-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.news-report{max-height:360px;overflow:auto;white-space:pre-wrap;font-family:inherit;font-size:13px;background:#f8fafb;padding:12px;border-radius:10px}.task-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.item strong{font-size:13px}.item small{display:block;color:#8b96a3;margin-top:5px}.view{display:none}.view.active{display:block}.actions{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 15px}.formgrid .wide{grid-column:1/-1}.deskgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.desk{min-height:175px;border:1px solid #e8edf0;border-radius:14px;padding:18px;background:linear-gradient(145deg,#fff,#f7f9fb)}.desk .surface{height:7px;background:#e4eaf0;border-radius:9px;margin:23px 0 10px}.notice{background:#f8fafb;border:1px solid #e5ebf0;padding:14px;border-radius:12px;color:#758293;font-size:12px;line-height:1.6;margin:15px 0}.err{color:#bd4d4d;font-size:13px}.toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}#toast{position:fixed;bottom:22px;right:22px;background:#293b50;color:white;padding:12px 18px;border-radius:10px;display:none;z-index:5}@media(max-width:1050px){.grid{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.deskgrid{grid-template-columns:repeat(2,1fr)}}@media(max-width:700px){.shell{display:block}aside{padding:15px;border-right:0;border-bottom:1px solid #eee}.nav{display:flex;overflow:auto}.nav button{white-space:nowrap}.bottom{display:none}main{padding:22px 16px}.grid,.deskgrid,.formgrid{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}}
 </style></head><body><div id="login" class="login"><div class="panel"><div class="eyebrow">PRIVATE EXECUTIVE WORKSPACE</div><h1>AI Private Office</h1><p>Welcome back. Sign in to access your executive workspace.</p><form id="loginForm"><label>CEO password</label><input id="password" type="password" autocomplete="current-password" required><div style="height:18px"></div><button class="primary" style="width:100%">Sign in securely</button><p id="loginError" class="err"></p></form><p style="font-size:11px">Authorized access only.</p></div></div>
 <div id="app" class="shell hidden"><aside><div class="brand">AI Private Office<small>EXECUTIVE WORKSPACE</small></div><div class="nav" id="nav"><button data-view="hq" class="active">◫ &nbsp; Executive HQ</button><button data-view="meita">✦ &nbsp; Meita AI</button><button data-view="memory">◈ &nbsp; Memory Centre</button><button data-view="workforce">♙ &nbsp; AI Workforce</button><button data-view="desks">▦ &nbsp; Live Desks</button><button data-view="tasks">☑ &nbsp; Task Centre</button><button data-view="monthly">▣ &nbsp; Monthly Workplan</button><button data-view="academy">▤ &nbsp; Learning Academy</button><button data-view="research">⌕ &nbsp; Research Intelligence</button><button data-view="finance">◈ &nbsp; Finance & Audit</button><button data-view="integrations">⌘ &nbsp; Integration Centre</button><button data-view="governance">◇ &nbsp; Governance</button></div><div class="bottom"><button class="secondary" id="logout">Sign out</button><p>Private office environment</p></div></aside><main><header class="top"><div><div class="eyebrow">YOUR EXECUTIVE WORKSPACE</div><h1 id="pageTitle">Good day, CEO.</h1><div class="muted" id="today"></div></div><span class="pill">● Private workspace</span></header>
 <section class="view active" id="hq"><div class="grid"><div class="card"><div class="muted">AI Workforce</div><div class="metric" id="kStaff">0</div><div class="muted">Configured team members</div></div><div class="card"><div class="muted">Open tasks</div><div class="metric" id="kOpen">0</div><div class="muted">Awaiting completion</div></div><div class="card"><div class="muted">For approval</div><div class="metric" id="kApproval">0</div><div class="muted">CEO attention required</div></div><div class="card"><div class="muted">Knowledge sources</div><div class="metric" id="kLessons">0</div><div class="muted">Registered resources</div></div></div><div class="two"><div class="card"><div class="toolbar"><h2 class="sectiontitle">Leadership & workforce</h2><button class="secondary" onclick="show('workforce')">Manage team</button></div><div class="staffgrid" id="hqStaff"></div></div><div class="card"><h2 class="sectiontitle">Recent tasks</h2><div id="hqTasks"></div></div></div>
@@ -61,7 +61,47 @@
 <section class="view" id="academy"><div class="toolbar"><div><h2>Learning Academy</h2><p>Register learning material and assign it to staff.</p></div><button class="primary" onclick="toggle('lessonForm')">+ Add learning source</button></div><div class="notice">YouTube and website links are saved as references. Transcription, ingestion, PDF processing and AI learning are not yet implemented. No staff receives automatic knowledge access.</div><div id="lessonForm" class="card hidden"><form id="newLessonForm"><div class="formgrid"><div><label>Title</label><input name="title" required></div><div><label>Source type</label><select name="kind"><option>YouTube link</option><option>Website link</option><option>Note</option></select></div><div class="wide"><label>URL or note</label><textarea name="source" required></textarea></div><div class="wide"><label>Assigned staff / department (reference only)</label><input name="assigned" placeholder="e.g. Creative"></div></div><div style="height:15px"></div><button class="primary">Register source</button></form></div><div class="card" style="margin-top:20px" id="lessonList"></div></section>
 <section class="view" id="research"><h2>Research Intelligence</h2><div class="card"><h3>Research workspace</h3><p>Planned: verified-source research, OSINT collection, citations, evidence review and reports.</p><span class="tag">Not connected</span></div></section>
 <section class="view" id="finance"><h2>Finance & Internal Audit</h2><div class="card"><h3>Financial operations</h3><p>Planned: ledgers, reconciliations, expense review, reporting and audit evidence.</p><span class="tag">Not connected</span></div></section>
-<section class="view" id="integrations"><h2>Integration Centre</h2><p>External accounts are never connected without authorization.</p><div class="staffgrid" id="integrationList"></div></section>
+<section class="view" id="integrations">
+<div class="toolbar"><div><h2>Social Media Integration Centre</h2><p>Connect official business accounts, manage staff publishing permission and review every external post.</p></div><button class="secondary" type="button" onclick="loadSocial()">Refresh connections</button></div>
+<div class="notice" id="socialOAuthNotice">No social media account is connected until the CEO completes the provider's official OAuth authorization. All publish permissions start OFF.</div>
+<div class="card" style="margin-top:20px">
+<div class="toolbar"><div><h3>Connect Social Media Accounts</h3><p>Official OAuth only. Your passwords, API tokens and app secrets are never entered into this page.</p></div></div>
+<div class="staffgrid" id="integrationList"></div>
+<p class="muted" style="margin-top:16px">Meta connects Facebook Pages and any linked Instagram Professional accounts. YouTube and TikTok account connection is supported, but direct media publishing for those platforms is not yet implemented. Provider app review and required scopes may apply.</p>
+</div>
+<div class="card" style="margin-top:20px"><div class="toolbar"><div><h3>Connected Accounts</h3><p>These are accounts authorized by the CEO, not general access for all AI staff.</p></div></div>
+<div id="socialAccountList"><p class="muted">No accounts connected.</p></div></div>
+<div class="card" style="margin-top:20px"><h3>AI Staff · Publish Permissions</h3><p>Control exactly which AI staff may publish to each connected account. Default is OFF.</p>
+<form id="socialGrantForm" class="formgrid">
+ <div><label>AI staff</label><select id="socialGrantStaff" required><option value="">Choose a staff member</option></select></div>
+ <div><label>Connected account</label><select id="socialGrantAccount" required><option value="">Choose an account</option></select></div>
+ <div><label>Publishing authority</label><select id="socialGrantMode">
+   <option value="off">OFF · No publishing access</option>
+   <option value="approval_required">CEO Approval Required</option>
+   <option value="direct_publish">Direct Publish · No per-post approval</option>
+ </select></div>
+ <div style="align-self:end"><button class="primary" type="submit">Save publishing permission</button></div>
+</form>
+<div class="notice">Direct Publish lets an authorized staff draft proceed to the publishing queue without a second CEO approval. At present, a CEO still triggers the actual Publish action in this private office; independent staff logins and autonomous publishing triggers are not implemented. This does not grant DM, ad spending or access to other accounts.</div>
+<div id="socialGrantList" style="margin-top:12px"></div>
+</div>
+<div class="card" style="margin-top:20px"><div class="toolbar"><div><h3>Social Publishing Desk</h3><p>Prepare internal drafts from AI staff or use a CEO-approved AI deliverable. Posting to the public platform is an explicit action.</p></div></div>
+<form id="socialDraftForm">
+<div class="formgrid"><div><label>Assigned AI staff</label><select id="socialPostStaff" required></select></div>
+<div><label>Publish to account</label><select id="socialPostAccount" required></select></div></div>
+<label>Caption / post content</label><textarea id="socialPostCaption" rows="5" maxlength="2200" required placeholder="Final caption for CEO approval or direct publication…"></textarea>
+<label>Public HTTPS image URL (required for Instagram image posts)</label><input id="socialPostMedia" maxlength="1800" placeholder="https://your-verified-domain.example/assets/approved-photo.jpg">
+<div class="task-actions" style="margin-top:14px"><button class="primary" id="socialDraftSave" type="submit">Save social draft</button><button class="secondary" type="button" onclick="cancelSocialDraft()">Clear form</button></div>
+</form>
+<div class="divider" style="margin-top:18px"></div>
+<label>Use approved AI deliverable as a publishing draft</label>
+<div class="formgrid"><div><select id="socialApprovedRun"><option value="">Select a CEO-approved AI result</option></select></div>
+<div style="align-self:end"><button class="secondary" type="button" onclick="createSocialFromRun()">Import AI output as draft</button></div></div>
+<p class="muted">Long reports must be condensed into a post-ready caption before importing. AI text is never auto-posted from Task Centre.</p>
+</div>
+<div class="card" style="margin-top:20px"><div class="toolbar"><div><h3>Publishing Queue & Audit</h3><p>Review the exact caption and target account before any public posting.</p></div><button class="secondary" onclick="loadSocial()">Refresh posts</button></div>
+<div id="socialPostList"><p class="muted">No social post drafts yet.</p></div></div>
+</section>
 <section class="view" id="governance"><h2>Security & Governance</h2><div class="card"><h3>Security status</h3><p>Password-protected session is active. Multi-factor authentication, multi-user roles, account recovery and emergency stop are planned and must be implemented before production use.</p><h3>Recent audit activity</h3><div id="auditList"></div></div></section>
 </main></div><div id="toast"></div><script>
 const EXECUTIVE_ATLAS = "data:image/webp;base64,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";
@@ -641,14 +681,248 @@ $('monthlyTemplateForm').addEventListener('submit',async e=>{
   }catch(e){msg(e.message)}finally{btn.disabled=false}
 });
 
+
+let socialState={providers:[],accounts:[],grants:[],posts:[]};
+let socialApprovedRuns=[];
+let socialEditingPost=null;
+const socialEl=(tag,value,cls)=>{
+  const node=document.createElement(tag);
+  if(value!==undefined)node.textContent=value;
+  if(cls)node.className=cls;
+  return node;
+};
+function socialAppendOption(select,value,label){
+  const option=document.createElement('option');option.value=value;option.textContent=label;select.append(option);
+}
+function socialSetOptions(id,rows,labelFn,emptyText){
+  const select=$(id),previous=select.value;
+  select.textContent='';
+  socialAppendOption(select,'',emptyText);
+  for(const row of rows)socialAppendOption(select,row.id,labelFn(row));
+  if([...select.options].some(x=>x.value===previous))select.value=previous;
+}
+async function connectSocial(provider){
+  try{
+    const result=await api('social/oauth/'+encodeURIComponent(provider)+'/start',{method:'POST'});
+    if(!result.authorization_url)throw Error('No OAuth authorization URL returned');
+    window.location.assign(result.authorization_url);
+  }catch(err){msg(err.message)}
+}
+async function disconnectSocial(id,name){
+  if(!confirm('Disconnect '+name+'? All staff access grants will be revoked and unpublished social drafts cancelled.'))return;
+  try{
+    await api('social/accounts/'+encodeURIComponent(id),{method:'DELETE'});
+    await loadSocial();msg('Social account disconnected; publishing permissions revoked');
+  }catch(err){msg(err.message)}
+}
+function updateSocialGrantMode(){
+  const staff=$('socialGrantStaff').value,accountId=$('socialGrantAccount').value;
+  const account=socialState.accounts.find(a=>a.id===accountId);
+  const grant=socialState.grants.find(g=>g.staff_id===staff&&g.account_id===accountId);
+  $('socialGrantMode').value=grant?.mode||'off';
+  const supported=Boolean(account?.publishing_supported);
+  for(const option of $('socialGrantMode').options){
+    option.disabled=!supported&&option.value!=='off';
+  }
+  if(!supported)$('socialGrantMode').value='off';
+}
+function renderSocialProviders(){
+  const root=$('integrationList');root.textContent='';
+  for(const provider of socialState.providers){
+    const card=socialEl('div',undefined,'person');
+    card.append(socialEl('strong',provider.name));
+    const connected=socialState.accounts.filter(a=>a.provider===provider.id).length;
+    const message=provider.configured?
+      (connected?connected+' account(s) connected':'OAuth ready for CEO connection'):
+      'Requires provider app credentials and encryption key on Railway';
+    const status=socialEl('p',message,provider.configured?'social-status ready':'social-status warning');
+    card.append(status);
+    const button=socialEl('button',connected?'Connect another account':'Connect via OAuth','secondary');
+    button.type='button';button.disabled=!provider.configured;
+    button.onclick=()=>connectSocial(provider.id);
+    card.append(button);
+    if(!provider.publishing_available){
+      card.append(socialEl('p','Connection supported · media publishing not yet enabled','muted'));
+    }
+    if(provider.callback){
+      const note=socialEl('p','OAuth redirect: '+provider.callback,'muted');
+      note.style.overflowWrap='anywhere';card.append(note);
+    }
+    root.append(card);
+  }
+}
+function renderSocialAccounts(){
+  const root=$('socialAccountList');root.textContent='';
+  if(!socialState.accounts.length){root.append(socialEl('p','No accounts connected yet.','muted'));return}
+  for(const a of socialState.accounts){
+    const card=socialEl('div',undefined,'item');
+    const details=socialEl('div');
+    details.append(socialEl('strong',a.display_name));
+    details.append(socialEl('small',a.platform+' · '+(a.publishing_supported?'Publishing API implemented':'Connect only')+' · Token: '+a.token_status));
+    const disconnect=socialEl('button','Disconnect','secondary');
+    disconnect.type='button';
+    disconnect.onclick=()=>disconnectSocial(a.id,a.display_name);
+    card.append(details,disconnect);root.append(card);
+  }
+}
+function renderSocialGrants(){
+  const root=$('socialGrantList');root.textContent='';
+  const granted=socialState.grants.filter(g=>g.mode!=='off');
+  if(!granted.length){root.append(socialEl('p','All AI staff publishing permissions are OFF.','muted'));return}
+  for(const g of granted){
+    const a=socialState.accounts.find(x=>x.id===g.account_id);
+    if(!a)continue;
+    const row=socialEl('div',undefined,'item');
+    const label=socialEl('div');
+    label.append(socialEl('strong',g.staff_name+' · '+a.display_name));
+    label.append(socialEl('small',g.mode==='direct_publish'?'Direct publish authorized':'CEO approval required'));
+    const revoke=socialEl('button','Revoke','secondary');
+    revoke.type='button';
+    revoke.onclick=async()=>{
+      if(!confirm('Revoke '+g.staff_name+' publishing access to '+a.display_name+'?'))return;
+      try{
+        await api('social/grants',{method:'POST',body:JSON.stringify({
+          staff_id:g.staff_id,account_id:g.account_id,mode:'off'})});
+        await loadSocial();msg('Publish permission revoked');
+      }catch(e){msg(e.message)}
+    };
+    row.append(label,revoke);root.append(row);
+  }
+}
+function renderSocialPosts(){
+  const root=$('socialPostList');root.textContent='';
+  if(!socialState.posts.length){root.append(socialEl('p','No social publishing drafts or posts yet.','muted'));return}
+  for(const post of socialState.posts){
+    const row=socialEl('div',undefined,'social-post');
+    row.append(socialEl('strong',post.account_name+' · '+(post.staff_name||'Former staff')));
+    const timestamp=post.created_at?new Date(post.created_at).toLocaleString('en-MY',{
+      dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Kuala_Lumpur'}):'';
+    const meta=socialEl('div',post.platform+' · '+post.status+' · '+timestamp,'social-status');
+    if(post.status==='Needs verification')meta.classList.add('warning');
+    row.append(meta);
+    row.append(socialEl('pre',post.caption));
+    if(post.media_url)row.append(socialEl('p','Image URL: '+post.media_url,'muted'));
+    if(post.error)row.append(socialEl('p',post.error,'social-status warning'));
+    if(post.platform_post_id)row.append(socialEl('p','Provider post ID: '+post.platform_post_id,'muted'));
+    const actions=socialEl('div',undefined,'social-actions');
+    const makeAction=(label,func,css='secondary')=>{
+      const button=socialEl('button',label,css);button.type='button';button.onclick=func;actions.append(button);
+    };
+    if(['Pending approval','Ready'].includes(post.status)){
+      makeAction('Edit draft',()=>editSocialPost(post.id));
+      makeAction('Reject',()=>socialPostAction(post.id,'reject'));
+    }
+    if(post.status==='Pending approval'){
+      makeAction('Approve',()=>socialPostAction(post.id,'approve'),'primary');
+    }
+    if(post.status==='Ready'){
+      makeAction('Publish now',()=>socialPostAction(post.id,'publish'),'primary');
+    }
+    row.append(actions);root.append(row);
+  }
+}
+async function socialPostAction(id,action){
+  const item=socialState.posts.find(x=>x.id===id);
+  if(!item)return;
+  const instruction=action==='publish'?'PUBLISH THIS POST PUBLICLY to '+item.account_name+'? This is an irreversible external action.'
+    :action==='approve'?'Approve this post for publishing to '+item.account_name+'?':'Reject this social draft?';
+  if(!confirm(instruction))return;
+  try{
+    await api('social/posts/'+encodeURIComponent(id)+'/'+action,{method:'POST'});
+    await loadSocial();
+    msg(action==='publish'?'Publish result recorded':'Social draft '+action+'d');
+  }catch(err){msg(err.message);await loadSocial()}
+}
+function cancelSocialDraft(){
+  socialEditingPost=null;
+  const form=$('socialDraftForm');form.reset();
+  $('socialPostStaff').disabled=false;
+  $('socialPostAccount').disabled=false;
+  $('socialDraftSave').textContent='Save social draft';
+}
+function editSocialPost(id){
+  const item=socialState.posts.find(x=>x.id===id);
+  if(!item)return;
+  socialEditingPost=id;
+  $('socialPostStaff').value=item.staff_id;
+  $('socialPostAccount').value=item.account_id;
+  $('socialPostStaff').disabled=true;
+  $('socialPostAccount').disabled=true;
+  $('socialPostCaption').value=item.caption;
+  $('socialPostMedia').value=item.media_url||'';
+  $('socialDraftSave').textContent='Save draft changes';
+  $('socialDraftForm').scrollIntoView({behavior:'smooth',block:'start'});
+}
+async function loadSocial(){
+  try{
+    socialState=await api('social/status');
+    const approved=await api('social/approved-runs');
+    socialApprovedRuns=approved.runs||[];
+    renderSocialProviders();
+    renderSocialAccounts();
+    socialSetOptions('socialGrantStaff',state.staff,x=>x.name+' · '+x.role,'Choose AI staff');
+    socialSetOptions('socialPostStaff',state.staff,x=>x.name+' · '+x.role,'Choose AI staff');
+    socialSetOptions('socialGrantAccount',socialState.accounts,
+      x=>x.platform.toUpperCase()+' · '+x.display_name,'Choose connected account');
+    socialSetOptions('socialPostAccount',socialState.accounts.filter(x=>x.publishing_supported),
+      x=>x.platform.toUpperCase()+' · '+x.display_name,'Choose publishable account');
+    socialSetOptions('socialApprovedRun',socialApprovedRuns,
+      x=>x.staff_name+' · '+x.task_title,'Use CEO-approved AI deliverable');
+    updateSocialGrantMode();
+    renderSocialGrants();renderSocialPosts();
+  }catch(e){$('socialOAuthNotice').textContent='Social integration unavailable: '+e.message}
+}
+$('socialGrantStaff').addEventListener('change',updateSocialGrantMode);
+$('socialGrantAccount').addEventListener('change',updateSocialGrantMode);
+$('socialGrantForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const staff_id=$('socialGrantStaff').value;
+  const account_id=$('socialGrantAccount').value;
+  const mode=$('socialGrantMode').value;
+  if(!staff_id||!account_id)return;
+  if(mode==='direct_publish'&&!confirm('Allow this AI staff to publish on this specific social account without per-post approval? Revoke anytime.'))return;
+  try{
+    await api('social/grants',{method:'POST',
+      body:JSON.stringify({staff_id,account_id,mode})});
+    await loadSocial();msg('Staff publishing permission saved');
+  }catch(err){msg(err.message)}
+});
+$('socialDraftForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const caption=$('socialPostCaption').value.trim();
+  const media_url=$('socialPostMedia').value.trim()||null;
+  const staff_id=$('socialPostStaff').value,account_id=$('socialPostAccount').value;
+  if(!caption||!staff_id||!account_id)return;
+  const button=$('socialDraftSave');button.disabled=true;
+  try{
+    const isEditing=Boolean(socialEditingPost);
+    await api(isEditing?'social/posts/'+encodeURIComponent(socialEditingPost):'social/posts',{
+      method:isEditing?'PUT':'POST',
+      body:JSON.stringify(isEditing?{caption,media_url}:{staff_id,account_id,caption,media_url})
+    });
+    cancelSocialDraft();await loadSocial();msg('Social draft saved · not published');
+  }catch(err){msg(err.message)}finally{button.disabled=false}
+});
+async function createSocialFromRun(){
+  const run_id=$('socialApprovedRun').value,account_id=$('socialPostAccount').value;
+  if(!run_id||!account_id){msg('Choose an approved AI result and social account first');return}
+  if(!confirm('Import this approved AI work as an unpublished social draft?'))return;
+  try{
+    await api('social/posts/from-run',{method:'POST',body:JSON.stringify({
+      run_id,account_id,media_url:$('socialPostMedia').value.trim()||null
+    })});
+    await loadSocial();msg('AI deliverable imported as social draft; review before publishing');
+  }catch(err){msg(err.message)}
+}
+
 async function refresh(){state=await api('office');render();renderDirectorSelect()}
 async function updateTask(id,status){try{await api('tasks/'+id,{method:'PATCH',body:JSON.stringify({status})});await refresh();msg('Task updated')}catch(e){msg(e.message);await refresh()}}
-$('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){show(b.dataset.view);if(b.dataset.view==='hq')loadNewsBriefings()}});
+$('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){show(b.dataset.view);if(b.dataset.view==='hq')loadNewsBriefings();if(b.dataset.view==='integrations')loadSocial()}});
 $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').textContent='';try{await api('login',{method:'POST',body:JSON.stringify({password:$('password').value})});$('password').value='';await enter()}catch(err){$('loginError').textContent=err.message}});
-async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await loadMeita();await loadMemory();await loadRuns();await loadDelegations();await loadDirectorPlans();$('monthlyPeriod').value=malaysiaPeriod();await loadMonthly();await loadNewsBriefings()}catch(e){msg(e.message)}}
+async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await loadMeita();await loadMemory();await loadRuns();await loadDelegations();await loadDirectorPlans();$('monthlyPeriod').value=malaysiaPeriod();await loadMonthly();await loadNewsBriefings();await loadSocial();const integ=new URLSearchParams(window.location.search).get('integration');if(integ){msg(integ==='connected'?'Social account authorized. Configure staff permissions below.': 'OAuth connection not completed');window.history.replaceState(null,'',window.location.pathname)}}catch(e){msg(e.message)}}
 $('logout').onclick=async()=>{await api('logout',{method:'POST'});location.reload()};
 for(const [form,path] of [['newLessonForm','lessons']])$(form).addEventListener('submit',async e=>{e.preventDefault();const body=Object.fromEntries(new FormData(e.target));try{await api(path,{method:'POST',body:JSON.stringify(body)});e.target.reset();e.target.closest('.card').classList.add('hidden');await refresh();msg('Saved successfully')}catch(err){msg(err.message)}});
-$('integrationList').innerHTML=['Instagram / Facebook','TikTok / YouTube','WhatsApp Business','Gmail / Outlook','Canva / Adobe','CapCut / Video tools','Finance / Banking'].map(n=>`<div class="person"><strong>${esc(n)}</strong><span class="tag">Not connected</span><p class="muted">Requires supported integration and CEO authorization.</p></div>`).join('');$('today').textContent=new Date().toLocaleDateString('en-MY',{weekday:'long',day:'numeric',month:'long',year:'numeric'});api('me').then(x=>{if(x.authenticated)enter()}).catch(()=>{});
+$('today').textContent=new Date().toLocaleDateString('en-MY',{weekday:'long',day:'numeric',month:'long',year:'numeric'});api('me').then(x=>{if(x.authenticated)enter()}).catch(()=>{});
 setInterval(()=>{if($('hq').classList.contains('active')
      &&!$('app').classList.contains('hidden'))loadNewsBriefings()},60000);
 </script></body></html>
