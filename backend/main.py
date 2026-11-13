@@ -1,5 +1,4 @@
-import os, json, hmac, hashlib, secrets, sqlite3, time, urllib.request, urllib.error
-from contextlib import contextmanager
+import os, json, hmac, hashlib, secrets, time, urllib.request, urllib.error
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.responses import FileResponse
@@ -8,29 +7,19 @@ from starlette.middleware.sessions import SessionMiddleware
 from backend import memory as office_memory
 from backend import workforce as office_workforce
 from backend import delegation as office_delegation
+from backend import office_db
 
 ROOT=Path(__file__).resolve().parent.parent
-DB=os.environ.get('DATABASE_PATH',str(ROOT/'office.sqlite3'))
 PASSWORD=os.environ.get('CEO_PASSWORD')
 SECRET=os.environ.get('SESSION_SECRET')
 if not PASSWORD or not SECRET or len(SECRET)<32:
     raise RuntimeError('Set CEO_PASSWORD and SESSION_SECRET (at least 32 characters) before starting')
+# Database initialization is atomic and imports any accessible legacy SQLite in read-only mode.
+office_db.bootstrap()
+connect=office_db.connect
 app=FastAPI(title='AI Private Office',docs_url=None,redoc_url=None)
 app.add_middleware(SessionMiddleware,secret_key=SECRET,https_only=os.environ.get('COOKIE_SECURE','true').lower()=='true',same_site='lax',max_age=28800)
-@contextmanager
-def connect():
-    c=sqlite3.connect(DB,timeout=15)
-    c.row_factory=sqlite3.Row
-    try:
-        yield c
-        c.commit()
-    finally:c.close()
-with connect() as db:
-    db.execute('CREATE TABLE IF NOT EXISTS staff (id TEXT PRIMARY KEY,name TEXT NOT NULL,role TEXT NOT NULL,department TEXT NOT NULL,expertise TEXT NOT NULL DEFAULT "",tools TEXT NOT NULL DEFAULT "",autonomy TEXT NOT NULL DEFAULT "Approval required",status TEXT NOT NULL DEFAULT "Available")')
-    db.execute('CREATE TABLE IF NOT EXISTS tasks (id TEXT PRIMARY KEY,title TEXT NOT NULL,assignee TEXT NOT NULL DEFAULT "",status TEXT NOT NULL DEFAULT "To do",created INTEGER NOT NULL)')
-    db.execute('CREATE TABLE IF NOT EXISTS lessons (id TEXT PRIMARY KEY,title TEXT NOT NULL,kind TEXT NOT NULL,source TEXT NOT NULL,assigned TEXT NOT NULL DEFAULT "",status TEXT NOT NULL DEFAULT "Pending review",created INTEGER NOT NULL)')
-    db.execute('CREATE TABLE IF NOT EXISTS meita_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, role TEXT NOT NULL, content TEXT NOT NULL, created INTEGER NOT NULL)')
-    db.execute('CREATE TABLE IF NOT EXISTS audit (id INTEGER PRIMARY KEY AUTOINCREMENT,action TEXT NOT NULL,detail TEXT NOT NULL,created INTEGER NOT NULL)')
+
 class Login(BaseModel):password:str
 class Staff(BaseModel):name:str=Field(min_length=1,max_length=100);role:str=Field(min_length=1,max_length=120);department:str=Field(min_length=1,max_length=100);expertise:str='';tools:str='';autonomy:str='Approval required'
 class Task(BaseModel):title:str=Field(min_length=1,max_length=250);assignee:str=''
@@ -40,7 +29,7 @@ class MeitaMessage(BaseModel):message:str=Field(min_length=1,max_length=6000)
 
 def guard(req:Request):
     if req.session.get('authorized') is not True:raise HTTPException(401,'Login required')
-def audit(db,action,detail):db.execute('INSERT INTO audit(action,detail,created) VALUES(?,?,?)',(action,detail,int(time.time())))
+def audit(db,action,detail):db.execute('INSERT INTO audit(action,detail,created) VALUES(%s,%s,%s)',(action,detail,int(time.time())))
 @app.post('/api/login')
 def login(body:Login,req:Request):
     if not hmac.compare_digest(body.password.encode(),PASSWORD.encode()):
@@ -55,26 +44,26 @@ def me(req:Request):return {'authenticated':req.session.get('authorized') is Tru
 @app.get('/api/office',dependencies=[Depends(guard)])
 def office():
     with connect() as db:
-        return {k:[dict(x) for x in db.execute('SELECT * FROM '+k+(' ORDER BY created DESC' if k in ('tasks','lessons','audit') else ' ORDER BY name'))] for k in ('staff','tasks','lessons','audit')}
+        return {k:[dict(x) for x in db.execute('SELECT * FROM '+k+(' ORDER BY created DESC, id DESC' if k in ('tasks','lessons','audit') else ' ORDER BY name'))] for k in ('staff','tasks','lessons','audit')}
 @app.post('/api/staff',dependencies=[Depends(guard)])
 def create_staff(body:Staff):
     ident=secrets.token_hex(12)
     with connect() as db:
-        db.execute('INSERT INTO staff VALUES(?,?,?,?,?,?,?,?)',(ident,body.name,body.role,body.department,body.expertise,body.tools,body.autonomy,'Available'))
+        db.execute('INSERT INTO staff VALUES(%s,%s,%s,%s,%s,%s,%s,%s)',(ident,body.name,body.role,body.department,body.expertise,body.tools,body.autonomy,'Available'))
         audit(db,'staff.hired',body.name)
     return {'id':ident}
 @app.post('/api/tasks',dependencies=[Depends(guard)])
 def create_task(body:Task):
     ident=secrets.token_hex(12)
     with connect() as db:
-        db.execute('INSERT INTO tasks VALUES(?,?,?,?,?)',(ident,body.title,body.assignee,'To do',int(time.time())))
+        db.execute('INSERT INTO tasks VALUES(%s,%s,%s,%s,%s)',(ident,body.title,body.assignee,'To do',int(time.time())))
         audit(db,'task.created',body.title)
     return {'id':ident}
 @app.patch('/api/tasks/{ident}',dependencies=[Depends(guard)])
 def update_task(ident:str,body:Status):
     if body.status not in ('To do','In progress','For approval','Completed'):raise HTTPException(400,'Invalid status')
     with connect() as db:
-        result=db.execute('UPDATE tasks SET status=? WHERE id=?',(body.status,ident))
+        result=db.execute('UPDATE tasks SET status=%s WHERE id=%s',(body.status,ident))
         if not result.rowcount:raise HTTPException(404,'Task not found')
         audit(db,'task.status',f'{ident}: {body.status}')
     return {'ok':True}
@@ -84,7 +73,7 @@ def create_lesson(body:Lesson):
     if body.kind!='Note' and not body.source.startswith(('https://','http://')):raise HTTPException(400,'A valid URL is required')
     ident=secrets.token_hex(12)
     with connect() as db:
-        db.execute('INSERT INTO lessons VALUES(?,?,?,?,?,?,?)',(ident,body.title,body.kind,body.source,body.assigned,'Pending review',int(time.time())))
+        db.execute('INSERT INTO lessons VALUES(%s,%s,%s,%s,%s,%s,%s)',(ident,body.title,body.kind,body.source,body.assigned,'Pending review',int(time.time())))
         audit(db,'academy.added',body.title)
     return {'id':ident}
 @app.get('/api/capabilities',dependencies=[Depends(guard)])
@@ -96,7 +85,7 @@ def home():return FileResponse(ROOT/'frontend'/'index.html')
 @app.get('/api/meita/history',dependencies=[Depends(guard)])
 def meita_history():
     with connect() as db:
-        rows=db.execute('SELECT role,content,created FROM meita_messages ORDER BY id DESC LIMIT 30').fetchall()
+        rows=db.execute('SELECT role,content,created FROM meita_messages ORDER BY created DESC, id DESC LIMIT 30').fetchall()
         return {'messages':[dict(r) for r in reversed(rows)]}
 
 @app.post('/api/meita/chat',dependencies=[Depends(guard)])
@@ -107,7 +96,7 @@ def meita_chat(body:MeitaMessage):
     if not key:raise HTTPException(503,'OPENAI_API_KEY is missing')
     model=os.environ.get('OPENAI_MODEL','gpt-5.4')
     with connect() as db:
-        history=list(reversed(db.execute('SELECT role,content FROM meita_messages ORDER BY id DESC LIMIT 12').fetchall()))
+        history=list(reversed(db.execute('SELECT role,content FROM meita_messages ORDER BY created DESC, id DESC LIMIT 12').fetchall()))
     system=('You are Meita, the CEO\'s Acting COO in AI Private Office. '
             'Be professional, organized, concise, and helpful. Reply in Malay-English rojak when the CEO does. '
             'You can advise and draft and guide CEO to your Delegation Desk for task assignment and internal AI execution. You cannot directly execute actions in chat, contact third parties, '
@@ -133,8 +122,8 @@ def meita_chat(body:MeitaMessage):
     if not answer:raise HTTPException(502,'OpenAI returned no text. Check model settings.')
     with connect() as db:
         now=int(time.time())
-        db.execute('INSERT INTO meita_messages(role,content,created) VALUES(?,?,?)',('user',body.message,now))
-        db.execute('INSERT INTO meita_messages(role,content,created) VALUES(?,?,?)',('assistant',answer,now))
+        db.execute('INSERT INTO meita_messages(role,content,created) VALUES(%s,%s,%s)',('user',body.message,now))
+        db.execute('INSERT INTO meita_messages(role,content,created) VALUES(%s,%s,%s)',('assistant',answer,now))
         audit(db,'meita.chat','CEO chatted with Meita')
     return {'reply':answer,'model':model}
 
@@ -169,15 +158,15 @@ def workforce_runs():
 @app.post('/api/workforce/run/{task_id}',dependencies=[Depends(guard)])
 def workforce_run(task_id:str):
     with connect() as db:
-        task=db.execute('SELECT * FROM tasks WHERE id=?',(task_id,)).fetchone()
+        task=db.execute('SELECT * FROM tasks WHERE id=%s',(task_id,)).fetchone()
         if task is None: raise HTTPException(404,'Task not found')
         if not task['assignee']: raise HTTPException(400,'Assign a staff member before running this task')
-        staff=db.execute('SELECT * FROM staff WHERE id=?',(task['assignee'],)).fetchone()
+        staff=db.execute('SELECT * FROM staff WHERE id=%s',(task['assignee'],)).fetchone()
         if staff is None: raise HTTPException(404,'Assigned staff not found')
         task=dict(task); staff=dict(staff)
     result=office_workforce.execute(task,staff)
     with connect() as db:
-        db.execute("UPDATE tasks SET status='For approval' WHERE id=?",(task_id,))
+        db.execute("UPDATE tasks SET status='For approval' WHERE id=%s",(task_id,))
         audit(db,'workforce.deliverable',task_id)
     return result
 
@@ -224,3 +213,8 @@ def delegation_run(ident:str):
     with connect() as db:
         audit(db,'delegation.executed',ident)
     return result
+
+
+@app.get('/api/database/status',dependencies=[Depends(guard)])
+def database_status():
+    return office_db.status()
