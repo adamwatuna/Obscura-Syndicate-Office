@@ -14,8 +14,15 @@ class DirectorLedTests(unittest.TestCase):
         self.assertEqual(self.client.post("/api/login",
             json={"password":os.environ["CEO_PASSWORD"]}).status_code,200)
         self.created=[]
+        self.restores=[]
+        self.plans=[]
     def tearDown(self):
         with office_db.connect() as db:
+            for ident in self.plans:
+                db.execute('DELETE FROM director_jobs WHERE plan_id=%s',(ident,))
+                db.execute('DELETE FROM director_plans WHERE id=%s',(ident,))
+            for ident,autonomy,permission in self.restores:
+                db.execute('UPDATE staff SET autonomy=%s,delegation_permission=%s WHERE id=%s',(autonomy,permission,ident))
             for ident in self.created:
                 db.execute("DELETE FROM director_jobs WHERE director_id=%s",(ident,))
                 db.execute("DELETE FROM director_plans WHERE director_id=%s",(ident,))
@@ -35,11 +42,20 @@ class DirectorLedTests(unittest.TestCase):
         self.created.append(ident)
         return ident,data
 
+    def existing_director(self,dept,routine=False):
+        with office_db.connect() as db:
+            row=db.execute("""SELECT id,autonomy,delegation_permission FROM staff
+                WHERE department=%s AND org_role='Director'""",(dept,)).fetchone()
+            self.assertIsNotNone(row,dept+' should be seeded')
+            if routine:
+                self.restores.append((row['id'],row['autonomy'],row['delegation_permission']))
+                db.execute("""UPDATE staff SET autonomy='Routine internal tasks only',
+                    delegation_permission='department_internal' WHERE id=%s""",(row['id'],))
+            return row['id']
+
     def test_scoped_department_and_routine_delegation(self):
         key=uuid4().hex[:8]
-        director,_=self.hire("CMO-"+key,"Chief Marketing Officer","Marketing & Growth",
-            org_role="Director",delegation_permission="department_internal",
-            autonomy="Routine internal tasks only")
+        director=self.existing_director("Marketing & Growth",routine=True)
         specialist,_=self.hire("Campaigner-"+key,"Campaign Specialist","Marketing & Growth",
             manager_id=director)
         outsider,_=self.hire("Researcher-"+key,"Research Specialist","Research & Intelligence")
@@ -67,6 +83,7 @@ class DirectorLedTests(unittest.TestCase):
         self.assertEqual(proposed.status_code,200,proposed.text)
         self.assertEqual(proposed.json()["status"],"Approved")
         plan_id=proposed.json()["id"]
+        self.plans.append(plan_id)
         job=next(j for j in self.client.get("/api/directors/plans").json()["jobs"]
                  if j["plan_id"]==plan_id)
         with patch("backend.organization.workforce.execute",
@@ -87,9 +104,7 @@ class DirectorLedTests(unittest.TestCase):
 
     def test_finance_requires_ceo_approval_even_with_routine_flag(self):
         key=uuid4().hex[:8]
-        director,_=self.hire("Finance-"+key,"Finance Director","Finance & Treasury",
-            org_role="Director",delegation_permission="department_internal",
-            autonomy="Routine internal tasks only")
+        director=self.existing_director("Finance & Treasury",routine=True)
         specialist,_=self.hire("Analyst-"+key,"Finance Analyst","Finance & Treasury",
             manager_id=director)
         plan={"title":"Financial review","jobs":[
@@ -100,6 +115,7 @@ class DirectorLedTests(unittest.TestCase):
                 json={"brief":"Analyze spending assumptions for internal review"})
         self.assertEqual(res.status_code,200,res.text)
         self.assertEqual(res.json()["status"],"Pending approval")
+        self.plans.append(res.json()["id"])
         approved=self.client.post("/api/directors/plans/"+res.json()["id"]+"/approve")
         self.assertEqual(approved.status_code,200,approved.text)
         jobs=self.client.get("/api/directors/plans").json()["jobs"]
