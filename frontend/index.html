@@ -355,11 +355,11 @@ function renderOfficeTasks(tasks,staff){
       '<span class="'+(due<today?'overdue':'')+'">'+esc(label)+'</span>'+
       '<span>'+esc(t.recurrence&&t.recurrence!=='None'?'Repeats: '+t.recurrence:'One-time')+'</span>'+
       '<span>'+esc(staff.find(x=>x.id===t.assignee)?.name||'Unassigned')+'</span>'+
-      (t.category==='News Update'?'<span>News Update</span>':'')+'</div></div>'+
+      (t.category==='News Update'?'<span>News Update</span>':'')+(activity?'<span>Meita: '+esc(activity)+'</span>':'')+(t.reference_ids?.length?'<span>'+t.reference_ids.length+' references</span>':'')+'</div></div>'+
       '<div class="task-actions">'+
       (canEdit?'<button class="secondary" onclick="editOfficeTask(\''+esc(t.id)+'\')">Edit</button>':'')+
       (canEdit?'<button class="secondary" onclick="removeOfficeTask(\''+esc(t.id)+'\')">Remove</button>':'')+
-      '<select style="max-width:155px" aria-label="Task status" onchange="updateTask(\''+esc(t.id)+'\',this.value)">'+statusOptions+'</select>'+
+      (liveJob?'<span class="tag">'+esc(activity)+'</span>':'<select style="max-width:155px" aria-label="Task status" onchange="updateTask(\''+esc(t.id)+'\',this.value)">'+statusOptions+'</select>')+
       (canEdit&&t.assignee&&t.description?.trim()?'<button class="primary" onclick="runStaffTask(\''+esc(t.id)+'\',this)">Run AI</button>':'')+
       '</div></div></div>';
   }).join('')||'<p>No tasks yet. Create your first assignment.</p>';
@@ -390,7 +390,17 @@ function render(){const s=state.staff,t=state.tasks,l=state.lessons;$('kStaff').
 const taskrow=x=>`<div class="item"><div><strong>${esc(x.title)}</strong><small>${esc(s.find(z=>z.id===x.assignee)?.name||'Unassigned')} · ${esc(x.status)}</small></div></div>`;$('hqTasks').innerHTML=t.length?t.slice(0,5).map(taskrow).join(''):'<p>No tasks yet.</p>';
 $('assignee').innerHTML='<option value="">Unassigned</option>'+s.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('');
 renderOfficeTasks(t,s);
-$('deskList').innerHTML=s.length?s.map(x=>{const active=t.filter(y=>y.assignee===x.id&&y.status!=='Completed');return `<div class="desk">${staffPortrait(x)}<strong>${esc(x.name)}</strong><div class="muted">${esc(x.role)}</div><div class="surface"></div><span class="tag">${active.length?active.length+' open task(s)':'No active tasks'}</span></div>`}).join(''):'<div class="notice">Hire AI staff to create workstations.</div>';
+$('deskList').innerHTML=s.length?s.map(x=>{
+ const jobs=liveActivity.filter(j=>j.staff_id===x.id);
+ const running=jobs.find(j=>j.status==='Running'),queued=jobs.filter(j=>j.status==='Queued').length;
+ const blocked=jobs.filter(j=>['Retry available','Needs verification'].includes(j.status)).length;
+ const review=jobs.filter(j=>['Delivered','For approval'].includes(j.status)).length;
+ const manual=t.filter(y=>y.assignee===x.id&&!jobs.some(j=>j.task_id===y.id));
+ const manualRunning=manual.filter(y=>y.status==='In progress').length;
+ const status=running?'Working · AI executing':manualRunning?'Working · manual AI run':queued?'Queued · waiting for execution':blocked?'Needs attention':review?'Review / delivered':'Idle';
+ const detail=running?running.title:queued?queued+' queued job(s)':blocked?blocked+' blocked job(s)':review?review+' delivered report(s)':manual.filter(y=>y.status==='To do').length+' assigned task(s)';
+ return `<div class="desk">${staffPortrait(x)}<strong>${esc(x.name)}</strong><div class="muted">${esc(x.role)}</div><div class="surface"></div><span class="tag">${esc(status)}</span><p class="muted">${esc(detail)}</p></div>`;
+ }).join(''):'<div class="notice">Hire AI staff to create workstations.</div>';
 renderOrganization();$('lessonList').innerHTML=l.length?l.map(x=>`<div class="item"><div><strong>${esc(x.title)}</strong><small>${esc(x.kind)} · ${esc(x.assigned||'Not assigned')} · ${esc(x.status)}</small></div></div>`).join(''):'<p>No learning sources registered.</p>';$('auditList').innerHTML=state.audit.slice(0,12).map(x=>`<div class="item"><strong>${esc(x.action)}</strong><small>${esc(x.detail)}</small></div>`).join('')||'<p>No activity recorded.</p>'}
 function addMeita(role,content,proposal=null){
   const container=$('meitaChat');
@@ -552,6 +562,7 @@ async function loadMeitaTaskHistory(){
         const record=meitaNode('p',task.staff_name+' · '+task.title+
           ' — '+meitaStatus(task.status));
         record.style.margin='6px 0';tasks.append(record);
+        if(task.task_id){const jump=meitaNode('button','Open task','secondary');jump.type='button';jump.style.marginLeft='8px';jump.onclick=()=>show('tasks');record.append(jump);}
         if(task.status==='Retry available'){
           const retry=meitaNode('button','Retry AI task','secondary');
           retry.type='button';retry.style.marginLeft='10px';
@@ -567,6 +578,7 @@ async function loadMeitaTaskHistory(){
           record.append(retry);
         }
       }
+      if(request.reference_ids?.length)item.append(meitaNode('p',request.reference_ids.length+' CEO reference(s) linked','muted'));
       item.append(tasks);
       const actions=meitaNode('div',undefined,'task-actions');
       const deck=meitaNode('button','View presentation','secondary');
