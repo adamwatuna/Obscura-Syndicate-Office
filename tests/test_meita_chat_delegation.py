@@ -26,7 +26,9 @@ class MeitaChatDelegationTests(unittest.TestCase):
             current=meita_team.settings(db)
             self.config={key:current[key] for key in (
                 "delegation_scope","discussion_scope","max_delegation_jobs",
-                "max_meeting_participants")}
+                "max_meeting_participants","auto_execute_internal")}
+            meita_team.save_settings(db,meita_team.MeitaSettings(
+                **{**self.config,"auto_execute_internal":False}))
             self.base=db.execute(
                 "SELECT COALESCE(MAX(id),0) AS last FROM meita_messages"
             ).fetchone()["last"]
