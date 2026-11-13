@@ -811,7 +811,7 @@ function renderOfficeCharts(staff,tasks){
   {name:'For approval',value:tasks.filter(t=>t.status==='For approval').length},
   {name:'In progress',value:tasks.filter(t=>t.status==='In progress').length},
   {name:'To do',value:tasks.filter(t=>t.status==='To do').length},
-  {name:'Other',value:tasks.filter(t=>!['Completed','For approval','In progress','To do'].includes(t.status)).length},
+  {name:'Other / abandoned',value:tasks.filter(t=>!['Completed','For approval','In progress','To do'].includes(t.status)).length},
  ];
  const total=tasks.length;
  $('hqTaskTotal').textContent=String(total);
@@ -929,7 +929,7 @@ function renderExecutivePulse(tasks,jobs){
  }
 }
 
-function render(){const s=state.staff,t=state.tasks,l=state.lessons;$('kStaff').textContent=s.length;$('kOpen').textContent=t.filter(x=>x.status!=='Completed').length;$('kApproval').textContent=t.filter(x=>x.status==='For approval').length;$('kLessons').textContent=academyTotal===null?l.length:academyTotal;renderLeadershipSpotlight(s);renderOfficeCharts(s,t);renderExecutivePulse(t,liveActivity);renderWorkforceHierarchy(s);
+function render(){const s=state.staff,t=state.tasks,l=state.lessons;$('kStaff').textContent=s.length;$('kOpen').textContent=t.filter(x=>!['Completed','Abandoned'].includes(x.status)).length;$('kApproval').textContent=t.filter(x=>x.status==='For approval').length;$('kLessons').textContent=academyTotal===null?l.length:academyTotal;renderLeadershipSpotlight(s);renderOfficeCharts(s,t);renderExecutivePulse(t,liveActivity);renderWorkforceHierarchy(s);
 const taskrow=x=>`<div class="item"><div><strong>${esc(x.title)}</strong><small>${esc(s.find(z=>z.id===x.assignee)?.name||'Unassigned')} · ${esc(x.status)}</small></div></div>`;$('hqTasks').innerHTML=t.length?t.slice(0,5).map(taskrow).join(''):'<p>No tasks yet.</p>';
 const assigneeSelect=$('assignee'),currentAssignee=assigneeSelect.value;
 assigneeSelect.textContent='';
