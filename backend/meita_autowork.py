@@ -114,7 +114,7 @@ def _memory_from_result(db,job,answer):
              f"Report excerpt: {excerpt}")[:3000]
     db.execute("""INSERT INTO meita_memories (id,title,content,category)
         VALUES (%s,%s,%s,'Company knowledge')
-        ON CONFLICT(id) DO UPDATE SET content=EXCLUDED.content,updated_at=NOW()""",
+        ON CONFLICT(id) DO NOTHING""",
         (ident,title,content))
 
 def _finish_success(db,job,run_id,answer):
