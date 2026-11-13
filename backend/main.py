@@ -238,7 +238,8 @@ def meita_history():
         office_delegation.init(db)
         rows=db.execute("""SELECT m.id,m.role,m.content,m.created,
             p.id AS proposal_id,p.status AS proposal_status,
-            p.title AS proposal_title,p.plan AS proposal_plan
+            p.title AS proposal_title,p.plan AS proposal_plan,
+            p.auto_execute AS proposal_automatic
             FROM meita_messages m
             LEFT JOIN coo_proposals p ON p.chat_message_id=m.id
             ORDER BY m.created DESC,m.id DESC LIMIT 30""").fetchall()
@@ -249,7 +250,8 @@ def meita_history():
             message["proposal"]={"id":r["proposal_id"],
                 "status":r["proposal_status"],
                 "title":r["proposal_title"],
-                "plan":r["proposal_plan"]}
+                "plan":r["proposal_plan"],
+                "automatic":r["proposal_automatic"]}
         messages.append(message)
     return {"messages":messages}
 
