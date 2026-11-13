@@ -51,9 +51,70 @@
 .workforce-specialist small{display:block;font-size:10px;color:#718394;margin-top:4px}
 .workforce-specialist .actions{margin-top:8px;display:flex;gap:5px}
 .workforce-independent{grid-column:1/-1;max-width:600px}
+
+/* Executive-grade but human visual system: charts always show REAL database counts. */
+:root{--pulse-ink:#24374f;--pulse-teal:#229a8e;--pulse-blue:#597ec7;--pulse-amber:#e0a34b;--pulse-purple:#9075c8}
+.hq-hero{display:flex;justify-content:space-between;gap:20px;align-items:center;background:linear-gradient(116deg,#16354c 0%,#285776 57%,#4b6c92 100%);color:white;padding:25px 27px;border-radius:17px;margin-bottom:19px;position:relative;overflow:hidden}
+.hq-hero:after{content:"";position:absolute;right:-32px;top:-85px;border:42px solid #ffffff12;width:170px;height:170px;border-radius:50%;pointer-events:none}
+.hq-hero h2{margin:0 0 7px;color:white;font-size:22px;line-height:1.2}.hq-hero p{margin:0;color:#dce9f3;font-size:12px;line-height:1.65;max-width:570px}
+.hq-hero-avatars{display:flex;align-items:center;flex-shrink:0;padding-left:18px}
+.hq-hero-avatars .avatar{width:47px;height:47px;margin:0 0 0 -13px;border-radius:50%;box-shadow:0 2px 8px #03182745;border:3px solid #f8fcff;background-color:#dbe9f4}
+.hq-hero-avatars .avatar-photo{background-size:300% 300%}
+.hq-metric{position:relative;border-top:3px solid var(--metric-accent,#d9e6f4)}
+.hq-metric .metric{color:#203b56}
+.hq-viz-grid{display:grid;grid-template-columns:minmax(270px,.86fr) minmax(310px,1.15fr);gap:18px;margin:18px 0}
+.hq-chart-card{border:1px solid #e6ecf3;background:#fff;border-radius:15px;padding:20px;min-width:0}
+.hq-chart-card h3{margin:0 0 4px;font-size:14px;font-weight:750;color:#273e56}
+.hq-chart-card .chart-subtitle{color:#8794a2;font-size:11px;margin:0 0 14px}
+.hq-donut-wrap{display:flex;gap:22px;align-items:center;flex-wrap:wrap}
+.hq-donut{width:154px;height:154px;border-radius:50%;background:#e8eef4;position:relative;display:grid;place-items:center;flex-shrink:0}
+.hq-donut:after{content:"";width:107px;height:107px;border-radius:50%;background:white;position:absolute;inset:23.5px}
+.hq-donut-center{position:relative;z-index:1;display:grid;text-align:center}
+.hq-donut-center strong{font-size:29px;letter-spacing:-1.2px;color:#203b56}
+.hq-donut-center small{font-size:11px;color:#7e8b9a}
+.hq-chart-legend{display:grid;gap:9px;flex:1;min-width:145px}
+.hq-legend-row{display:grid;grid-template-columns:9px minmax(80px,1fr) auto;gap:8px;align-items:center;font-size:12px;color:#516276}
+.hq-legend-row b{font-size:12px;color:#273e56}
+.hq-legend-dot{height:9px;width:9px;border-radius:50%;background:var(--dot)}
+.hq-bars{display:grid;gap:9px}
+.hq-bar-row{display:grid;grid-template-columns:minmax(110px,160px) minmax(50px,1fr) 28px;gap:12px;align-items:center}
+.hq-bar-row .name{font-size:11px;color:#5b6c7f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hq-bar-track{height:10px;border-radius:99px;background:#edf2f6;overflow:hidden}
+.hq-bar-fill{height:100%;background:var(--bar-color);border-radius:inherit;min-width:0;transition:width .2s ease}
+.hq-bar-row strong{font-size:11px;text-align:right;color:#3d5065}
+.hq-leaders{display:flex;align-items:center;gap:12px;overflow-x:auto;padding:5px 2px 8px;scrollbar-width:thin}
+.hq-leader{flex:0 0 96px;display:grid;justify-items:center;text-align:center;gap:4px}
+.hq-leader .avatar{width:56px;height:56px;border-radius:50%;border:2px solid #dce7ee;margin:0}
+.hq-leader .avatar-photo{background-size:300% 300%}
+.hq-leader strong{font-size:10px;font-weight:750;color:#344b62;max-width:94px}
+.hq-leader small{font-size:10px;color:#8794a2;max-width:94px}
+.workforce-department:nth-child(5n+1) .workforce-director{border-left-color:#4b98b1;background:linear-gradient(125deg,#eefaff,#f9fbfd)}
+.workforce-department:nth-child(5n+2) .workforce-director{border-left-color:#8978bd;background:linear-gradient(125deg,#f4efff,#fcfafd)}
+.workforce-department:nth-child(5n+3) .workforce-director{border-left-color:#d59a5c;background:linear-gradient(125deg,#fff6ea,#fffdf9)}
+.workforce-department:nth-child(5n+4) .workforce-director{border-left-color:#4f9c86;background:linear-gradient(125deg,#eaf9f4,#fbfdfc)}
+.workforce-department:nth-child(5n) .workforce-director{border-left-color:#6483c4;background:linear-gradient(125deg,#eef4ff,#fbfcff)}
+.workforce-department .workforce-director .avatar{border-radius:50%;border:2px solid white;box-shadow:0 2px 8px #26395420}
+@media(max-width:800px){.hq-viz-grid{grid-template-columns:1fr}.hq-hero{padding:20px 17px}.hq-hero-avatars{display:none}.hq-donut{width:134px;height:134px}.hq-donut:after{width:92px;height:92px;inset:21px}}
+@media(prefers-reduced-motion:reduce){.hq-bar-fill{transition:none}}
 </style></head><body><div id="login" class="login"><div class="panel"><div class="eyebrow">PRIVATE EXECUTIVE WORKSPACE</div><h1>AI Private Office</h1><p>Welcome back. Sign in to access your executive workspace.</p><form id="loginForm"><label>CEO password</label><input id="password" type="password" autocomplete="current-password" required><div style="height:18px"></div><button class="primary" style="width:100%">Sign in securely</button><p id="loginError" class="err"></p></form><p style="font-size:11px">Authorized access only.</p></div></div>
 <div id="app" class="shell hidden"><aside><div class="brand">AI Private Office<small>EXECUTIVE WORKSPACE</small></div><div class="nav" id="nav"><button data-view="hq" class="active">◫ &nbsp; Executive HQ</button><button data-view="meita">✦ &nbsp; Meita AI</button><button data-view="memory">◈ &nbsp; Memory Centre</button><button data-view="workforce">♙ &nbsp; AI Workforce</button><button data-view="desks">▦ &nbsp; Live Desks</button><button data-view="tasks">☑ &nbsp; Task Centre</button><button data-view="monthly">▣ &nbsp; Monthly Workplan</button><button data-view="academy">▤ &nbsp; Learning Academy</button><button data-view="research">⌕ &nbsp; Research Intelligence</button><button data-view="finance">◈ &nbsp; Finance & Audit</button><button data-view="integrations">⌘ &nbsp; Integration Centre</button><button data-view="governance">◇ &nbsp; Governance</button></div><div class="bottom"><button class="secondary" id="logout">Sign out</button><p>Private office environment</p></div></aside><main><header class="top"><div><div class="eyebrow">YOUR EXECUTIVE WORKSPACE</div><h1 id="pageTitle">Good day, CEO.</h1><div class="muted" id="today"></div></div><span class="pill">● Private workspace</span></header>
-<section class="view active" id="hq"><div class="grid"><div class="card"><div class="muted">AI Workforce</div><div class="metric" id="kStaff">0</div><div class="muted">Configured team members</div></div><div class="card"><div class="muted">Open tasks</div><div class="metric" id="kOpen">0</div><div class="muted">Awaiting completion</div></div><div class="card"><div class="muted">For approval</div><div class="metric" id="kApproval">0</div><div class="muted">CEO attention required</div></div><div class="card"><div class="muted">Knowledge sources</div><div class="metric" id="kLessons">0</div><div class="muted">Registered resources</div></div></div><div class="two"><div class="card"><div class="toolbar"><h2 class="sectiontitle">Leadership & workforce</h2><button class="secondary" onclick="show('workforce')">Manage team</button></div><div class="staffgrid" id="hqStaff"></div></div><div class="card"><h2 class="sectiontitle">Recent tasks</h2><div id="hqTasks"></div></div></div>
+<section class="view active" id="hq">
+<div class="hq-hero">
+ <div><h2>Good to have you back, CEO.</h2><p>Your private AI leadership team, projects and execution status in one place. Every chart below uses actual office records.</p></div>
+ <div class="hq-hero-avatars" id="hqHeroAvatars" aria-hidden="true"></div>
+</div>
+<div class="grid"><div class="card hq-metric" style="--metric-accent:#479b9e"><div class="muted">AI Workforce</div><div class="metric" id="kStaff">0</div><div class="muted">Configured team members</div></div><div class="card hq-metric" style="--metric-accent:#6f90cc"><div class="muted">Open tasks</div><div class="metric" id="kOpen">0</div><div class="muted">Awaiting completion</div></div><div class="card hq-metric" style="--metric-accent:#d6a35c"><div class="muted">For approval</div><div class="metric" id="kApproval">0</div><div class="muted">CEO attention required</div></div><div class="card hq-metric" style="--metric-accent:#9b85d3"><div class="muted">Knowledge sources</div><div class="metric" id="kLessons">0</div><div class="muted">Registered resources</div></div></div>
+<div class="hq-viz-grid" aria-label="Live executive analytics based on office records">
+ <div class="hq-chart-card"><h3>Task pulse</h3><p class="chart-subtitle">Actual task states · no simulated activity</p>
+  <div class="hq-donut-wrap"><div class="hq-donut" id="hqTaskDonut" role="img" aria-label="Task status distribution">
+    <span class="hq-donut-center"><strong id="hqTaskTotal">0</strong><small>Total tasks</small></span></div>
+    <div class="hq-chart-legend" id="hqTaskLegend"></div></div>
+ </div>
+ <div class="hq-chart-card"><h3>Your team at a glance</h3><p class="chart-subtitle">AI specialists assigned per department</p>
+   <div class="hq-bars" id="hqDepartmentBars"></div>
+ </div>
+</div>
+<div class="two"><div class="card"><div class="toolbar"><h2 class="sectiontitle">Meet your Directors</h2><button class="secondary" onclick="show('workforce')">Manage team</button></div><div class="hq-leaders" id="hqStaff"></div></div><div class="card"><h2 class="sectiontitle">Recent tasks</h2><div id="hqTasks"></div></div></div>
 <div class="card" style="margin-top:18px" id="hqNewsCard">
  <div class="toolbar"><div><h2 class="sectiontitle">Staff News Briefings</h2><p class="muted">Latest source-backed reports from AI staff, based only on news tasks assigned by the CEO.</p></div>
   <div class="task-actions"><button class="secondary" type="button" onclick="loadNewsBriefings()">Refresh news</button><button class="primary" type="button" onclick="newNewsTask()">+ Assign news task</button></div>
@@ -598,7 +659,72 @@ function renderWorkforceHierarchy(staff){
  }
 }
 
-function render(){const s=state.staff,t=state.tasks,l=state.lessons;$('kStaff').textContent=s.length;$('kOpen').textContent=t.filter(x=>x.status!=='Completed').length;$('kApproval').textContent=t.filter(x=>x.status==='For approval').length;$('kLessons').textContent=academyTotal===null?l.length:academyTotal;$('hqStaff').innerHTML=s.length?s.slice(0,6).map(x=>person(x,false)).join(''):'<p>No staff hired yet.</p>';renderWorkforceHierarchy(s);
+
+function renderOfficeCharts(staff,tasks){
+ const colors=['#47a49c','#6e89cf','#e5ab5f','#9981cd','#c96778'];
+ const buckets=[
+  {name:'Completed',value:tasks.filter(t=>t.status==='Completed').length},
+  {name:'For approval',value:tasks.filter(t=>t.status==='For approval').length},
+  {name:'In progress',value:tasks.filter(t=>t.status==='In progress').length},
+  {name:'To do',value:tasks.filter(t=>t.status==='To do').length},
+  {name:'Other',value:tasks.filter(t=>!['Completed','For approval','In progress','To do'].includes(t.status)).length},
+ ];
+ const total=tasks.length;
+ $('hqTaskTotal').textContent=String(total);
+ let cursor=0;
+ const stops=[];
+ buckets.forEach((item,index)=>{
+  if(!item.value)return;
+  const pct=item.value/Math.max(1,total)*100;
+  stops.push(colors[index]+' '+cursor+'% '+(cursor+pct)+'%');
+  cursor+=pct;
+ });
+ $('hqTaskDonut').style.background=stops.length?'conic-gradient('+stops.join(',')+')':'#e8eef4';
+ $('hqTaskDonut').setAttribute('aria-label',total?
+  buckets.filter(x=>x.value).map(x=>x.name+': '+x.value).join(', '):'No tasks recorded');
+ const legend=$('hqTaskLegend');legend.textContent='';
+ buckets.forEach((item,index)=>{
+  const line=document.createElement('div');line.className='hq-legend-row';
+  const dot=document.createElement('span');dot.className='hq-legend-dot';dot.style.setProperty('--dot',colors[index]);
+  const label=document.createElement('span');label.textContent=item.name;
+  const count=document.createElement('b');count.textContent=String(item.value);
+  line.append(dot,label,count);legend.append(line);
+ });
+ const root=$('hqDepartmentBars');root.textContent='';
+ const departments=OFFICE_DEPARTMENTS.filter(x=>x!=='Executive Office'&&x!=='Independent Audit');
+ const groups=departments.map(name=>({name,value:staff.filter(x=>x.department===name&&x.org_role==='Specialist').length}));
+ const maximum=Math.max(1,...groups.map(x=>x.value));
+ for(const [index,group] of groups.entries()){
+  const row=document.createElement('div');row.className='hq-bar-row';row.title=group.name+' · '+group.value+' specialists';
+  const label=document.createElement('span');label.className='name';label.textContent=group.name;
+  const track=document.createElement('div');track.className='hq-bar-track';
+  const bar=document.createElement('div');bar.className='hq-bar-fill';
+  bar.style.width=(group.value/maximum*100)+'%';bar.style.setProperty('--bar-color',colors[index%colors.length]);
+  track.append(bar);
+  const value=document.createElement('strong');value.textContent=String(group.value);
+  row.append(label,track,value);root.append(row);
+ }
+ const avatars=$('hqHeroAvatars');avatars.textContent='';
+ for(const director of staff.filter(x=>x.org_role==='Director').slice(0,5)){
+  const holder=document.createElement('div');holder.innerHTML=staffPortrait(director);
+  const avatar=holder.firstElementChild;if(avatar){avatar.title=director.name;avatars.append(avatar)}
+ }
+}
+function renderLeadershipSpotlight(staff){
+ const node=$('hqStaff');node.textContent='';
+ const directors=staff.filter(p=>p.org_role==='Director');
+ if(!directors.length){node.textContent='No Directors configured yet';return}
+ for(const director of directors){
+  const card=document.createElement('div');card.className='hq-leader';
+  const holder=document.createElement('div');holder.innerHTML=staffPortrait(director);
+  const image=holder.firstElementChild;if(image)card.append(image);
+  const name=document.createElement('strong');name.textContent=director.name;
+  const dept=document.createElement('small');dept.textContent=director.department;
+  card.append(name,dept);node.append(card);
+ }
+}
+
+function render(){const s=state.staff,t=state.tasks,l=state.lessons;$('kStaff').textContent=s.length;$('kOpen').textContent=t.filter(x=>x.status!=='Completed').length;$('kApproval').textContent=t.filter(x=>x.status==='For approval').length;$('kLessons').textContent=academyTotal===null?l.length:academyTotal;renderLeadershipSpotlight(s);renderOfficeCharts(s,t);renderWorkforceHierarchy(s);
 const taskrow=x=>`<div class="item"><div><strong>${esc(x.title)}</strong><small>${esc(s.find(z=>z.id===x.assignee)?.name||'Unassigned')} · ${esc(x.status)}</small></div></div>`;$('hqTasks').innerHTML=t.length?t.slice(0,5).map(taskrow).join(''):'<p>No tasks yet.</p>';
 const assigneeSelect=$('assignee'),currentAssignee=assigneeSelect.value;
 assigneeSelect.textContent='';
