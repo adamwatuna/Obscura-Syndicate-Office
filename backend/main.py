@@ -55,7 +55,7 @@ def me(req:Request):return {'authenticated':req.session.get('authorized') is Tru
 def office():
     with connect() as db:
         result = {'staff': [dict(x) for x in db.execute(
-            'SELECT id,name,role,department,status,org_role,manager_id,delegation_permission FROM staff ORDER BY department,name')]}
+            'SELECT id,name,role,department,status,org_role,manager_id,delegation_permission,portrait_slot FROM staff ORDER BY department,name')]}
         for table in ('tasks', 'lessons', 'audit'):
             result[table] = [dict(x) for x in db.execute(
                 'SELECT * FROM '+table+' ORDER BY created DESC, id DESC')]
