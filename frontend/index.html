@@ -681,11 +681,245 @@ $('monthlyTemplateForm').addEventListener('submit',async e=>{
   }catch(e){msg(e.message)}finally{btn.disabled=false}
 });
 
+
+let socialState={providers:[],accounts:[],grants:[],posts:[]};
+let socialApprovedRuns=[];
+let socialEditingPost=null;
+const socialEl=(tag,value,cls)=>{
+  const node=document.createElement(tag);
+  if(value!==undefined)node.textContent=value;
+  if(cls)node.className=cls;
+  return node;
+};
+function socialAppendOption(select,value,label){
+  const option=document.createElement('option');option.value=value;option.textContent=label;select.append(option);
+}
+function socialSetOptions(id,rows,labelFn,emptyText){
+  const select=$(id),previous=select.value;
+  select.textContent='';
+  socialAppendOption(select,'',emptyText);
+  for(const row of rows)socialAppendOption(select,row.id,labelFn(row));
+  if([...select.options].some(x=>x.value===previous))select.value=previous;
+}
+async function connectSocial(provider){
+  try{
+    const result=await api('social/oauth/'+encodeURIComponent(provider)+'/start',{method:'POST'});
+    if(!result.authorization_url)throw Error('No OAuth authorization URL returned');
+    window.location.assign(result.authorization_url);
+  }catch(err){msg(err.message)}
+}
+async function disconnectSocial(id,name){
+  if(!confirm('Disconnect '+name+'? All staff access grants will be revoked and unpublished social drafts cancelled.'))return;
+  try{
+    await api('social/accounts/'+encodeURIComponent(id),{method:'DELETE'});
+    await loadSocial();msg('Social account disconnected; publishing permissions revoked');
+  }catch(err){msg(err.message)}
+}
+function updateSocialGrantMode(){
+  const staff=$('socialGrantStaff').value,accountId=$('socialGrantAccount').value;
+  const account=socialState.accounts.find(a=>a.id===accountId);
+  const grant=socialState.grants.find(g=>g.staff_id===staff&&g.account_id===accountId);
+  $('socialGrantMode').value=grant?.mode||'off';
+  const supported=Boolean(account?.publishing_supported);
+  for(const option of $('socialGrantMode').options){
+    option.disabled=!supported&&option.value!=='off';
+  }
+  if(!supported)$('socialGrantMode').value='off';
+}
+function renderSocialProviders(){
+  const root=$('integrationList');root.textContent='';
+  for(const provider of socialState.providers){
+    const card=socialEl('div',undefined,'person');
+    card.append(socialEl('strong',provider.name));
+    const connected=socialState.accounts.filter(a=>a.provider===provider.id).length;
+    const message=provider.configured?
+      (connected?connected+' account(s) connected':'OAuth ready for CEO connection'):
+      'Requires provider app credentials and encryption key on Railway';
+    const status=socialEl('p',message,provider.configured?'social-status ready':'social-status warning');
+    card.append(status);
+    const button=socialEl('button',connected?'Connect another account':'Connect via OAuth','secondary');
+    button.type='button';button.disabled=!provider.configured;
+    button.onclick=()=>connectSocial(provider.id);
+    card.append(button);
+    if(!provider.publishing_available){
+      card.append(socialEl('p','Connection supported · media publishing not yet enabled','muted'));
+    }
+    if(provider.callback){
+      const note=socialEl('p','OAuth redirect: '+provider.callback,'muted');
+      note.style.overflowWrap='anywhere';card.append(note);
+    }
+    root.append(card);
+  }
+}
+function renderSocialAccounts(){
+  const root=$('socialAccountList');root.textContent='';
+  if(!socialState.accounts.length){root.append(socialEl('p','No accounts connected yet.','muted'));return}
+  for(const a of socialState.accounts){
+    const card=socialEl('div',undefined,'item');
+    const details=socialEl('div');
+    details.append(socialEl('strong',a.display_name));
+    details.append(socialEl('small',a.platform+' · '+(a.publishing_supported?'Publishing API implemented':'Connect only')+' · Token: '+a.token_status));
+    const disconnect=socialEl('button','Disconnect','secondary');
+    disconnect.type='button';
+    disconnect.onclick=()=>disconnectSocial(a.id,a.display_name);
+    card.append(details,disconnect);root.append(card);
+  }
+}
+function renderSocialGrants(){
+  const root=$('socialGrantList');root.textContent='';
+  const granted=socialState.grants.filter(g=>g.mode!=='off');
+  if(!granted.length){root.append(socialEl('p','All AI staff publishing permissions are OFF.','muted'));return}
+  for(const g of granted){
+    const a=socialState.accounts.find(x=>x.id===g.account_id);
+    if(!a)continue;
+    const row=socialEl('div',undefined,'item');
+    const label=socialEl('div');
+    label.append(socialEl('strong',g.staff_name+' · '+a.display_name));
+    label.append(socialEl('small',g.mode==='direct_publish'?'Direct publish authorized':'CEO approval required'));
+    const revoke=socialEl('button','Revoke','secondary');
+    revoke.type='button';
+    revoke.onclick=async()=>{
+      if(!confirm('Revoke '+g.staff_name+' publishing access to '+a.display_name+'?'))return;
+      try{
+        await api('social/grants',{method:'POST',body:JSON.stringify({
+          staff_id:g.staff_id,account_id:g.account_id,mode:'off'})});
+        await loadSocial();msg('Publish permission revoked');
+      }catch(e){msg(e.message)}
+    };
+    row.append(label,revoke);root.append(row);
+  }
+}
+function renderSocialPosts(){
+  const root=$('socialPostList');root.textContent='';
+  if(!socialState.posts.length){root.append(socialEl('p','No social publishing drafts or posts yet.','muted'));return}
+  for(const post of socialState.posts){
+    const row=socialEl('div',undefined,'social-post');
+    row.append(socialEl('strong',post.account_name+' · '+(post.staff_name||'Former staff')));
+    const timestamp=post.created_at?new Date(post.created_at).toLocaleString('en-MY',{
+      dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Kuala_Lumpur'}):'';
+    const meta=socialEl('div',post.platform+' · '+post.status+' · '+timestamp,'social-status');
+    if(post.status==='Needs verification')meta.classList.add('warning');
+    row.append(meta);
+    row.append(socialEl('pre',post.caption));
+    if(post.media_url)row.append(socialEl('p','Image URL: '+post.media_url,'muted'));
+    if(post.error)row.append(socialEl('p',post.error,'social-status warning'));
+    if(post.platform_post_id)row.append(socialEl('p','Provider post ID: '+post.platform_post_id,'muted'));
+    const actions=socialEl('div',undefined,'social-actions');
+    const makeAction=(label,func,css='secondary')=>{
+      const button=socialEl('button',label,css);button.type='button';button.onclick=func;actions.append(button);
+    };
+    if(['Pending approval','Ready'].includes(post.status)){
+      makeAction('Edit draft',()=>editSocialPost(post.id));
+      makeAction('Reject',()=>socialPostAction(post.id,'reject'));
+    }
+    if(post.status==='Pending approval'){
+      makeAction('Approve',()=>socialPostAction(post.id,'approve'),'primary');
+    }
+    if(post.status==='Ready'){
+      makeAction('Publish now',()=>socialPostAction(post.id,'publish'),'primary');
+    }
+    row.append(actions);root.append(row);
+  }
+}
+async function socialPostAction(id,action){
+  const item=socialState.posts.find(x=>x.id===id);
+  if(!item)return;
+  const instruction=action==='publish'?'PUBLISH THIS POST PUBLICLY to '+item.account_name+'? This is an irreversible external action.'
+    :action==='approve'?'Approve this post for publishing to '+item.account_name+'?':'Reject this social draft?';
+  if(!confirm(instruction))return;
+  try{
+    await api('social/posts/'+encodeURIComponent(id)+'/'+action,{method:'POST'});
+    await loadSocial();
+    msg(action==='publish'?'Publish result recorded':'Social draft '+action+'d');
+  }catch(err){msg(err.message);await loadSocial()}
+}
+function cancelSocialDraft(){
+  socialEditingPost=null;
+  const form=$('socialDraftForm');form.reset();
+  $('socialPostStaff').disabled=false;
+  $('socialPostAccount').disabled=false;
+  $('socialDraftSave').textContent='Save social draft';
+}
+function editSocialPost(id){
+  const item=socialState.posts.find(x=>x.id===id);
+  if(!item)return;
+  socialEditingPost=id;
+  $('socialPostStaff').value=item.staff_id;
+  $('socialPostAccount').value=item.account_id;
+  $('socialPostStaff').disabled=true;
+  $('socialPostAccount').disabled=true;
+  $('socialPostCaption').value=item.caption;
+  $('socialPostMedia').value=item.media_url||'';
+  $('socialDraftSave').textContent='Save draft changes';
+  $('socialDraftForm').scrollIntoView({behavior:'smooth',block:'start'});
+}
+async function loadSocial(){
+  try{
+    socialState=await api('social/status');
+    const approved=await api('social/approved-runs');
+    socialApprovedRuns=approved.runs||[];
+    renderSocialProviders();
+    renderSocialAccounts();
+    socialSetOptions('socialGrantStaff',state.staff,x=>x.name+' · '+x.role,'Choose AI staff');
+    socialSetOptions('socialPostStaff',state.staff,x=>x.name+' · '+x.role,'Choose AI staff');
+    socialSetOptions('socialGrantAccount',socialState.accounts,
+      x=>x.platform.toUpperCase()+' · '+x.display_name,'Choose connected account');
+    socialSetOptions('socialPostAccount',socialState.accounts.filter(x=>x.publishing_supported),
+      x=>x.platform.toUpperCase()+' · '+x.display_name,'Choose publishable account');
+    socialSetOptions('socialApprovedRun',socialApprovedRuns,
+      x=>x.staff_name+' · '+x.task_title,'Use CEO-approved AI deliverable');
+    updateSocialGrantMode();
+    renderSocialGrants();renderSocialPosts();
+  }catch(e){$('socialOAuthNotice').textContent='Social integration unavailable: '+e.message}
+}
+$('socialGrantStaff').addEventListener('change',updateSocialGrantMode);
+$('socialGrantAccount').addEventListener('change',updateSocialGrantMode);
+$('socialGrantForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const staff_id=$('socialGrantStaff').value;
+  const account_id=$('socialGrantAccount').value;
+  const mode=$('socialGrantMode').value;
+  if(!staff_id||!account_id)return;
+  if(mode==='direct_publish'&&!confirm('Allow this AI staff to publish on this specific social account without per-post approval? Revoke anytime.'))return;
+  try{
+    await api('social/grants',{method:'POST',
+      body:JSON.stringify({staff_id,account_id,mode})});
+    await loadSocial();msg('Staff publishing permission saved');
+  }catch(err){msg(err.message)}
+});
+$('socialDraftForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const caption=$('socialPostCaption').value.trim();
+  const media_url=$('socialPostMedia').value.trim()||null;
+  const staff_id=$('socialPostStaff').value,account_id=$('socialPostAccount').value;
+  if(!caption||!staff_id||!account_id)return;
+  const button=$('socialDraftSave');button.disabled=true;
+  try{
+    const isEditing=Boolean(socialEditingPost);
+    await api(isEditing?'social/posts/'+encodeURIComponent(socialEditingPost):'social/posts',{
+      method:isEditing?'PUT':'POST',
+      body:JSON.stringify(isEditing?{caption,media_url}:{staff_id,account_id,caption,media_url})
+    });
+    cancelSocialDraft();await loadSocial();msg('Social draft saved · not published');
+  }catch(err){msg(err.message)}finally{button.disabled=false}
+});
+async function createSocialFromRun(){
+  const run_id=$('socialApprovedRun').value,account_id=$('socialPostAccount').value;
+  if(!run_id||!account_id){msg('Choose an approved AI result and social account first');return}
+  if(!confirm('Import this approved AI work as an unpublished social draft?'))return;
+  try{
+    await api('social/posts/from-run',{method:'POST',body:JSON.stringify({
+      run_id,account_id,media_url:$('socialPostMedia').value.trim()||null
+    })});
+    await loadSocial();msg('AI deliverable imported as social draft; review before publishing');
+  }catch(err){msg(err.message)}
+}
+
 async function refresh(){state=await api('office');render();renderDirectorSelect()}
 async function updateTask(id,status){try{await api('tasks/'+id,{method:'PATCH',body:JSON.stringify({status})});await refresh();msg('Task updated')}catch(e){msg(e.message);await refresh()}}
-$('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){show(b.dataset.view);if(b.dataset.view==='hq')loadNewsBriefings()}});
+$('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){show(b.dataset.view);if(b.dataset.view==='hq')loadNewsBriefings();if(b.dataset.view==='integrations')loadSocial()}});
 $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').textContent='';try{await api('login',{method:'POST',body:JSON.stringify({password:$('password').value})});$('password').value='';await enter()}catch(err){$('loginError').textContent=err.message}});
-async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await loadMeita();await loadMemory();await loadRuns();await loadDelegations();await loadDirectorPlans();$('monthlyPeriod').value=malaysiaPeriod();await loadMonthly();await loadNewsBriefings()}catch(e){msg(e.message)}}
+async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await loadMeita();await loadMemory();await loadRuns();await loadDelegations();await loadDirectorPlans();$('monthlyPeriod').value=malaysiaPeriod();await loadMonthly();await loadNewsBriefings();await loadSocial();const integ=new URLSearchParams(window.location.search).get('integration');if(integ){msg(integ==='connected'?'Social account authorized. Configure staff permissions below.': 'OAuth connection not completed');window.history.replaceState(null,'',window.location.pathname)}}catch(e){msg(e.message)}}
 $('logout').onclick=async()=>{await api('logout',{method:'POST'});location.reload()};
 for(const [form,path] of [['newLessonForm','lessons']])$(form).addEventListener('submit',async e=>{e.preventDefault();const body=Object.fromEntries(new FormData(e.target));try{await api(path,{method:'POST',body:JSON.stringify(body)});e.target.reset();e.target.closest('.card').classList.add('hidden');await refresh();msg('Saved successfully')}catch(err){msg(err.message)}});
 $('today').textContent=new Date().toLocaleDateString('en-MY',{weekday:'long',day:'numeric',month:'long',year:'numeric'});api('me').then(x=>{if(x.authenticated)enter()}).catch(()=>{});
