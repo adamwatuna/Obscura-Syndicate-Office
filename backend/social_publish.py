@@ -20,9 +20,10 @@ def _clean_media(url):
             raise ValueError()
         try:
             ipaddress.ip_address(parsed.hostname)
+        except ValueError:
+            pass  # Public DNS hostnames are allowed; literal IPs are not.
+        else:
             raise ValueError()
-        except ValueError as exc:
-            if str(exc):raise
         if len(url)>1800:raise ValueError()
     except Exception:
         raise HTTPException(400,"Media must be a publicly reachable HTTPS URL on a verified host")
@@ -108,7 +109,9 @@ def claim(db,ident):
     if account["token_expires_at"] and account["token_expires_at"]<datetime.now(timezone.utc):
         raise HTTPException(409,"Social account token has expired; reconnect first")
     db.execute("UPDATE social_posts SET status='Publishing',updated_at=NOW() WHERE id=%s",(ident,))
-    return dict(post),social.decrypt(account["access_token_cipher"])
+    claimed=dict(post)
+    claimed["external_id"]=account["external_id"]
+    return claimed,social.decrypt(account["access_token_cipher"])
 
 def _form(url,data):
     request=urllib.request.Request(
@@ -130,7 +133,7 @@ def _form(url,data):
 
 def send(post,token):
     if post["platform"]=="facebook":
-        result=_form(f"{social.GRAPH}/{urllib.parse.quote(post['platform_external_id'] if 'platform_external_id' in post else post['external_id'])}/feed",
+        result=_form(f"{social.GRAPH}/{urllib.parse.quote(post['external_id'])}/feed",
                      {"message":post["caption"],"access_token":token})
         result_id=result.get("id")
         if not result_id:raise HTTPException(502,"Facebook did not confirm a post ID")
