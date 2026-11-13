@@ -25,7 +25,6 @@ class ExecutiveHQDashboardTests(unittest.TestCase):
 
     def test_graphs_use_task_timestamps_and_real_execution_status(self):
         source=(Path(__file__).resolve().parents[1]/"frontend"/"index.html").read_text()
-        self.assertIn("h q", "h q") if False else None
         self.assertIn("hqDateMalaysia(task.created)",source)
         self.assertIn("timeZone:'Asia/Kuala_Lumpur'",source)
         self.assertIn("tasks.filter(t=>t.status==='For approval')",source)
