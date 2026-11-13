@@ -181,6 +181,13 @@ def execute(task,staff):
     try:
         with dbconn() as db:
             init(db)
+            # A CEO may abandon/remove a task while its request is in flight.
+            # Never publish a new deliverable for work the CEO has cancelled.
+            task_row=db.execute("""SELECT status,deleted_at FROM tasks
+                WHERE id=%s FOR UPDATE""",(task["id"],)).fetchone()
+            if task_row and (task_row["status"]=="Abandoned"
+                             or task_row["deleted_at"] is not None):
+                raise HTTPException(409,"AI task was abandoned by CEO; result not published")
             db.execute("""INSERT INTO workforce_runs
                 (id,task_id,task_title,staff_id,staff_name,model,result,status,
                  web_searched,searched_at,sources)
