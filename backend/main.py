@@ -26,6 +26,7 @@ from backend import academy as office_academy
 from backend import finance_planning
 from backend import ai_provider
 from backend import ceo_security
+from backend import deliverables as staff_deliverables
 
 ROOT=Path(__file__).resolve().parent.parent
 PASSWORD=os.environ.get('CEO_PASSWORD')
@@ -741,6 +742,62 @@ def delete_memory(ident:str):
     with connect() as db: audit(db,'memory.deleted',ident)
     return result
 
+
+
+@app.get('/api/deliverables',dependencies=[Depends(guard)])
+def delivery_inbox():
+    with connect() as db:
+        return staff_deliverables.list_deliverables(db)
+
+@app.get('/api/deliverables/{ident}',dependencies=[Depends(guard)])
+def delivery_details(ident:str):
+    with connect() as db:
+        return staff_deliverables.get_deliverable(db,ident)
+
+@app.post('/api/deliverables/{ident}/files',dependencies=[Depends(guard)])
+async def upload_delivery_file(ident:str,file:UploadFile=File(...)):
+    """CEO attaches an actual completed output to an existing AI run."""
+    if file.size is not None and file.size>staff_deliverables.MAX_ASSET_BYTES:
+        raise HTTPException(413,"Output file exceeds 20 MB")
+    data=await file.read(staff_deliverables.MAX_ASSET_BYTES+1)
+    await file.close()
+    def store():
+        with connect() as db:
+            result=staff_deliverables.save_asset(db,ident,file.filename or "output-file",data)
+            audit(db,'deliverable.file.attached',ident+" · "+result["id"])
+            return result
+    return await run_in_threadpool(store)
+
+@app.get('/api/deliverables/{ident}/files/{asset_id}',dependencies=[Depends(guard)])
+def download_delivery_file(ident:str,asset_id:str):
+    with connect() as db:
+        row=staff_deliverables.get_asset(db,ident,asset_id)
+    name=row["filename"]
+    # The filename stored in the database is sanitized on upload and cannot
+    # inject response headers. Browsers still get a forced attachment.
+    from urllib.parse import quote as url_quote
+    return Response(content=bytes(row["content"]),media_type=row["media_type"],
+       headers={"Content-Disposition":"attachment; filename*=UTF-8''"+url_quote(name,safe=""),
+                "X-Content-Type-Options":"nosniff","Cache-Control":"private, no-store"})
+
+@app.get('/api/deliverables/{ident}/report.txt',dependencies=[Depends(guard)])
+def download_delivery_report(ident:str):
+    with connect() as db:
+        report=staff_deliverables.get_deliverable(db,ident)
+    text=report["task_title"]+"\nStaff: "+report["staff_name"]+"\nStatus: "+report["status"]+"\n\n"+report["result"]
+    return Response(content=text,media_type="text/plain; charset=utf-8",
+        headers={"Content-Disposition":"attachment; filename=AI-Staff-Report.txt",
+                 "Cache-Control":"private, no-store"})
+
+@app.get('/api/deliverables/{ident}/presentation.pptx',dependencies=[Depends(guard)])
+def download_delivery_presentation(ident:str):
+    with connect() as db:
+        report=staff_deliverables.get_deliverable(db,ident)
+    deck=staff_deliverables.presentation(report)
+    return StreamingResponse(deck,
+        media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        headers={"Content-Disposition":"attachment; filename=AI-Staff-Delivery.pptx",
+                 "Cache-Control":"private, no-store"})
 
 @app.get('/api/workforce/runs',dependencies=[Depends(guard)])
 def workforce_runs():
