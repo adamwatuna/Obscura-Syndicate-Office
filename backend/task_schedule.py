@@ -42,6 +42,7 @@ def setup(db):
     db.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS recurrence TEXT NOT NULL DEFAULT 'None'")
     db.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS series_id TEXT")
     db.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS occurrence_date DATE")
+    db.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS ai_run_started BOOLEAN NOT NULL DEFAULT FALSE")
     db.execute("""CREATE TABLE IF NOT EXISTS task_series (
         id TEXT PRIMARY KEY, origin_task_id TEXT NOT NULL,
         title TEXT NOT NULL,description TEXT NOT NULL DEFAULT '',
@@ -94,8 +95,8 @@ def update(db,task_id,body):
     due=validate(body)
     row=db.execute("SELECT * FROM tasks WHERE id=%s FOR UPDATE",(task_id,)).fetchone()
     if not row:raise HTTPException(404,"Task not found")
-    if row["status"] in ("For approval","Completed","In progress"):
-        raise HTTPException(409,"Task is already in progress or reviewed; editing is locked")
+    if row["status"] in ("For approval","Completed") or row["ai_run_started"]:
+        raise HTTPException(409,"AI execution already started or task reviewed; editing is locked")
     if db.execute("SELECT to_regclass('public.workforce_runs') AS table_name").fetchone()["table_name"]:
         if db.execute("SELECT 1 FROM workforce_runs WHERE task_id=%s LIMIT 1",(task_id,)).fetchone():
             raise HTTPException(409,"AI has already generated output for this task")
