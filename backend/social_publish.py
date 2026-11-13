@@ -114,6 +114,7 @@ def claim(db,ident):
     db.execute("UPDATE social_posts SET status='Publishing',updated_at=NOW() WHERE id=%s",(ident,))
     claimed=dict(post)
     claimed["external_id"]=account["external_id"]
+    claimed["provider"]=account["provider"]
     return claimed,social.decrypt(account["access_token_cipher"])
 
 def _form(url,data):
@@ -142,11 +143,15 @@ def send(post,token):
         if not result_id:raise HTTPException(502,"Facebook did not confirm a post ID")
         return str(result_id)
     if post["platform"]=="instagram":
-        result=_form(f"{social.GRAPH}/{urllib.parse.quote(post['external_id'])}/media",
+        # Direct Instagram Login tokens must use graph.instagram.com,
+        # while older Page-linked Instagram tokens use graph.facebook.com.
+        api=(social.INSTAGRAM_GRAPH if post.get("provider")=="instagram"
+             else social.GRAPH)
+        result=_form(f"{api}/{urllib.parse.quote(post['external_id'])}/media",
                      {"caption":post["caption"],"image_url":post["media_url"],"access_token":token})
         creation=result.get("id")
         if not creation:raise HTTPException(502,"Instagram did not create a media container")
-        published=_form(f"{social.GRAPH}/{urllib.parse.quote(post['external_id'])}/media_publish",
+        published=_form(f"{api}/{urllib.parse.quote(post['external_id'])}/media_publish",
                         {"creation_id":creation,"access_token":token})
         result_id=published.get("id")
         if not result_id:raise HTTPException(502,"Instagram did not confirm media publication")
