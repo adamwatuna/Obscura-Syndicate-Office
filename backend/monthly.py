@@ -12,6 +12,7 @@ from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
+from backend import task_schedule
 from pydantic import BaseModel, Field
 
 logger=logging.getLogger("office.monthly")
@@ -191,9 +192,10 @@ def generate_month(db,period=None):
         brief=row["brief"].replace("{region}",focus)
         due=date(year,month,min(int(row["due_day"]),calendar.monthrange(year,month)[1]))
         task_id=secrets.token_hex(12)
-        db.execute("""INSERT INTO tasks(id,title,assignee,status,created)
-            VALUES (%s,%s,%s,'To do',%s)""",
-            (task_id,f"{period} · {title}",row["director_id"],int(time.time())))
+        db.execute("""INSERT INTO tasks
+            (id,title,description,assignee,status,priority,due_date,recurrence,created)
+            VALUES (%s,%s,%s,%s,'To do','Normal',%s,'Monthly',%s)""",
+            (task_id,f"{period} · {title}",brief,row["director_id"],due,int(time.time())))
         db.execute("""INSERT INTO monthly_assignments
             (template_key,period,task_id,director_id,due_date,brief)
             VALUES (%s,%s,%s,%s,%s,%s)""",
@@ -248,5 +250,6 @@ async def monthly_clock(open_db):
         try:
             with open_db() as db:
                 generate_month(db)
+                task_schedule.generate_due(db)
         except Exception:
             logger.exception("Scheduled director monthly task generation failed")
