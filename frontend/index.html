@@ -126,6 +126,27 @@ function editOfficeTask(id){
   $('taskSave').textContent='Save task changes';
   toggleDueRequirement();
 }
+async function removeOfficeTask(id){
+  const task=state.tasks.find(t=>t.id===id);
+  if(!task)return;
+  if(task.ai_run_started||['For approval','Completed'].includes(task.status)){
+    msg('Task cannot be removed after AI execution');return;
+  }
+  const type=task.is_monthly
+    ? 'This removes the current monthly assignment only. Next month will still be scheduled.'
+    : task.series_id&&task.is_series_origin
+      ? 'This also stops future recurring assignments.'
+      : task.series_id?'Only this occurrence will be removed. Future recurring tasks remain scheduled.':'This task will disappear from your active Task Centre.';
+  if(!confirm('Remove task: '+task.title+'?\n\n'+type+'\n\nAI work and other historical records will be preserved.'))return;
+  try{
+    const response=await api('tasks/'+encodeURIComponent(id),{method:'DELETE'});
+    if(editingTaskId===id)cancelOfficeTask();
+    await refresh();
+    await loadMonthly();
+    msg(response.recurrence_stopped?'Task removed; future recurrence stopped':'Task removed');
+  }catch(err){msg(err.message)}
+}
+
 function renderOfficeTasks(tasks,staff){
   const box=$('taskList');
   const urgency={Urgent:0,High:1,Normal:2,Low:3};
@@ -146,6 +167,7 @@ function renderOfficeTasks(tasks,staff){
       '<span>'+esc(staff.find(x=>x.id===t.assignee)?.name||'Unassigned')+'</span></div></div>'+
       '<div class="task-actions">'+
       (canEdit?'<button class="secondary" onclick="editOfficeTask(\''+esc(t.id)+'\')">Edit</button>':'')+
+      (canEdit?'<button class="secondary" onclick="removeOfficeTask(\''+esc(t.id)+'\')">Remove</button>':'')+
       '<select style="max-width:155px" aria-label="Task status" onchange="updateTask(\''+esc(t.id)+'\',this.value)">'+statusOptions+'</select>'+
       (canEdit&&t.assignee&&t.description?.trim()?'<button class="primary" onclick="runStaffTask(\''+esc(t.id)+'\',this)">Run AI</button>':'')+
       '</div></div></div>';
@@ -462,12 +484,17 @@ async function loadMonthly(){
         item.append(mNode('small','Due '+due+' · '+(task.status||'Unknown'),'muted'));
         const p=mNode('p',task.brief||'');p.style.fontSize='12px';item.append(p);
         const actions=mNode('div',undefined,'task-actions');
-        const locked=['Completed','For approval'].includes(task.status);
+        const record=state.tasks.find(t=>t.id===task.task_id);
+        const locked=['Completed','For approval'].includes(task.status)||Boolean(record?.ai_run_started);
         if(!locked){
           const edit=mNode('button','Edit task','secondary');
           edit.type='button';
           edit.onclick=()=>{show('tasks');editOfficeTask(task.task_id)};
           actions.append(edit);
+          const removal=mNode('button','Remove','secondary');
+          removal.type='button';
+          removal.onclick=()=>removeOfficeTask(task.task_id);
+          actions.append(removal);
           if(state.tasks.some(t=>t.id===task.task_id&&t.assignee&&t.description&&!t.ai_run_started)){
             const run=mNode('button','Run AI','primary');
             run.type='button';

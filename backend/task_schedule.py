@@ -43,6 +43,7 @@ def setup(db):
     db.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS series_id TEXT")
     db.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS occurrence_date DATE")
     db.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS ai_run_started BOOLEAN NOT NULL DEFAULT FALSE")
+    db.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ")
     db.execute("""CREATE TABLE IF NOT EXISTS task_series (
         id TEXT PRIMARY KEY, origin_task_id TEXT NOT NULL,
         title TEXT NOT NULL,description TEXT NOT NULL DEFAULT '',
@@ -95,6 +96,8 @@ def update(db,task_id,body):
     due=validate(body)
     row=db.execute("SELECT * FROM tasks WHERE id=%s FOR UPDATE",(task_id,)).fetchone()
     if not row:raise HTTPException(404,"Task not found")
+    if row["deleted_at"] is not None:
+        raise HTTPException(404,"Task has been removed")
     if row["status"] in ("For approval","Completed") or row["ai_run_started"]:
         raise HTTPException(409,"AI execution already started or task reviewed; editing is locked")
     if db.execute("SELECT to_regclass('public.workforce_runs') AS table_name").fetchone()["table_name"]:
@@ -176,3 +179,32 @@ def generate_due(db,today=None,limit=120):
             due=next_date(due,row["frequency"],row["anchor_day"])
         db.execute("UPDATE task_series SET next_due_date=%s WHERE id=%s",(due,row["id"]))
     return {"created":created}
+
+def remove(db,task_id):
+    """Soft-remove a task before execution; preserve audit and recurring history.
+
+    - A monthly workplan task is hidden for this month but its recurring template
+      remains active next month.
+    - Deleting the origin of a manually scheduled recurring task stops its series.
+    - Deleting one generated occurrence leaves its series running normally.
+    """
+    row=db.execute("SELECT * FROM tasks WHERE id=%s FOR UPDATE",(task_id,)).fetchone()
+    if not row or row["deleted_at"] is not None:
+        raise HTTPException(404,"Task not found")
+    if row["ai_run_started"] or row["status"] in ("For approval","Completed"):
+        raise HTTPException(409,"Cannot remove a task after AI execution or final review")
+    # Cover tasks executed before ai_run_started was introduced.
+    if db.execute("SELECT to_regclass('public.workforce_runs') AS t").fetchone()["t"]:
+        historic=db.execute("SELECT 1 FROM workforce_runs WHERE task_id=%s LIMIT 1",
+                            (task_id,)).fetchone()
+        if historic:
+            raise HTTPException(409,"Cannot remove a task with an AI deliverable")
+    stopped=False
+    if row["series_id"]:
+        series=db.execute("SELECT origin_task_id FROM task_series WHERE id=%s FOR UPDATE",
+                          (row["series_id"],)).fetchone()
+        if series and series["origin_task_id"]==task_id:
+            db.execute("UPDATE task_series SET enabled=FALSE WHERE id=%s",(row["series_id"],))
+            stopped=True
+    db.execute("UPDATE tasks SET deleted_at=NOW() WHERE id=%s",(task_id,))
+    return {"ok":True,"removed_task_id":task_id,"recurrence_stopped":stopped}

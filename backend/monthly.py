@@ -221,7 +221,7 @@ def summary(db,period=None):
         a.brief,a.template_key,t.title,t.status,
         s.name AS director_name,s.department
         FROM monthly_assignments a
-        LEFT JOIN tasks t ON t.id=a.task_id
+        JOIN tasks t ON t.id=a.task_id AND t.deleted_at IS NULL
         LEFT JOIN staff s ON s.id=a.director_id
         WHERE a.period=%s
         ORDER BY a.due_date,s.department,t.title""",(period,)).fetchall()

@@ -81,8 +81,11 @@ def office():
         result = {'staff': [dict(x) for x in db.execute(
             'SELECT id,name,role,department,status,org_role,manager_id,delegation_permission,portrait_slot FROM staff ORDER BY department,name')]}
         result['tasks']=[dict(x) for x in db.execute("""SELECT t.*,
-            EXISTS(SELECT 1 FROM monthly_assignments m WHERE m.task_id=t.id) AS is_monthly
-            FROM tasks t ORDER BY created DESC,id DESC LIMIT 1000""")]
+            EXISTS(SELECT 1 FROM monthly_assignments m WHERE m.task_id=t.id) AS is_monthly,
+            EXISTS(SELECT 1 FROM task_series ts WHERE ts.origin_task_id=t.id
+                AND ts.id=t.series_id) AS is_series_origin
+            FROM tasks t WHERE t.deleted_at IS NULL
+            ORDER BY created DESC,id DESC LIMIT 1000""")]
         for table in ('lessons','audit'):
             result[table]=[dict(x) for x in db.execute(
                 'SELECT * FROM '+table+' ORDER BY created DESC,id DESC')]
@@ -172,11 +175,18 @@ def edit_task(ident:str,body:Task):
         audit(db,'task.updated',f'{ident}: {body.title}')
     return result
 
+@app.delete('/api/tasks/{ident}',dependencies=[Depends(guard)])
+def remove_task(ident:str):
+    with connect() as db:
+        result=task_schedule.remove(db,ident)
+        audit(db,'task.removed',f'{ident}: recurrence_stopped={result["recurrence_stopped"]}')
+    return result
+
 @app.patch('/api/tasks/{ident}',dependencies=[Depends(guard)])
 def update_task(ident:str,body:Status):
     if body.status not in ('To do','In progress','For approval','Completed'):raise HTTPException(400,'Invalid status')
     with connect() as db:
-        result=db.execute('UPDATE tasks SET status=%s WHERE id=%s',(body.status,ident))
+        result=db.execute('UPDATE tasks SET status=%s WHERE id=%s AND deleted_at IS NULL',(body.status,ident))
         if not result.rowcount:raise HTTPException(404,'Task not found')
         audit(db,'task.status',f'{ident}: {body.status}')
     return {'ok':True}
@@ -276,7 +286,8 @@ def workforce_runs():
 def workforce_run(task_id:str):
     with connect() as db:
         record=db.execute('SELECT * FROM tasks WHERE id=%s FOR UPDATE',(task_id,)).fetchone()
-        if record is None:raise HTTPException(404,'Task not found')
+        if record is None or record['deleted_at'] is not None:
+            raise HTTPException(404,'Task not found')
         if record['ai_run_started'] or record['status'] in ('For approval','Completed'):
             raise HTTPException(409,'AI task already started or completed')
         if not record['assignee']:
