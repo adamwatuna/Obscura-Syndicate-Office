@@ -32,10 +32,9 @@
 <div class="card" style="margin-top:20px"><div class="toolbar"><div><h3>Assigned Tasks</h3><p>Edit a task before Run AI. Sort by priority and nearest deadline.</p></div><button class="secondary" onclick="refresh()">Refresh tasks</button></div><div id="taskList"></div></div>
 <div class="card" style="margin-top:20px"><div class="toolbar"><div><h3>AI deliverables · CEO review</h3><p>Run an assigned task to generate an actual OpenAI deliverable. Results remain internal until approved.</p></div><button class="secondary" onclick="loadRuns()">Refresh results</button></div><div id="runList"><p>No AI deliverables yet.</p></div></div></section>
 <section class="view" id="monthly">
-<div class="toolbar"><div><h2>Monthly Director Workplan</h2><p>Recurring responsibilities for all nine Directors, with Malaysian regional focus and CEO oversight.</p></div><button class="secondary" onclick="loadMonthly()">Refresh</button></div>
+<div class="toolbar"><div><h2>Monthly Director Workplan</h2><p>Recurring responsibilities for all nine Directors, with flexible task descriptions and CEO oversight.</p></div><button class="secondary" onclick="loadMonthly()">Refresh</button></div>
 <div class="card" style="margin-top:20px"><div class="toolbar">
  <div><label for="monthlyPeriod">Reporting month</label><input type="month" id="monthlyPeriod" style="width:190px"></div>
- <div><div class="eyebrow">Regional focus</div><strong id="monthlyRegion">Loading…</strong></div>
  <div><div class="eyebrow">Completed</div><strong id="monthlyProgress">—</strong></div>
 </div>
 <div class="notice">Monthly assignments are created automatically. CEO chooses when to run AI and reviews all deliverables. Scheduling itself never makes OpenAI calls or takes external actions.</div>
@@ -49,7 +48,7 @@
 <label>Detailed instructions for AI Director</label><textarea id="mtBrief" rows="5" maxlength="3000" required></textarea>
 <div class="formgrid"><div><label>Due day (1–28)</label><input id="mtDue" type="number" min="1" max="28" required></div>
 <div><label>Schedule</label><select id="mtEnabled"><option value="true">Enabled</option><option value="false">Disabled</option></select></div></div>
-<p class="muted">Use {region} in titles and instructions for monthly regional focus. Changes apply to assignments not yet generated.</p>
+<p class="muted">Add a specific state, city or region to the task description only when needed. Changes to templates apply to future assignments.</p>
 <div class="task-actions"><button class="primary" id="mtSave" type="submit">Save template</button><button class="secondary" type="button" onclick="cancelMonthlyTemplate()">Cancel</button></div>
 </form></div></section>
 <section class="view" id="academy"><div class="toolbar"><div><h2>Learning Academy</h2><p>Register learning material and assign it to staff.</p></div><button class="primary" onclick="toggle('lessonForm')">+ Add learning source</button></div><div class="notice">YouTube and website links are saved as references. Transcription, ingestion, PDF processing and AI learning are not yet implemented. No staff receives automatic knowledge access.</div><div id="lessonForm" class="card hidden"><form id="newLessonForm"><div class="formgrid"><div><label>Title</label><input name="title" required></div><div><label>Source type</label><select name="kind"><option>YouTube link</option><option>Website link</option><option>Note</option></select></div><div class="wide"><label>URL or note</label><textarea name="source" required></textarea></div><div class="wide"><label>Assigned staff / department (reference only)</label><input name="assigned" placeholder="e.g. Creative"></div></div><div style="height:15px"></div><button class="primary">Register source</button></form></div><div class="card" style="margin-top:20px" id="lessonList"></div></section>
@@ -463,7 +462,6 @@ async function loadMonthly(){
   try{
     const period=$('monthlyPeriod').value||malaysiaPeriod();
     monthlyData=await api('monthly?period='+encodeURIComponent(period));
-    $('monthlyRegion').textContent=monthlyData.region_focus||'—';
     $('monthlyProgress').textContent=(monthlyData.completed||0)+' / '+(monthlyData.total||0)+' completed';
     root.textContent='';
     const groups=new Map();
