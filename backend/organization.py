@@ -198,7 +198,9 @@ def _extract_plan(data,staff):
     valid={x["id"]:x for x in staff}
     jobs=[]
     for item in parsed["jobs"]:
-        if not isinstance(item,dict) or item.get("staff_id") not in valid:
+        if (not isinstance(item,dict) or
+            not isinstance(item.get("staff_id"),str) or
+            item["staff_id"] not in valid):
             raise HTTPException(502,"Director attempted an out-of-department assignment")
         title=item.get("title");brief=item.get("brief")
         if not isinstance(title,str) or not 4<=len(title.strip())<=200:
