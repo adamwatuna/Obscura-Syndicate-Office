@@ -42,6 +42,11 @@ class MeitaChatDelegationTests(unittest.TestCase):
 
     def tearDown(self):
         with office_db.connect() as db:
+            db.execute("""DELETE FROM tasks WHERE id IN (
+                SELECT j.task_id FROM coo_jobs j JOIN coo_proposals p
+                  ON p.id=j.proposal_id
+                WHERE p.chat_message_id>%s AND j.task_id IS NOT NULL)""",
+                (self.base,))
             db.execute("""DELETE FROM coo_jobs WHERE proposal_id IN
                 (SELECT id FROM coo_proposals WHERE chat_message_id>%s)""",
                 (self.base,))
