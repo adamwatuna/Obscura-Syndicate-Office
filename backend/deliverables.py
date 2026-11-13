@@ -28,6 +28,9 @@ KIND={
  "pptx":"presentation","pdf":"document","docx":"document",
 }
 
+from backend import schema_state
+
+@schema_state.bootstrap_only
 def init(db):
     db.execute("""CREATE TABLE IF NOT EXISTS workforce_assets (
         id TEXT PRIMARY KEY,
