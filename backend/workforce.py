@@ -4,6 +4,7 @@ from urllib.parse import urlsplit
 from psycopg.types.json import Jsonb
 import psycopg
 from psycopg.rows import dict_row
+from backend import ai_provider
 from fastapi import HTTPException
 from backend import references as office_references
 from backend import academy as office_academy
@@ -160,14 +161,14 @@ def execute(task,staff):
                                             "timezone":"Asia/Kuala_Lumpur"}}]
         payload["tool_choice"]="required"
         payload["include"]=["web_search_call.action.sources"]
-    request=urllib.request.Request("https://api.openai.com/v1/responses",
-        data=json.dumps(payload).encode(),headers={"Authorization":"Bearer "+key,"Content-Type":"application/json"},method="POST")
-    try:
-        with urllib.request.urlopen(request,timeout=85 if source_required else 55) as response: data=json.load(response)
-    except urllib.error.HTTPError as exc: raise HTTPException(502,"AI generation failed (HTTP "+str(exc.code)+")")
-    except Exception: raise HTTPException(502,"AI connection failed")
-    answer="\n".join(p.get("text","") for o in data.get("output",[]) if o.get("type")=="message" for p in o.get("content",[]) if p.get("type")=="output_text").strip()
-    if not answer: raise HTTPException(502,"AI returned no text")
+    data=ai_provider.response(payload,operation="workforce",timeout=185 if source_required else 165)
+    answer=ai_provider.text_output(data)
+    if not answer:
+        reason=(data.get("incomplete_details") or {}).get("reason") if data.get("status")=="incomplete" else None
+        raise ai_provider.AIProviderError(502,
+            "AI returned no deliverable text"+(": "+reason if reason in ("max_output_tokens","content_filter") else "")+
+            ". Try a shorter brief or adjust output token allowance.",
+            "empty_response")
     sources=[]
     if source_required:
         searched=any(item.get("type")=="web_search_call"
