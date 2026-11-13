@@ -22,7 +22,7 @@ class StaffDeliveryInboxTests(unittest.TestCase):
         self.assertEqual(response.status_code,200,response.text)
         with office_db.connect() as db:
             staff=db.execute("""SELECT id,name,role,department FROM staff
-                 WHERE status='Available' AND org_role='Specialist' ORDER BY id LIMIT 1""").fetchone()
+                 WHERE status='Available' AND org_role='Specialist' AND department='Creative' ORDER BY id LIMIT 1""").fetchone()
             self.assertIsNotNone(staff)
             self.person=dict(staff)
         self.tasks=[]
