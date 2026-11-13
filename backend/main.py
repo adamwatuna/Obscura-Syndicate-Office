@@ -11,6 +11,7 @@ from backend import delegation as office_delegation
 from backend import office_db
 from backend import organization as org
 from backend import monthly
+from backend import task_schedule
 
 ROOT=Path(__file__).resolve().parent.parent
 PASSWORD=os.environ.get('CEO_PASSWORD')
@@ -47,7 +48,13 @@ class Staff(BaseModel):
     org_role: str | None = None
     manager_id: str | None = None
     delegation_permission: str | None = None
-class Task(BaseModel):title:str=Field(min_length=1,max_length=250);assignee:str=''
+class Task(BaseModel):
+    title: str = Field(min_length=1,max_length=250)
+    description: str = Field(default='',max_length=3000)
+    assignee: str = ''
+    priority: str = 'Normal'
+    due_date: str | None = None
+    recurrence: str = 'None'
 class Lesson(BaseModel):title:str=Field(min_length=1,max_length=200);kind:str;source:str=Field(min_length=1,max_length=3000);assigned:str=''
 class Status(BaseModel):status:str
 class MeitaMessage(BaseModel):message:str=Field(min_length=1,max_length=6000)
@@ -70,6 +77,7 @@ def me(req:Request):return {'authenticated':req.session.get('authorized') is Tru
 def office():
     with connect() as db:
         monthly.generate_month(db)
+        task_schedule.generate_due(db)
         result = {'staff': [dict(x) for x in db.execute(
             'SELECT id,name,role,department,status,org_role,manager_id,delegation_permission,portrait_slot FROM staff ORDER BY department,name')]}
         for table in ('tasks', 'lessons', 'audit'):
@@ -149,11 +157,18 @@ def delete_staff(ident:str):
 
 @app.post('/api/tasks',dependencies=[Depends(guard)])
 def create_task(body:Task):
-    ident=secrets.token_hex(12)
     with connect() as db:
-        db.execute('INSERT INTO tasks VALUES(%s,%s,%s,%s,%s)',(ident,body.title,body.assignee,'To do',int(time.time())))
-        audit(db,'task.created',body.title)
-    return {'id':ident}
+        result=task_schedule.create(db,body)
+        audit(db,'task.created',f'{result["id"]}: {body.title}')
+    return result
+
+@app.put('/api/tasks/{ident}',dependencies=[Depends(guard)])
+def edit_task(ident:str,body:Task):
+    with connect() as db:
+        result=task_schedule.update(db,ident,body)
+        audit(db,'task.updated',f'{ident}: {body.title}')
+    return result
+
 @app.patch('/api/tasks/{ident}',dependencies=[Depends(guard)])
 def update_task(ident:str,body:Status):
     if body.status not in ('To do','In progress','For approval','Completed'):raise HTTPException(400,'Invalid status')
