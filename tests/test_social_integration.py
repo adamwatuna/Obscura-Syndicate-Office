@@ -76,7 +76,7 @@ class SocialIntegrationTests(unittest.TestCase):
     def test_no_grant_by_default_and_no_secrets_in_status(self):
         status=self.client.get("/api/social/status")
         self.assertEqual(status.status_code,200,status.text)
-        self.assertTrue(status.json()["providers"][0]["configured"])
+        self.assertTrue(next(p for p in status.json()["providers"] if p["id"]=="meta")["configured"])
         self.assertFalse(status.json()["grants"])
         self.assertEqual(self.draft().status_code,403)
         dump=str(status.json())
