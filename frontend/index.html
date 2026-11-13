@@ -14,9 +14,9 @@
 <div class="toolbar"><div><h2>Meita · Acting COO</h2><p>CEO's internal team coordinator — team discussions, delegated AI assignments and operational reporting.</p></div></div>
 <div class="card">
  <div class="toolbar"><h3>Talk to Meita</h3><span class="tag">CEO Chat</span></div>
- <div id="meitaChat" style="height:340px;overflow:auto;white-space:pre-wrap;font-size:14px;line-height:1.65"><p>Start a conversation with Meita.</p></div>
- <form id="meitaForm"><label>Message to Meita</label><textarea id="meitaInput" rows="3" maxlength="6000" required placeholder="Meita, coordinate our Marketing and Creative teams..."></textarea><div style="height:12px"></div><button class="primary" id="meitaSend">Send to Meita</button></form>
- <p class="muted">Chat provides advice; use Delegation Desk to approve task assignments and Team War Room to request actual AI team contributions. No external actions from chat.</p>
+ <div id="meitaChat" style="height:460px;overflow:auto;white-space:pre-wrap;font-size:14px;line-height:1.65"><p>Start a conversation with Meita.</p></div>
+ <form id="meitaForm"><label>Message to Meita</label><textarea id="meitaInput" rows="3" maxlength="6000" required placeholder="Meita, assign Maryam to draft YouTube creative concepts, Aina to plan the launch and Faris to research competitor channels..."></textarea><div style="height:12px"></div><button class="primary" id="meitaSend">Send to Meita</button></form>
+ <p class="muted">Ask Meita to assign work right here. She prepares a proposal in chat; CEO can approve or reject it inline. AI jobs are not executed until CEO chooses Run AI.</p>
 </div>
 <div class="card" style="margin-top:20px">
  <div class="toolbar"><div><h3>Meita Configuration</h3><p>CEO controls who Meita may coordinate and how much work one session may generate.</p></div><button class="secondary" type="button" onclick="loadMeitaConfiguration()">Refresh</button></div>
@@ -369,7 +369,79 @@ $('assignee').innerHTML='<option value="">Unassigned</option>'+s.map(x=>`<option
 renderOfficeTasks(t,s);
 $('deskList').innerHTML=s.length?s.map(x=>{const active=t.filter(y=>y.assignee===x.id&&y.status!=='Completed');return `<div class="desk">${staffPortrait(x)}<strong>${esc(x.name)}</strong><div class="muted">${esc(x.role)}</div><div class="surface"></div><span class="tag">${active.length?active.length+' open task(s)':'No active tasks'}</span></div>`}).join(''):'<div class="notice">Hire AI staff to create workstations.</div>';
 renderOrganization();$('lessonList').innerHTML=l.length?l.map(x=>`<div class="item"><div><strong>${esc(x.title)}</strong><small>${esc(x.kind)} · ${esc(x.assigned||'Not assigned')} · ${esc(x.status)}</small></div></div>`).join(''):'<p>No learning sources registered.</p>';$('auditList').innerHTML=state.audit.slice(0,12).map(x=>`<div class="item"><strong>${esc(x.action)}</strong><small>${esc(x.detail)}</small></div>`).join('')||'<p>No activity recorded.</p>'}
-function addMeita(role,content){const d=document.createElement('div');d.style.cssText='padding:12px;margin:9px 0;border-radius:10px;background:'+(role==='user'?'#eef3f7':'#f8fafb');const b=document.createElement('strong');b.textContent=role==='user'?'CEO':'Meita';d.appendChild(b);const p=document.createElement('div');p.textContent=content;d.appendChild(p);$('meitaChat').appendChild(d);$('meitaChat').scrollTop=$('meitaChat').scrollHeight}
+function addMeita(role,content,proposal=null){
+  const container=$('meitaChat');
+  const bubble=document.createElement('div');
+  bubble.style.cssText='padding:12px;margin:9px 0;border-radius:10px;background:'+
+    (role==='user'?'#eef3f7':'#f8fafb');
+  const heading=document.createElement('strong');
+  heading.textContent=role==='user'?'CEO':'Meita';
+  bubble.append(heading);
+  const message=document.createElement('div');message.textContent=content;
+  message.style.whiteSpace='pre-wrap';bubble.append(message);
+  if(proposal&&proposal.id&&proposal.plan&&Array.isArray(proposal.plan.jobs)){
+    const panel=document.createElement('div');
+    panel.style.cssText='padding:14px;margin-top:12px;border:1px solid #dce4ea;'+
+      'border-radius:10px;background:white';
+    const header=document.createElement('strong');
+    header.textContent='Delegation Proposal · '+proposal.title;
+    panel.append(header);
+    const status=document.createElement('p');status.className='muted';
+    status.textContent='Status: '+proposal.status+' · '+
+      proposal.plan.jobs.length+' AI task(s)';panel.append(status);
+    for(const job of proposal.plan.jobs){
+      const item=document.createElement('div');item.className='task-entry';
+      const title=document.createElement('strong');title.textContent=job.title;
+      const owner=document.createElement('small');
+      owner.textContent='Assigned after approval to: '+job.staff_name;
+      const brief=document.createElement('p');brief.textContent=job.brief;
+      item.append(title,owner,brief);panel.append(item);
+    }
+    const actions=document.createElement('div');actions.className='task-actions';
+    if(proposal.status==='Pending approval'){
+      const approve=document.createElement('button');
+      approve.className='primary';approve.type='button';
+      approve.textContent='Approve & Assign';
+      approve.onclick=()=>decideMeitaChatProposal(proposal.id,'approve',approve);
+      const reject=document.createElement('button');
+      reject.className='secondary';reject.type='button';
+      reject.textContent='Reject';
+      reject.onclick=()=>decideMeitaChatProposal(proposal.id,'reject',reject);
+      actions.append(approve,reject);
+    }else if(proposal.status==='Approved'){
+      const note=document.createElement('span');
+      note.className='muted';note.textContent='Assigned to AI staff · execution not started';
+      const view=document.createElement('button');
+      view.className='secondary';view.type='button';view.textContent='View assigned jobs';
+      view.onclick=async()=>{
+        await loadDelegations();
+        $('meitaDelegationDesk').scrollIntoView({behavior:'smooth',block:'start'});
+      };
+      actions.append(note,view);
+    }else{
+      const note=document.createElement('span');note.className='muted';
+      note.textContent='Proposal was rejected. No tasks assigned.';
+      actions.append(note);
+    }
+    panel.append(actions);bubble.append(panel);
+  }
+  container.append(bubble);
+  container.scrollTop=container.scrollHeight;
+}
+async function decideMeitaChatProposal(id,action,button){
+  const label=action==='approve'
+    ?'Approve this delegation plan and assign the proposed internal AI jobs? No AI work will run yet.'
+    :'Reject this delegation proposal? No jobs will be assigned.';
+  if(!confirm(label))return;
+  button.disabled=true;
+  try{
+    await api('delegation/proposals/'+encodeURIComponent(id)+'/'+action,{method:'POST'});
+    await Promise.all([loadMeita(),loadDelegations()]);
+    msg(action==='approve'
+      ?'Approved & assigned. AI staff jobs are ready; execution requires a separate Run AI.'
+      :'Delegation proposal rejected');
+  }catch(err){button.disabled=false;msg(err.message)}
+}
 
 let meitaTeamSettings=null;
 let meitaMeetingIndex=[];
@@ -537,8 +609,30 @@ async function delegateFromMeitaMeeting(){
   }catch(err){msg(err.message)}
 }
 
-async function loadMeita(){try{const r=await api('meita/history');$('meitaChat').textContent='';r.messages.forEach(m=>addMeita(m.role,m.content));if(!r.messages.length)addMeita('assistant','Hello CEO. How may I assist?')}catch(e){msg(e.message)}}
-$('meitaForm').addEventListener('submit',async e=>{e.preventDefault();const input=$('meitaInput'),message=input.value.trim();if(!message)return;const btn=$('meitaSend');btn.disabled=true;btn.textContent='Meita is thinking…';addMeita('user',message);input.value='';try{const r=await api('meita/chat',{method:'POST',body:JSON.stringify({message})});addMeita('assistant',r.reply)}catch(err){addMeita('assistant','Request failed: '+err.message)}finally{btn.disabled=false;btn.textContent='Send to Meita'}});
+async function loadMeita(){
+  try{
+    const r=await api('meita/history');
+    $('meitaChat').textContent='';
+    r.messages.forEach(m=>addMeita(m.role,m.content,m.proposal||null));
+    if(!r.messages.length)addMeita('assistant','Hello CEO. Tell me what work to assign to our AI team.');
+  }catch(e){msg(e.message)}
+}
+$('meitaForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const input=$('meitaInput'),message=input.value.trim();
+  if(!message)return;
+  const btn=$('meitaSend');btn.disabled=true;btn.textContent='Meita is planning…';
+  addMeita('user',message);input.value='';
+  try{
+    const r=await api('meita/chat',{method:'POST',body:JSON.stringify({message})});
+    addMeita('assistant',r.reply,r.proposal||null);
+    if(r.proposal)await loadDelegations();
+  }catch(err){
+    input.value=message;
+    await loadMeita();
+    msg('Meita request did not finish: '+err.message);
+  }finally{btn.disabled=false;btn.textContent='Send to Meita'}
+});
 
 let memoryItems=[],editingMemory=null;
 function resetMemory(){editingMemory=null;$('memoryForm').reset();$('memoryHeading').textContent='Save a memory';$('memorySave').textContent='Save memory'}
