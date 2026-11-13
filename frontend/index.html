@@ -463,169 +463,228 @@ async function decideMeitaChatProposal(id,action,button){
 }
 
 let meitaTeamSettings=null;
-let meitaMeetingIndex=[];
-let selectedMeitaMeeting=null;
-const meitaDom=(tag,value,cls)=>{
-  const node=document.createElement(tag);
-  if(value!==undefined)node.textContent=value;
-  if(cls)node.className=cls;
-  return node;
-};
-function meitaMeetingWhen(value){
-  return value?new Date(value).toLocaleString('en-MY',{
-    timeZone:'Asia/Kuala_Lumpur',dateStyle:'medium',timeStyle:'short'}):'';
+let meitaRequests=[];
+let meitaDeckData=null;
+let meitaSlideIndex=0;
+function meitaNode(tag,content,cls){
+  const n=document.createElement(tag);
+  if(content!==undefined)n.textContent=content;
+  if(cls)n.className=cls;
+  return n;
 }
 async function loadMeitaConfiguration(){
   try{
     const data=await api('meita/configuration');
     meitaTeamSettings=data.settings;
     $('meitaDelegationScope').value=data.settings.delegation_scope;
-    $('meitaDiscussionScope').value=data.settings.discussion_scope;
     $('meitaJobLimit').value=data.settings.max_delegation_jobs;
-    $('meitaParticipantLimit').value=data.settings.max_meeting_participants;
-    const roster=$('meitaTeamRoster');roster.textContent='';
-    roster.append(meitaDom('strong','AI Team Roster · '+data.team.length+' members'));
-    const groups=new Map();
-    for(const person of data.team){
-      const category=person.org_role==='Director'?'Directors':'AI Specialists';
-      if(!groups.has(category))groups.set(category,[]);
-      groups.get(category).push(person);
-    }
-    for(const [group,staff] of groups){
-      const div=meitaDom('div',undefined,'task-entry');
-      div.append(meitaDom('strong',group+' · '+staff.length));
-      div.append(meitaDom('p',staff.map(x=>x.name+' ('+x.department+')').join(' · '),'muted'));
-      roster.append(div);
-    }
-  }catch(e){$('meitaTeamRoster').textContent='Unable to load Meita settings: '+e.message}
+    $('meitaAutoExecute').value=String(data.settings.auto_execute_internal);
+    const root=$('meitaTeamRoster');root.textContent='';
+    const directors=data.team.filter(p=>p.org_role==='Director').length;
+    const specialists=data.team.filter(p=>p.org_role!=='Director').length;
+    root.append(meitaNode('p','AI workforce: '+directors+' Directors · '+specialists+
+      ' Specialists · '+data.team.length+' total','muted'));
+  }catch(err){$('meitaTeamRoster').textContent='Could not load settings: '+err.message}
 }
 $('meitaSettingsForm').addEventListener('submit',async e=>{
   e.preventDefault();
-  const payload={
+  const prior=meitaTeamSettings||{};
+  const body={
     delegation_scope:$('meitaDelegationScope').value,
-    discussion_scope:$('meitaDiscussionScope').value,
     max_delegation_jobs:Number($('meitaJobLimit').value),
-    max_meeting_participants:Number($('meitaParticipantLimit').value)
+    auto_execute_internal:$('meitaAutoExecute').value==='true',
+    discussion_scope:prior.discussion_scope||'all_staff',
+    max_meeting_participants:prior.max_meeting_participants||20
   };
-  const button=$('meitaSettingsSave');button.disabled=true;
+  if(body.auto_execute_internal&&!prior.auto_execute_internal&&
+    !confirm('Allow Meita to run internal AI work automatically after direct CEO chat instructions? Each job uses OpenAI API credits.'))return;
+  const btn=$('meitaSettingsSave');btn.disabled=true;
   try{
-    await api('meita/configuration',{method:'PUT',body:JSON.stringify(payload)});
+    await api('meita/configuration',{method:'PUT',body:JSON.stringify(body)});
     await loadMeitaConfiguration();
-    msg('Meita team coordination settings saved');
-  }catch(err){msg(err.message)}finally{button.disabled=false}
+    msg('Meita configuration saved');
+  }catch(err){msg(err.message)}finally{btn.disabled=false}
 });
-async function loadMeitaMeetings(selected){
-  try{
-    const index=await api('meita/team/meetings');
-    meitaMeetingIndex=index.meetings||[];
-    const selector=$('meitaMeetingSelect');
-    const active=selected||selector.value;
-    selector.textContent='';
-    const first=meitaDom('option','Choose a saved team meeting');first.value='';
-    selector.append(first);
-    for(const m of meitaMeetingIndex){
-      const opt=meitaDom('option',m.topic.slice(0,90)+' · '+m.round_no+' rounds · '+m.participant_count+' AI staff');
-      opt.value=m.id;selector.append(opt);
-    }
-    if(active&&meitaMeetingIndex.some(m=>m.id===active)){
-      selector.value=active;
-      await openMeitaMeeting(active);
-    }else{
-      selectedMeitaMeeting=null;
-      $('meitaMeetingInfo').textContent='No meeting selected';
-      $('meitaMeetingActions').classList.add('hidden');
-      $('meitaMeetingTranscript').textContent='Choose or create a meeting to read the team discussion.';
-    }
-  }catch(err){$('meitaMeetingTranscript').textContent='Unable to load meetings: '+err.message}
+async function refreshMeitaOffice(){
+  await Promise.all([loadMeita(),loadMeitaTaskHistory(),loadMeitaConfiguration()]);
+  if($('meitaDeckSelect').value)await loadMeitaDeck();
 }
-$('meitaMeetingSelect').addEventListener('change',e=>openMeitaMeeting(e.target.value));
-async function openMeitaMeeting(id){
+function meitaStatus(raw){
+  return ({
+    'Queued':'Queued for AI','Running':'AI working',
+    'Delivered':'Delivered','For approval':'Report ready',
+    'Retry available':'AI error · Retry available',
+    'Needs verification':'Interrupted · Check before retry',
+    'Approved':'Assigned','Pending approval':'Awaiting CEO approval'
+  })[raw]||raw;
+}
+async function loadMeitaTaskHistory(){
+  const root=$('meitaTaskList');
+  try{
+    const response=await api('meita/task-history');
+    meitaRequests=response.requests||[];
+    root.textContent='';
+    const select=$('meitaDeckSelect');
+    const previous=select.value;
+    select.textContent='';
+    const empty=meitaNode('option','Select a project delivery');empty.value='';
+    select.append(empty);
+    for(const request of meitaRequests){
+      const opt=meitaNode('option',request.title+' · '+request.jobs.length+' task(s)');
+      opt.value=request.id;select.append(opt);
+      const item=meitaNode('div',undefined,'meita-task-card');
+      item.append(meitaNode('strong',request.title));
+      const delivered=request.jobs.filter(j=>j.has_output).length;
+      const details=meitaNode('p',delivered+' / '+request.jobs.length+
+        ' reports ready · '+(request.automatic?'Meita autonomous':'Manual plan')+
+        ' · '+new Date(request.created_at).toLocaleString('en-MY',{
+          dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Kuala_Lumpur'}),'meita-task-meta');
+      item.append(details);
+      const tasks=meitaNode('div',undefined,'meita-task-lines');
+      for(const task of request.jobs){
+        const record=meitaNode('p',task.staff_name+' · '+task.title+
+          ' — '+meitaStatus(task.status));
+        record.style.margin='6px 0';tasks.append(record);
+        if(task.status==='Retry available'){
+          const retry=meitaNode('button','Retry AI task','secondary');
+          retry.type='button';retry.style.marginLeft='10px';
+          retry.onclick=async()=>{
+            if(!confirm('Retry the failed internal AI task? This uses API credits.'))return;
+            retry.disabled=true;
+            try{
+              await api('meita/jobs/'+encodeURIComponent(task.id)+'/retry',{method:'POST'});
+              await loadMeitaTaskHistory();
+              msg('AI task requeued');
+            }catch(err){msg(err.message);retry.disabled=false}
+          };
+          record.append(retry);
+        }
+      }
+      item.append(tasks);
+      const actions=meitaNode('div',undefined,'task-actions');
+      const deck=meitaNode('button','View presentation','secondary');
+      deck.type='button';deck.onclick=()=>openMeitaDeck(request.id);
+      const centre=meitaNode('button','View Task Centre','secondary');
+      centre.type='button';centre.onclick=()=>show('tasks');
+      actions.append(deck,centre);item.append(actions);root.append(item);
+    }
+    if(!meitaRequests.length)root.append(meitaNode('p',
+      'No assignments yet. Ask Meita in chat to assign a project to the AI team.','muted'));
+    if(meitaRequests.some(x=>x.id===previous))select.value=previous;
+    else if(meitaRequests.length&&!previous)select.value=meitaRequests[0].id;
+    else if(meitaRequests.length)select.value=meitaRequests[0].id;
+  }catch(err){root.textContent='Task History could not load: '+err.message}
+}
+$('meitaDeckSelect').addEventListener('change',()=>loadMeitaDeck());
+async function openMeitaDeck(id){
+  $('meitaDeckSelect').value=id;
+  await loadMeitaDeck();
+  $('meitaDeliverables').scrollIntoView({behavior:'smooth',block:'start'});
+}
+async function loadMeitaDeck(){
+  const id=$('meitaDeckSelect').value;
   if(!id){
-    selectedMeitaMeeting=null;
-    $('meitaMeetingTranscript').textContent='Choose a meeting to view.';
-    $('meitaMeetingActions').classList.add('hidden');return;
+    meitaDeckData=null;
+    $('meitaDeckArea').classList.add('hidden');
+    $('meitaDeckEmpty').classList.remove('hidden');
+    return;
   }
   try{
-    const data=await api('meita/team/meetings/'+encodeURIComponent(id));
-    selectedMeitaMeeting=data;
-    const m=data.meeting;
-    $('meitaMeetingInfo').textContent=m.round_no+'/3 rounds · '+m.participants.length+' team members · '+m.status;
-    const transcript=$('meitaMeetingTranscript');
-    transcript.textContent='';
-    const intro=meitaDom('div',undefined,'person');
-    intro.append(meitaDom('strong',m.topic));
-    intro.append(meitaDom('p','Participants: '+m.participants.map(x=>x.name).join(', '),'muted'));
-    intro.append(meitaDom('p','Meeting opened '+meitaMeetingWhen(m.created_at),'muted'));
-    transcript.append(intro);
-    if(!data.messages.length){
-      const note=meitaDom('div','Meeting created. Click Run Discussion Round to invite the team to contribute.','notice');
-      note.style.marginTop='12px';transcript.append(note);
+    const fresh=await api('meita/deliverables/'+encodeURIComponent(id));
+    const changed=!meitaDeckData||meitaDeckData.proposal_id!==id;
+    meitaDeckData=fresh;
+    if(changed)meitaSlideIndex=0;
+    $('meitaDeckEmpty').classList.add('hidden');
+    $('meitaDeckArea').classList.remove('hidden');
+    $('meitaDeckProgress').textContent=
+      fresh.metrics.delivered+' / '+fresh.metrics.assigned+
+      ' deliverables ready · '+fresh.metrics.needs_attention+' need attention. '+
+      'Charts show real AI task progress, not invented business performance.';
+    renderMeitaSlide();
+    const full=$('meitaFullReports');full.textContent='';
+    for(const report of fresh.reports){
+      const card=meitaNode('div',undefined,'person');
+      card.style.marginTop='10px';
+      card.append(meitaNode('strong',report.title+' · '+report.owner));
+      card.append(meitaNode('p',report.status+' · '+report.department,'muted'));
+      const text=meitaNode('div',report.content||'Report not yet available.');
+      text.style.cssText='white-space:pre-wrap;max-height:330px;overflow:auto;'+
+        'overflow-wrap:anywhere;padding:12px;background:#f7f9fb;font-size:12px';
+      card.append(text);
+      for(const source of report.sources||[]){
+        if(!source||!source.url)continue;
+        try{
+          const u=new URL(source.url);
+          if(!['https:','http:'].includes(u.protocol))continue;
+          const link=meitaNode('a',source.title||u.hostname);
+          link.href=u.href;link.target='_blank';link.rel='noopener noreferrer';
+          card.append(link);
+        }catch(err){}
+      }
+      full.append(card);
     }
-    for(const msgItem of data.messages){
-      const row=meitaDom('div',undefined,'person');
-      row.style.marginTop='12px';
-      row.style.background=msgItem.speaker_id==='meita'?'#f3f7fa':'#fff';
-      row.append(meitaDom('strong',msgItem.speaker_name+' · '+msgItem.speaker_role));
-      row.append(meitaDom('small',msgItem.department+' · Round '+msgItem.round_no+' · '+meitaMeetingWhen(msgItem.created_at)));
-      const body=meitaDom('p',msgItem.content);body.style.whiteSpace='pre-wrap';
-      body.style.overflowWrap='anywhere';body.style.color='#405064';row.append(body);
-      transcript.append(row);
-    }
-    if(Array.isArray(m.failures)&&m.failures.length){
-      const warning=meitaDom('div','This round was partial: '+m.failures.map(x=>x.name).join(', ')+
-        ' could not respond. Do not treat their views as collected.','notice');
-      warning.style.marginTop='12px';transcript.append(warning);
-    }
-    $('meitaMeetingActions').classList.remove('hidden');
-    const run=$('meitaRunDiscussion');
-    run.disabled=m.status==='Running'||m.round_no>=3;
-    run.textContent=m.status==='Running'?'Discussion running…':
-      m.round_no>=3?'Three rounds completed':
-      'Run Discussion Round '+(m.round_no+1);
-    $('meitaDelegateDiscussion').disabled=m.round_no<1;
-  }catch(err){$('meitaMeetingTranscript').textContent='Unable to open meeting: '+err.message}
+  }catch(err){$('meitaDeckEmpty').textContent='Could not load presentation: '+err.message}
 }
-$('meitaMeetingForm').addEventListener('submit',async e=>{
-  e.preventDefault();
-  const topic=$('meitaMeetingTopic').value.trim();
-  if(topic.length<8)return;
-  const button=$('meitaMeetingStart');button.disabled=true;
-  try{
-    const created=await api('meita/team/meetings',{
-      method:'POST',body:JSON.stringify({topic})});
-    $('meitaMeetingTopic').value='';
-    await loadMeitaMeetings(created.id);
-    msg('Team meeting created. Run a discussion round when ready to use OpenAI.');
-  }catch(err){msg(err.message)}finally{button.disabled=false}
-});
-async function runMeitaDiscussion(){
-  const id=selectedMeitaMeeting?.meeting?.id;
-  if(!id)return;
-  const participants=selectedMeitaMeeting.meeting.participants.length;
-  if(!confirm('Ask '+participants+' separate AI staff plus Meita to discuss this topic? '+
-    'This will make approximately '+(participants+1)+' OpenAI API requests and may incur charges.'))return;
-  const button=$('meitaRunDiscussion');
-  button.disabled=true;button.textContent='Team is discussing…';
-  const instruction=$('meitaMeetingFollowup').value.trim();
-  try{
-    const result=await api('meita/team/meetings/'+encodeURIComponent(id)+'/discuss',{
-      method:'POST',body:JSON.stringify({instruction})});
-    $('meitaMeetingFollowup').value='';
-    await loadMeitaMeetings(id);
-    msg('Team round complete: '+result.contributors+' AI contributors'+
-        (result.unavailable?' · '+result.unavailable+' unavailable':''));
-  }catch(e){msg(e.message);await loadMeitaMeetings(id)}
-  finally{button.disabled=false}
+function renderMeitaSlide(){
+  if(!meitaDeckData)return;
+  const slide=meitaDeckData.slides[meitaSlideIndex];
+  if(!slide)return;
+  const root=$('meitaSlideContent');root.textContent='';
+  const holder=meitaNode('div',undefined,'meita-deck-content');
+  if(slide.kind==='cover'){
+    holder.append(meitaNode('p','MEITA · EXECUTIVE DELIVERY','sub'));
+    holder.append(meitaNode('h3',slide.title));
+    holder.append(meitaNode('p','Produced from real AI staff assignments.','sub'));
+    const art=meitaNode('div','◆  ◆  ◆');art.style.cssText=
+      'font-size:clamp(30px,5vw,62px);letter-spacing:.12em;color:#4bcfb2;margin:25px 0';
+    holder.append(art);
+  }else{
+    holder.append(meitaNode('h3',slide.title));
+    holder.append(meitaNode('p',slide.subtitle||'','sub'));
+    if(slide.kind==='work'){
+      holder.append(meitaNode('span',(slide.owner||'AI staff')+' · '+slide.status,'deck-chip'));
+    }
+    if(slide.metrics){
+      const wrap=meitaNode('div',undefined,'deck-metrics');
+      for(const item of slide.metrics){
+        const card=meitaNode('div',undefined,'deck-metric');
+        card.append(meitaNode('strong',String(item.value)));
+        card.append(meitaNode('span',item.label));wrap.append(card);
+      }
+      holder.append(wrap);
+    }
+    if(slide.bars){
+      for(const bar of slide.bars){
+        const line=meitaNode('div',undefined,'deck-bar-row');
+        line.append(meitaNode('span',bar.name));
+        const track=meitaNode('div',undefined,'deck-bar-bg');
+        const fill=meitaNode('div',undefined,'deck-bar-done');
+        fill.style.width=(bar.total?Math.min(100,100*bar.delivered/bar.total):0)+'%';
+        track.append(fill);
+        line.append(track,meitaNode('span',bar.delivered+'/'+bar.total));
+        holder.append(line);
+      }
+    }
+    if(slide.bullets&&slide.bullets.length){
+      const ul=meitaNode('ul',undefined,'deck-list');
+      for(const bullet of slide.bullets)ul.append(meitaNode('li',bullet));
+      holder.append(ul);
+    }
+  }
+  root.append(holder);
+  $('meitaSlideCount').textContent=String(meitaSlideIndex+1).padStart(2,'0')+
+    ' / '+String(meitaDeckData.slides.length).padStart(2,'0');
 }
-async function delegateFromMeitaMeeting(){
-  const id=selectedMeitaMeeting?.meeting?.id;
-  if(!id)return;
-  try{
-    const result=await api('meita/team/meetings/'+encodeURIComponent(id)+'/delegation-brief');
-    $('delegationBrief').value=result.brief;
-    $('meitaDelegationDesk').scrollIntoView({behavior:'smooth',block:'start'});
-    msg('Discussion summary copied into Delegation Desk. Review and ask Meita to plan, then approve the assignments.');
-  }catch(err){msg(err.message)}
+function stepMeitaSlide(change){
+  if(!meitaDeckData)return;
+  const size=meitaDeckData.slides.length;
+  meitaSlideIndex=(meitaSlideIndex+change+size)%size;
+  renderMeitaSlide();
+}
+function downloadMeitaPptx(){
+  if(!meitaDeckData)return;
+  window.location.assign('/api/meita/deliverables/'+
+    encodeURIComponent(meitaDeckData.proposal_id)+'/powerpoint');
 }
 
 async function loadMeita(){
@@ -663,70 +722,7 @@ async function loadRuns(){try{const data=await api('workforce/runs');runItems=da
 
 let delegations={proposals:[],jobs:[]};
 function el(tag,content,cls){const node=document.createElement(tag);if(content!==undefined)node.textContent=content;if(cls)node.className=cls;return node}
-async function loadDelegations(){
-  const root=$('delegationList');
-  try{
-    delegations=await api('delegation/proposals');
-    root.textContent='';
-    const proposals=delegations.proposals||[],jobs=delegations.jobs||[];
-    if(!proposals.length){root.textContent='No delegation plans yet.';return}
-    for(const plan of proposals){
-      const card=el('div',undefined,'person');card.style.marginTop='12px';
-      card.append(el('strong',plan.title));
-      card.append(el('small',plan.status+' · '+new Date(plan.created_at).toLocaleString('en-MY')));
-      const brief=el('p',plan.brief);card.append(brief);
-      if(plan.status==='Pending approval'){
-        const proposed=plan.plan&&Array.isArray(plan.plan.jobs)?plan.plan.jobs:[];
-        for(const task of proposed){
-          const row=el('div',undefined,'item');const info=el('div');
-          info.append(el('strong',task.title),el('small','Assigned to: '+task.staff_name));
-          info.append(el('p',task.brief));row.append(info);card.append(row);
-        }
-        for(const action of ['approve','reject']){
-          const btn=el('button',action==='approve'?'Approve & assign':'Reject','secondary');
-          btn.style.marginRight='8px';btn.onclick=()=>decideDelegation(plan.id,action,btn);
-          card.append(btn);
-        }
-      }else if(plan.status==='Approved'){
-        const assigned=jobs.filter(job=>job.proposal_id===plan.id);
-        for(const job of assigned){
-          const row=el('div',undefined,'item');const info=el('div');
-          info.append(el('strong',job.title),el('small',job.staff.name+' · '+job.status));
-          const desc=el('p',job.brief);info.append(desc);row.append(info);
-          if(job.status==='Approved'||job.status==='Retry available'){
-            const btn=el('button',job.status==='Approved'?'Run AI':'Retry AI','secondary');
-            btn.onclick=()=>runDelegatedJob(job.id,btn);row.append(btn);
-          }else if(job.status==='For approval'){
-            const btn=el('button','Review output','secondary');
-            btn.onclick=()=>{show('tasks');loadRuns()};row.append(btn);
-          }
-          card.append(row);
-        }
-      }
-      root.append(card);
-    }
-  }catch(err){root.textContent='Unable to load delegations: '+err.message}
-}
-async function decideDelegation(id,action,button){
-  if(!confirm(action==='approve'?'Approve this plan and assign internal AI jobs?':'Reject this proposed delegation?'))return;
-  button.disabled=true;
-  try{await api('delegation/proposals/'+encodeURIComponent(id)+'/'+action,{method:'POST'});await loadDelegations();msg(action==='approve'?'Delegation approved':'Delegation rejected')}
-  catch(err){button.disabled=false;msg(err.message)}
-}
-async function runDelegatedJob(id,button){
-  if(!confirm('Run this approved AI job using your OpenAI API account?'))return;
-  button.disabled=true;button.textContent='Generating…';
-  try{await api('delegation/jobs/'+encodeURIComponent(id)+'/run',{method:'POST'});await loadDelegations();await loadRuns();msg('AI deliverable ready for CEO review')}
-  catch(err){await loadDelegations();msg(err.message)}
-}
-$('delegationForm').addEventListener('submit',async e=>{
-  e.preventDefault();const brief=$('delegationBrief').value.trim();
-  if(brief.length<5)return;
-  const btn=$('delegationGenerate');btn.disabled=true;btn.textContent='Meita is planning…';
-  try{await api('delegation/proposals',{method:'POST',body:JSON.stringify({brief})});$('delegationBrief').value='';await loadDelegations();msg('Meita plan ready for CEO approval')}
-  catch(err){msg(err.message)}
-  finally{btn.disabled=false;btn.textContent='Ask Meita to plan delegation'}
-});
+async function loadDelegations(){return loadMeitaTaskHistory()}
 
 const OFFICE_DEPARTMENTS=['Executive Office','Research & Intelligence','Marketing & Growth','Creative','Finance & Treasury','Operations & Project Management','Technology & AI Systems','Strategy & Business Development','Knowledge & Learning Academy','Governance, Risk & Compliance'];
 const RESTRICTED_DEPARTMENTS=new Set(['Finance & Treasury','Technology & AI Systems','Strategy & Business Development','Governance, Risk & Compliance']);
