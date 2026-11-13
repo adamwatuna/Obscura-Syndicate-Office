@@ -23,6 +23,7 @@ def init(db):
     # Legacy existing delegation tables remain available for old work.
     from backend import delegation
     delegation.init(db)
+    workforce.init(db)
     db.execute("ALTER TABLE coo_proposals ADD COLUMN IF NOT EXISTS auto_execute BOOLEAN NOT NULL DEFAULT FALSE")
     db.execute("ALTER TABLE coo_jobs ADD COLUMN IF NOT EXISTS task_id TEXT UNIQUE")
     db.execute("ALTER TABLE coo_jobs ADD COLUMN IF NOT EXISTS started_at TIMESTAMPTZ")
