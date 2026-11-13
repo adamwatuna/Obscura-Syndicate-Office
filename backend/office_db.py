@@ -10,6 +10,7 @@ from psycopg.types.json import Jsonb
 from backend import organization
 from backend import leadership_seed
 from backend import monthly
+from backend import task_schedule
 
 logger = logging.getLogger("office.storage")
 ROOT = Path(__file__).resolve().parent.parent
@@ -58,6 +59,7 @@ def ensure_schema(db):
         source_state TEXT NOT NULL, source_rows JSONB NOT NULL,
         copied_rows JSONB NOT NULL,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())""")
+    task_schedule.setup(db)
     monthly.setup(db)
 
 def _copy_table(db, old, name):
@@ -119,6 +121,7 @@ def bootstrap(legacy_path=None):
             ON staff (department) WHERE org_role='Director'""")
         leadership_seed.install(db)
         monthly.generate_month(db)
+        task_schedule.generate_due(db)
         db.execute("""INSERT INTO office_import_log
             (source_state,source_rows,copied_rows) VALUES (%s,%s,%s)""",
             (state,Jsonb(counts),Jsonb(copied)))
