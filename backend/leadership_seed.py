@@ -159,9 +159,13 @@ def install(db):
     added=[]
     existing=[]
     for name,title,dept,slot,expertise,autonomy,permission in ROSTER:
-        current=db.execute("""SELECT id FROM staff
+        current=db.execute("""SELECT id,name,portrait_slot FROM staff
             WHERE department=%s AND org_role='Director' LIMIT 1""",(dept,)).fetchone()
         if current:
+            # Preserve CEO-edited heads and attach matching portraits only.
+            if current["name"].casefold()==name.casefold() and current["portrait_slot"] is None:
+                db.execute("UPDATE staff SET portrait_slot=%s WHERE id=%s",
+                    (slot,current["id"]))
             existing.append(dept)
             continue
         db.execute("""INSERT INTO staff
