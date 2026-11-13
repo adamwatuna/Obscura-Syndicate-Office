@@ -41,7 +41,7 @@ jobs:
         run: |
           python -c "from pathlib import Path; html=Path('frontend/index.html').read_text(); Path('/tmp/office.js').write_text(html.split('<script>')[-1].split('</script>')[0])"
           node --check /tmp/office.js
-      - name: API startup and plan validation
+      - name: API startup and full feature integration tests
         env:
           CEO_PASSWORD: test-password-only
           SESSION_SECRET: a-test-session-secret-longer-than-32-characters
@@ -49,3 +49,10 @@ jobs:
         run: |
           python -c "from backend.main import app; assert app is not None"
           python -m unittest discover -s tests -v
+      - name: PostgreSQL backup and isolated restore rehearsal
+        env:
+          CI: 'true'
+        run: |
+          command -v pg_dump
+          command -v pg_restore
+          python scripts/backup_restore_drill.py
