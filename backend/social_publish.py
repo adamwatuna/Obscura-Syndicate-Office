@@ -68,10 +68,11 @@ def update(db,ident,caption,media_url=None):
     media=_clean_media(media_url)
     if post["platform"]=="instagram" and not media:
         raise HTTPException(400,"Instagram requires a public HTTPS image URL")
+    next_status="Ready" if post["approval_mode"]=="direct_publish" else "Pending approval"
     db.execute("""UPDATE social_posts SET caption=%s,media_url=%s,
-        status='Pending approval',updated_at=NOW() WHERE id=%s""",
-        (caption.strip(),media,ident))
-    return {"ok":True,"status":"Pending approval"}
+        status=%s,approved_at=NULL,updated_at=NOW() WHERE id=%s""",
+        (caption.strip(),media,next_status,ident))
+    return {"ok":True,"status":next_status}
 
 def approve(db,ident):
     post=db.execute("SELECT * FROM social_posts WHERE id=%s FOR UPDATE",(ident,)).fetchone()
@@ -79,7 +80,7 @@ def approve(db,ident):
     _authorization(db,post["staff_id"],post["account_id"])
     if post["status"]!="Pending approval":
         raise HTTPException(409,"Draft does not require approval")
-    db.execute("UPDATE social_posts SET status='Ready',updated_at=NOW() WHERE id=%s",(ident,))
+    db.execute("UPDATE social_posts SET status='Ready',approved_at=NOW(),updated_at=NOW() WHERE id=%s",(ident,))
     return {"ok":True}
 
 def reject(db,ident):
@@ -94,7 +95,7 @@ def list_posts(db):
     social.schema(db)
     records=db.execute("""SELECT p.id,p.staff_id,s.name AS staff_name,p.account_id,
         p.platform,p.account_name,p.caption,p.media_url,p.status,
-        p.approval_mode,p.platform_post_id,p.error,p.created_at,p.updated_at
+        p.approval_mode,p.platform_post_id,p.error,p.approved_at,p.created_at,p.updated_at
         FROM social_posts p LEFT JOIN staff s ON s.id=p.staff_id
         ORDER BY p.created_at DESC LIMIT 80""").fetchall()
     return {"posts":[dict(x) for x in records]}
@@ -105,6 +106,8 @@ def claim(db,ident):
     if post["status"]!="Ready":
         raise HTTPException(409,"Post is not ready, already published, or awaiting approval")
     account=_authorization(db,post["staff_id"],post["account_id"])
+    if account["permission"]=="approval_required" and not post["approved_at"]:
+        raise HTTPException(409,"CEO approval is required under the current staff permissions")
     if account["platform"]!=post["platform"]:raise HTTPException(409,"Account platform changed")
     if account["token_expires_at"] and account["token_expires_at"]<datetime.now(timezone.utc):
         raise HTTPException(409,"Social account token has expired; reconnect first")
