@@ -159,7 +159,14 @@ def library(db, search="", kind="all", limit=250, include_archived=False):
               "created_at":r["created"]}
         if kind in ("all","lesson",r["kind"]) and _search_matches(search,item):
             items.append(item)
-    items.sort(key=lambda x:str(x.get("created_at") or ""),reverse=True)
+    def timestamp(item):
+        value=item.get("created_at")
+        if isinstance(value,(int,float)):
+            return float(value)
+        if hasattr(value,"timestamp"):
+            return value.timestamp()
+        return 0
+    items.sort(key=timestamp,reverse=True)
     return {"items":items[:limit],"total":len(items)}
 
 
