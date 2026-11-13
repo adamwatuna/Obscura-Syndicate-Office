@@ -1,7 +1,7 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AI Private Office</title><style>
-:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;color:#202b35;background:#f7f8fa}*{box-sizing:border-box}body{margin:0}button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:none!important}.login{min-height:100vh;display:grid;place-items:center;background:#f9fafb}.login .panel{width:min(420px,92vw);background:white;padding:42px;border:1px solid #e9edf0;border-radius:22px;box-shadow:0 18px 65px #25334b0b}.eyebrow{font-size:11px;letter-spacing:.19em;font-weight:800;color:#8b96a3;text-transform:uppercase}h1{font-size:30px;letter-spacing:-1.1px;margin:12px 0}p{color:#7c8795;line-height:1.65}input,select,textarea{background:white;border:1px solid #e2e7ec;border-radius:10px;padding:12px;width:100%;outline-color:#b7c6d8}label{display:block;font-size:12px;font-weight:700;color:#657080;margin:15px 0 7px}.primary{background:#283b51;color:white;border:0;padding:12px 18px;border-radius:10px;font-weight:650}.secondary{background:white;border:1px solid #e0e5ea;color:#46556a;padding:10px 14px;border-radius:10px}.shell{display:grid;grid-template-columns:238px 1fr;min-height:100vh}aside{background:white;border-right:1px solid #e8ecf0;padding:30px 18px;display:flex;flex-direction:column;gap:24px}.brand{font-weight:800;font-size:19px;letter-spacing:-.65px;padding:6px 12px}.brand small{display:block;font-size:10px;letter-spacing:.22em;color:#99a2ac;margin-top:5px}.nav{display:grid;gap:5px}.nav button{background:transparent;border:0;text-align:left;padding:12px 14px;color:#697788;border-radius:10px;font-weight:600;font-size:13px}.nav button.active,.nav button:hover{background:#eef3f7;color:#283b51}.bottom{margin-top:auto;padding:12px;color:#8b96a3;font-size:12px}main{padding:36px clamp(22px,4vw,64px);max-width:1600px;width:100%;margin:auto}.top{display:flex;justify-content:space-between;align-items:center;gap:20px}.top h1{margin:5px 0}.pill{border:1px solid #dfe8e5;background:#f5faf8;color:#477365;border-radius:50px;padding:9px 13px;font-size:12px;font-weight:700}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:28px 0}.card{background:white;border:1px solid #e8ecf0;border-radius:16px;padding:22px;box-shadow:0 6px 24px #1f354207}.metric{font-size:30px;font-weight:750;letter-spacing:-1px;margin-top:16px}.muted{color:#8a95a2;font-size:12px}.two{display:grid;grid-template-columns:1.45fr 1fr;gap:18px}.sectiontitle{font-size:16px;font-weight:750;margin:0 0 18px}.staffgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}.person{border:1px solid #e9edf1;border-radius:13px;padding:18px;background:white}.avatar{height:42px;width:42px;display:grid;place-items:center;background-color:#e9f0f5;color:#48647d;border-radius:12px;font-weight:800;margin-bottom:12px}.avatar.avatar-photo{width:76px;height:76px;background-size:300% 300%;background-repeat:no-repeat;background-color:#e8edf2;border:1px solid #e7ebef;background-origin:padding-box}.person strong{display:block}.tag{display:inline-block;background:#f3f6f8;color:#738294;padding:5px 9px;border-radius:7px;font-size:11px;margin-top:9px}.item{display:flex;justify-content:space-between;gap:10px;padding:13px 0;border-bottom:1px solid #f0f2f4;align-items:center}.item:last-child{border-bottom:0}.item strong{font-size:13px}.item small{display:block;color:#8b96a3;margin-top:5px}.view{display:none}.view.active{display:block}.actions{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 15px}.formgrid .wide{grid-column:1/-1}.deskgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.desk{min-height:175px;border:1px solid #e8edf0;border-radius:14px;padding:18px;background:linear-gradient(145deg,#fff,#f7f9fb)}.desk .surface{height:7px;background:#e4eaf0;border-radius:9px;margin:23px 0 10px}.notice{background:#f8fafb;border:1px solid #e5ebf0;padding:14px;border-radius:12px;color:#758293;font-size:12px;line-height:1.6;margin:15px 0}.err{color:#bd4d4d;font-size:13px}.toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}#toast{position:fixed;bottom:22px;right:22px;background:#293b50;color:white;padding:12px 18px;border-radius:10px;display:none;z-index:5}@media(max-width:1050px){.grid{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.deskgrid{grid-template-columns:repeat(2,1fr)}}@media(max-width:700px){.shell{display:block}aside{padding:15px;border-right:0;border-bottom:1px solid #eee}.nav{display:flex;overflow:auto}.nav button{white-space:nowrap}.bottom{display:none}main{padding:22px 16px}.grid,.deskgrid,.formgrid{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}}
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;color:#202b35;background:#f7f8fa}*{box-sizing:border-box}body{margin:0}button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:none!important}.login{min-height:100vh;display:grid;place-items:center;background:#f9fafb}.login .panel{width:min(420px,92vw);background:white;padding:42px;border:1px solid #e9edf0;border-radius:22px;box-shadow:0 18px 65px #25334b0b}.eyebrow{font-size:11px;letter-spacing:.19em;font-weight:800;color:#8b96a3;text-transform:uppercase}h1{font-size:30px;letter-spacing:-1.1px;margin:12px 0}p{color:#7c8795;line-height:1.65}input,select,textarea{background:white;border:1px solid #e2e7ec;border-radius:10px;padding:12px;width:100%;outline-color:#b7c6d8}label{display:block;font-size:12px;font-weight:700;color:#657080;margin:15px 0 7px}.primary{background:#283b51;color:white;border:0;padding:12px 18px;border-radius:10px;font-weight:650}.secondary{background:white;border:1px solid #e0e5ea;color:#46556a;padding:10px 14px;border-radius:10px}.shell{display:grid;grid-template-columns:238px 1fr;min-height:100vh}aside{background:white;border-right:1px solid #e8ecf0;padding:30px 18px;display:flex;flex-direction:column;gap:24px}.brand{font-weight:800;font-size:19px;letter-spacing:-.65px;padding:6px 12px}.brand small{display:block;font-size:10px;letter-spacing:.22em;color:#99a2ac;margin-top:5px}.nav{display:grid;gap:5px}.nav button{background:transparent;border:0;text-align:left;padding:12px 14px;color:#697788;border-radius:10px;font-weight:600;font-size:13px}.nav button.active,.nav button:hover{background:#eef3f7;color:#283b51}.bottom{margin-top:auto;padding:12px;color:#8b96a3;font-size:12px}main{padding:36px clamp(22px,4vw,64px);max-width:1600px;width:100%;margin:auto}.top{display:flex;justify-content:space-between;align-items:center;gap:20px}.top h1{margin:5px 0}.pill{border:1px solid #dfe8e5;background:#f5faf8;color:#477365;border-radius:50px;padding:9px 13px;font-size:12px;font-weight:700}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:28px 0}.card{background:white;border:1px solid #e8ecf0;border-radius:16px;padding:22px;box-shadow:0 6px 24px #1f354207}.metric{font-size:30px;font-weight:750;letter-spacing:-1px;margin-top:16px}.muted{color:#8a95a2;font-size:12px}.two{display:grid;grid-template-columns:1.45fr 1fr;gap:18px}.sectiontitle{font-size:16px;font-weight:750;margin:0 0 18px}.staffgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}.person{border:1px solid #e9edf1;border-radius:13px;padding:18px;background:white}.avatar{height:42px;width:42px;display:grid;place-items:center;background-color:#e9f0f5;color:#48647d;border-radius:12px;font-weight:800;margin-bottom:12px}.avatar.avatar-photo{width:76px;height:76px;background-size:300% 300%;background-repeat:no-repeat;background-color:#e8edf2;border:1px solid #e7ebef;background-origin:padding-box}.person strong{display:block}.tag{display:inline-block;background:#f3f6f8;color:#738294;padding:5px 9px;border-radius:7px;font-size:11px;margin-top:9px}.item{display:flex;justify-content:space-between;gap:10px;padding:13px 0;border-bottom:1px solid #f0f2f4;align-items:center}.item:last-child{border-bottom:0}.task-entry{padding:17px 0;border-bottom:1px solid #edf0f3}.task-entry:last-child{border-bottom:0}.task-entry p{margin:7px 0;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere;color:#697889}.task-meta{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.task-meta span{background:#f3f6f8;color:#657488;border-radius:6px;padding:5px 8px;font-size:11px}.task-meta .urgent{background:#fff2f0;color:#ba3d35}.task-meta .overdue{background:#fff2f0;color:#ba3d35}.task-entry .toolbar{align-items:flex-start}.task-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.item strong{font-size:13px}.item small{display:block;color:#8b96a3;margin-top:5px}.view{display:none}.view.active{display:block}.actions{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 15px}.formgrid .wide{grid-column:1/-1}.deskgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.desk{min-height:175px;border:1px solid #e8edf0;border-radius:14px;padding:18px;background:linear-gradient(145deg,#fff,#f7f9fb)}.desk .surface{height:7px;background:#e4eaf0;border-radius:9px;margin:23px 0 10px}.notice{background:#f8fafb;border:1px solid #e5ebf0;padding:14px;border-radius:12px;color:#758293;font-size:12px;line-height:1.6;margin:15px 0}.err{color:#bd4d4d;font-size:13px}.toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}#toast{position:fixed;bottom:22px;right:22px;background:#293b50;color:white;padding:12px 18px;border-radius:10px;display:none;z-index:5}@media(max-width:1050px){.grid{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.deskgrid{grid-template-columns:repeat(2,1fr)}}@media(max-width:700px){.shell{display:block}aside{padding:15px;border-right:0;border-bottom:1px solid #eee}.nav{display:flex;overflow:auto}.nav button{white-space:nowrap}.bottom{display:none}main{padding:22px 16px}.grid,.deskgrid,.formgrid{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}}
 </style></head><body><div id="login" class="login"><div class="panel"><div class="eyebrow">PRIVATE EXECUTIVE WORKSPACE</div><h1>AI Private Office</h1><p>Welcome back. Sign in to access your executive workspace.</p><form id="loginForm"><label>CEO password</label><input id="password" type="password" autocomplete="current-password" required><div style="height:18px"></div><button class="primary" style="width:100%">Sign in securely</button><p id="loginError" class="err"></p></form><p style="font-size:11px">Authorized access only.</p></div></div>
-<div id="app" class="shell hidden"><aside><div class="brand">AI Private Office<small>EXECUTIVE WORKSPACE</small></div><div class="nav" id="nav"><button data-view="hq" class="active">◫ &nbsp; Executive HQ</button><button data-view="meita">✦ &nbsp; Meita AI</button><button data-view="memory">◈ &nbsp; Memory Centre</button><button data-view="workforce">♙ &nbsp; AI Workforce</button><button data-view="desks">▦ &nbsp; Live Desks</button><button data-view="tasks">☑ &nbsp; Task Centre</button><button data-view="academy">▤ &nbsp; Learning Academy</button><button data-view="research">⌕ &nbsp; Research Intelligence</button><button data-view="finance">◈ &nbsp; Finance & Audit</button><button data-view="integrations">⌘ &nbsp; Integration Centre</button><button data-view="governance">◇ &nbsp; Governance</button></div><div class="bottom"><button class="secondary" id="logout">Sign out</button><p>Private office environment</p></div></aside><main><header class="top"><div><div class="eyebrow">YOUR EXECUTIVE WORKSPACE</div><h1 id="pageTitle">Good day, CEO.</h1><div class="muted" id="today"></div></div><span class="pill">● Private workspace</span></header>
+<div id="app" class="shell hidden"><aside><div class="brand">AI Private Office<small>EXECUTIVE WORKSPACE</small></div><div class="nav" id="nav"><button data-view="hq" class="active">◫ &nbsp; Executive HQ</button><button data-view="meita">✦ &nbsp; Meita AI</button><button data-view="memory">◈ &nbsp; Memory Centre</button><button data-view="workforce">♙ &nbsp; AI Workforce</button><button data-view="desks">▦ &nbsp; Live Desks</button><button data-view="tasks">☑ &nbsp; Task Centre</button><button data-view="monthly">▣ &nbsp; Monthly Workplan</button><button data-view="academy">▤ &nbsp; Learning Academy</button><button data-view="research">⌕ &nbsp; Research Intelligence</button><button data-view="finance">◈ &nbsp; Finance & Audit</button><button data-view="integrations">⌘ &nbsp; Integration Centre</button><button data-view="governance">◇ &nbsp; Governance</button></div><div class="bottom"><button class="secondary" id="logout">Sign out</button><p>Private office environment</p></div></aside><main><header class="top"><div><div class="eyebrow">YOUR EXECUTIVE WORKSPACE</div><h1 id="pageTitle">Good day, CEO.</h1><div class="muted" id="today"></div></div><span class="pill">● Private workspace</span></header>
 <section class="view active" id="hq"><div class="grid"><div class="card"><div class="muted">AI Workforce</div><div class="metric" id="kStaff">0</div><div class="muted">Configured team members</div></div><div class="card"><div class="muted">Open tasks</div><div class="metric" id="kOpen">0</div><div class="muted">Awaiting completion</div></div><div class="card"><div class="muted">For approval</div><div class="metric" id="kApproval">0</div><div class="muted">CEO attention required</div></div><div class="card"><div class="muted">Knowledge sources</div><div class="metric" id="kLessons">0</div><div class="muted">Registered resources</div></div></div><div class="two"><div class="card"><div class="toolbar"><h2 class="sectiontitle">Leadership & workforce</h2><button class="secondary" onclick="show('workforce')">Manage team</button></div><div class="staffgrid" id="hqStaff"></div></div><div class="card"><h2 class="sectiontitle">Recent tasks</h2><div id="hqTasks"></div></div></div><div class="notice">Manage departments through Meita and your Directors. Authorized AI staff can generate internal deliverables for CEO review; external application access, publishing and payments are not connected.</div></section>
 <section class="view" id="memory"><div class="toolbar"><div><h2>Meita Memory Centre</h2><p>CEO-controlled long-term memory stored in PostgreSQL. Only memories you save here are used by Meita.</p></div><button class="secondary" onclick="loadMemory()">Refresh</button></div><div class="card"><h3 id="memoryHeading">Save a memory</h3><form id="memoryForm"><label>Title</label><input id="memoryTitle" maxlength="120" required placeholder="CEO's communication style"><label>Category</label><select id="memoryCategory"><option>CEO instruction</option><option>CEO preference</option><option>Company knowledge</option><option>Task decision</option></select><label>Content</label><textarea id="memoryContent" rows="5" maxlength="3000" required placeholder="Approved information for Meita to remember"></textarea><div style="height:12px"></div><button class="primary" id="memorySave">Save memory</button> <button type="button" class="secondary" onclick="resetMemory()">Cancel edit</button></form></div><div class="card" style="margin-top:20px"><h3>Saved memories</h3><div id="memoryList"><p>Loading…</p></div></div><div class="notice">CEO approval is required to create or change memory. Memory access is currently limited to Meita. Do not store passwords or API keys.</div></section><section class="view" id="meita"><h2>Meita · Acting COO</h2><p>Talk directly to Meita using the OpenAI engine. Advisory conversations only; no autonomous external actions.</p><div class="card"><div id="meitaChat" style="height:340px;overflow:auto;white-space:pre-wrap;font-size:14px;line-height:1.65"><p>Start a conversation with Meita.</p></div><form id="meitaForm"><label>Message to Meita</label><textarea id="meitaInput" rows="3" maxlength="6000" required placeholder="Meita, help me prioritize today's work..."></textarea><div style="height:12px"></div><button class="primary" id="meitaSend">Send to Meita</button></form><p class="muted">AI can make mistakes. Do not enter sensitive company information until security review is complete.</p></div>
 <div class="card" style="margin-top:20px">
@@ -18,7 +18,40 @@
 <div id="directorPlanList"><p>No Director plans yet.</p></div></div>
 </section>
 <section class="view" id="desks"><h2>Live Desks</h2><p>Clean interactive desk view. Each workstation reflects recorded tasks, not fictional activity.</p><div class="deskgrid" id="deskList"></div></section>
-<section class="view" id="tasks"><div class="toolbar"><div><h2>Task Centre</h2><p>Assign, track and approve work.</p></div><button class="primary" onclick="toggle('taskForm')">+ New task</button></div><div id="taskForm" class="card hidden"><form id="newTaskForm"><label>Task title</label><input name="title" required><label>Assign to</label><select name="assignee" id="assignee"><option value="">Unassigned</option></select><div style="height:15px"></div><button class="primary">Create task</button></form></div><div class="card" style="margin-top:20px" id="taskList"></div><div class="card" style="margin-top:20px"><div class="toolbar"><div><h3>AI deliverables · CEO review</h3><p>Run an assigned task to generate an actual OpenAI deliverable. Results remain internal until approved.</p></div><button class="secondary" onclick="loadRuns()">Refresh results</button></div><div id="runList"><p>No AI deliverables yet.</p></div></div></section>
+<section class="view" id="tasks"><div class="toolbar"><div><h2>Task Centre</h2><p>Create detailed AI assignments, prioritize deadlines, manage recurrence and review deliverables.</p></div><button class="primary" onclick="newOfficeTask()">+ New task</button></div>
+<div id="taskForm" class="card hidden" style="margin-top:18px"><div class="toolbar"><h3 id="taskFormHeading">New AI assignment</h3><button class="secondary" type="button" onclick="cancelOfficeTask()">Close</button></div>
+<form id="newTaskForm"><label>Task title</label><input name="title" maxlength="250" required placeholder="Prepare November market intelligence briefing">
+<label>Task description / AI instructions</label><textarea name="description" rows="5" maxlength="3000" required placeholder="Define scope, deliverables, references, quality expectations and what the AI must not do."></textarea>
+<div class="formgrid"><div><label>Assign to AI staff</label><select name="assignee" id="assignee"><option value="">Unassigned</option></select></div>
+<div><label>Priority</label><select name="priority"><option>Normal</option><option>High</option><option>Urgent</option><option>Low</option></select></div>
+<div><label>Due date (Malaysia)</label><input name="due_date" type="date" id="taskDueDate"><button type="button" class="secondary" style="margin-top:8px" onclick="setTaskTomorrow()">Tomorrow</button></div>
+<div><label>Repeat schedule</label><select name="recurrence" id="taskRecurrence"><option>None</option><option>Daily</option><option>Weekly</option><option>Monthly</option></select></div></div>
+<div class="notice">Recurring tasks create future assignments at the selected frequency. Generating a task does not automatically run AI or spend API credits.</div>
+<button class="primary" id="taskSave" type="submit">Create task</button><button type="button" class="secondary" onclick="cancelOfficeTask()">Cancel</button>
+</form></div>
+<div class="card" style="margin-top:20px"><div class="toolbar"><div><h3>Assigned Tasks</h3><p>Edit a task before Run AI. Sort by priority and nearest deadline.</p></div><button class="secondary" onclick="refresh()">Refresh tasks</button></div><div id="taskList"></div></div>
+<div class="card" style="margin-top:20px"><div class="toolbar"><div><h3>AI deliverables · CEO review</h3><p>Run an assigned task to generate an actual OpenAI deliverable. Results remain internal until approved.</p></div><button class="secondary" onclick="loadRuns()">Refresh results</button></div><div id="runList"><p>No AI deliverables yet.</p></div></div></section>
+<section class="view" id="monthly">
+<div class="toolbar"><div><h2>Monthly Director Workplan</h2><p>Recurring responsibilities for all nine Directors, with Malaysian regional focus and CEO oversight.</p></div><button class="secondary" onclick="loadMonthly()">Refresh</button></div>
+<div class="card" style="margin-top:20px"><div class="toolbar">
+ <div><label for="monthlyPeriod">Reporting month</label><input type="month" id="monthlyPeriod" style="width:190px"></div>
+ <div><div class="eyebrow">Regional focus</div><strong id="monthlyRegion">Loading…</strong></div>
+ <div><div class="eyebrow">Completed</div><strong id="monthlyProgress">—</strong></div>
+</div>
+<div class="notice">Monthly assignments are created automatically. CEO chooses when to run AI and reviews all deliverables. Scheduling itself never makes OpenAI calls or takes external actions.</div>
+<div class="staffgrid" id="monthlyAssignments" style="margin-top:20px"></div></div>
+<div class="card" style="margin-top:22px"><div class="toolbar"><div><h3>Recurring Responsibility Templates</h3><p>CEO can revise deadlines, instructions or enable/disable future tasks. Existing historical assignments remain unchanged.</p></div>
+<button class="secondary" onclick="toggle('monthlyTemplateList')">Manage templates</button></div>
+<div id="monthlyTemplateList" class="hidden" style="margin-top:12px"></div>
+<form id="monthlyTemplateForm" class="hidden" style="margin-top:20px">
+<h3 id="monthlyTemplateHeading">Edit responsibility</h3>
+<label>Task title</label><input id="mtTitle" maxlength="200" required>
+<label>Detailed instructions for AI Director</label><textarea id="mtBrief" rows="5" maxlength="3000" required></textarea>
+<div class="formgrid"><div><label>Due day (1–28)</label><input id="mtDue" type="number" min="1" max="28" required></div>
+<div><label>Schedule</label><select id="mtEnabled"><option value="true">Enabled</option><option value="false">Disabled</option></select></div></div>
+<p class="muted">Use {region} in titles and instructions for monthly regional focus. Changes apply to assignments not yet generated.</p>
+<div class="task-actions"><button class="primary" id="mtSave" type="submit">Save template</button><button class="secondary" type="button" onclick="cancelMonthlyTemplate()">Cancel</button></div>
+</form></div></section>
 <section class="view" id="academy"><div class="toolbar"><div><h2>Learning Academy</h2><p>Register learning material and assign it to staff.</p></div><button class="primary" onclick="toggle('lessonForm')">+ Add learning source</button></div><div class="notice">YouTube and website links are saved as references. Transcription, ingestion, PDF processing and AI learning are not yet implemented. No staff receives automatic knowledge access.</div><div id="lessonForm" class="card hidden"><form id="newLessonForm"><div class="formgrid"><div><label>Title</label><input name="title" required></div><div><label>Source type</label><select name="kind"><option>YouTube link</option><option>Website link</option><option>Note</option></select></div><div class="wide"><label>URL or note</label><textarea name="source" required></textarea></div><div class="wide"><label>Assigned staff / department (reference only)</label><input name="assigned" placeholder="e.g. Creative"></div></div><div style="height:15px"></div><button class="primary">Register source</button></form></div><div class="card" style="margin-top:20px" id="lessonList"></div></section>
 <section class="view" id="research"><h2>Research Intelligence</h2><div class="card"><h3>Research workspace</h3><p>Planned: verified-source research, OSINT collection, citations, evidence review and reports.</p><span class="tag">Not connected</span></div></section>
 <section class="view" id="finance"><h2>Finance & Internal Audit</h2><div class="card"><h3>Financial operations</h3><p>Planned: ledgers, reconciliations, expense review, reporting and audit evidence.</p><span class="tag">Not connected</span></div></section>
@@ -30,7 +63,7 @@ const $=id=>document.getElementById(id);let state={staff:[],tasks:[],lessons:[],
 async function api(path,options={}){const r=await fetch('/api/'+path,{credentials:'same-origin',headers:{'Content-Type':'application/json'},...options});if(r.status===401){$('app').classList.add('hidden');$('login').classList.remove('hidden');throw Error('Session expired. Please sign in.')}if(!r.ok){let j=await r.json().catch(()=>({}));throw Error(j.detail||'Request failed')}return r.json()}
 function msg(s){$('toast').textContent=s;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',3000)}
 function toggle(id){$(id).classList.toggle('hidden')}
-function show(id){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('active',e.id===id));document.querySelectorAll('[data-view]').forEach(e=>e.classList.toggle('active',e.dataset.view===id));$('pageTitle').textContent=({hq:'Good day, CEO.',meita:'Meita · Acting COO',memory:'Memory Centre',workforce:'Your AI Workforce',desks:'Live Desks',tasks:'Task Centre',academy:'Learning Academy',research:'Research Intelligence',finance:'Finance & Audit',integrations:'Integration Centre',governance:'Governance'})[id];window.scrollTo(0,0)}
+function show(id){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('active',e.id===id));document.querySelectorAll('[data-view]').forEach(e=>e.classList.toggle('active',e.dataset.view===id));$('pageTitle').textContent=({hq:'Good day, CEO.',meita:'Meita · Acting COO',memory:'Memory Centre',workforce:'Your AI Workforce',desks:'Live Desks',tasks:'Task Centre',monthly:'Monthly Workplan',academy:'Learning Academy',research:'Research Intelligence',finance:'Finance & Audit',integrations:'Integration Centre',governance:'Governance'})[id];window.scrollTo(0,0)}
 function staffPortrait(s){
   const slot=Number(s.portrait_slot);
   if(s.portrait_slot!==null && s.portrait_slot!==undefined && Number.isInteger(slot)&&slot>=0&&slot<9){
@@ -45,9 +78,105 @@ function person(s,editable=false){
   const report=s.org_role==='Director'?'Reports to Meita':director?'Reports to '+director.name:'Reporting line unassigned';
   return `<div class="person">${staffPortrait(s)}<strong>${esc(s.name)}</strong><div class="muted">${esc(s.role)}</div><span class="tag">${esc(s.department)}</span><span class="tag" style="margin-left:6px">${esc(s.org_role||'Specialist')}</span><p class="muted">${esc(report)}</p>${actions}</div>`;
 }
+
+let editingTaskId=null;
+function malaysiaDate(offset=0){
+  const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+  const d=new Date(Date.UTC(Number(parts.find(p=>p.type==='year').value),
+    Number(parts.find(p=>p.type==='month').value)-1,
+    Number(parts.find(p=>p.type==='day').value)+offset));
+  return d.toISOString().slice(0,10);
+}
+function setTaskTomorrow(){$('taskDueDate').value=malaysiaDate(1)}
+function toggleDueRequirement(){
+  const frequency=$('taskRecurrence').value;
+  $('taskDueDate').required=frequency!=='None';
+}
+function cancelOfficeTask(){
+  editingTaskId=null;
+  const form=$('newTaskForm');form.reset();
+  $('taskForm').classList.add('hidden');
+  $('taskFormHeading').textContent='New AI assignment';
+  $('taskSave').textContent='Create task';
+  $('taskRecurrence').disabled=false;
+  toggleDueRequirement();
+}
+function newOfficeTask(){
+  cancelOfficeTask();
+  show('tasks');
+  $('taskForm').classList.remove('hidden');
+  $('taskForm').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function editOfficeTask(id){
+  const task=state.tasks.find(t=>t.id===id);
+  if(!task)return;
+  if(task.ai_run_started||['For approval','Completed'].includes(task.status)){
+    msg('This task is locked after AI execution or completion');return;
+  }
+  newOfficeTask();
+  editingTaskId=id;
+  const form=$('newTaskForm');
+  for(const field of ['title','description','assignee','priority','recurrence']){
+    form.elements[field].value=task[field]??(field==='recurrence'?'None':'');
+  }
+  form.elements.due_date.value=(task.due_date||'').slice(0,10);
+  // Monthly Director workplans are recurring via their dedicated templates.
+  form.elements.recurrence.disabled=Boolean(task.is_monthly);
+  $('taskFormHeading').textContent='Edit task before Run AI';
+  $('taskSave').textContent='Save task changes';
+  toggleDueRequirement();
+}
+function renderOfficeTasks(tasks,staff){
+  const box=$('taskList');
+  const urgency={Urgent:0,High:1,Normal:2,Low:3};
+  const sorted=[...tasks].sort((a,b)=>(urgency[a.priority]??2)-(urgency[b.priority]??2)
+      ||(a.due_date||'9999').localeCompare(b.due_date||'9999')
+      ||(b.created||0)-(a.created||0));
+  const today=malaysiaDate(),tomorrow=malaysiaDate(1);
+  box.innerHTML=sorted.map(t=>{
+    const canEdit=!t.ai_run_started&&!['For approval','Completed'].includes(t.status);
+    const due=(t.due_date||'').slice(0,10);
+    const label=due?(due<today?'Overdue · '+due:due===tomorrow?'Due tomorrow':due===today?'Due today':'Due '+due):'No deadline';
+    const statusOptions=['To do','In progress','For approval','Completed'].map(st=>'<option value="'+esc(st)+'" '+(t.status===st?'selected':'')+'>'+esc(st)+'</option>').join('');
+    const description=t.description?'<p>'+esc(t.description.slice(0,400))+(t.description.length>400?'…':'')+'</p>':'<p class="muted">No description yet — edit task before running AI.</p>';
+    return '<div class="task-entry"><div class="toolbar"><div style="flex:1;min-width:180px"><strong>'+esc(t.title)+'</strong>'+description+
+     '<div class="task-meta"><span class="'+(t.priority==='Urgent'?'urgent':'')+'">'+esc(t.priority||'Normal')+'</span>'+
+      '<span class="'+(due<today?'overdue':'')+'">'+esc(label)+'</span>'+
+      '<span>'+esc(t.recurrence&&t.recurrence!=='None'?'Repeats: '+t.recurrence:'One-time')+'</span>'+
+      '<span>'+esc(staff.find(x=>x.id===t.assignee)?.name||'Unassigned')+'</span></div></div>'+
+      '<div class="task-actions">'+
+      (canEdit?'<button class="secondary" onclick="editOfficeTask(\''+esc(t.id)+'\')">Edit</button>':'')+
+      '<select style="max-width:155px" aria-label="Task status" onchange="updateTask(\''+esc(t.id)+'\',this.value)">'+statusOptions+'</select>'+
+      (canEdit&&t.assignee&&t.description?.trim()?'<button class="primary" onclick="runStaffTask(\''+esc(t.id)+'\',this)">Run AI</button>':'')+
+      '</div></div></div>';
+  }).join('')||'<p>No tasks yet. Create your first assignment.</p>';
+}
+$('taskRecurrence').addEventListener('change',toggleDueRequirement);
+$('newTaskForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const form=e.target,button=$('taskSave'),id=editingTaskId;
+  const body=Object.fromEntries(new FormData(form));
+  if(form.elements.recurrence.disabled)body.recurrence='Monthly';
+  body.description=(body.description||'').trim();
+  body.due_date=body.due_date||null;
+  if(!body.description){msg('Please add task description for your AI staff');return}
+  if(body.recurrence!=='None'&&!body.due_date){msg('Recurring tasks need a due date');return}
+  button.disabled=true;
+  try{
+    await api(id?'tasks/'+encodeURIComponent(id):'tasks',
+      {method:id?'PUT':'POST',body:JSON.stringify(body)});
+    cancelOfficeTask();
+    await refresh();
+    if($('monthlyPeriod'))await loadMonthly();
+    msg(id?'Task configuration updated':'AI task created');
+  }catch(err){msg(err.message)}
+  finally{button.disabled=false}
+});
+
 function render(){const s=state.staff,t=state.tasks,l=state.lessons;$('kStaff').textContent=s.length;$('kOpen').textContent=t.filter(x=>x.status!=='Completed').length;$('kApproval').textContent=t.filter(x=>x.status==='For approval').length;$('kLessons').textContent=l.length;$('hqStaff').innerHTML=s.length?s.slice(0,6).map(x=>person(x,false)).join(''):'<p>No staff hired yet.</p>';$('staffList').innerHTML=s.length?s.map(x=>person(x,true)).join(''):'<div class="notice">Your team is empty. Hire your first staff member.</div>';
 const taskrow=x=>`<div class="item"><div><strong>${esc(x.title)}</strong><small>${esc(s.find(z=>z.id===x.assignee)?.name||'Unassigned')} · ${esc(x.status)}</small></div></div>`;$('hqTasks').innerHTML=t.length?t.slice(0,5).map(taskrow).join(''):'<p>No tasks yet.</p>';
-$('assignee').innerHTML='<option value="">Unassigned</option>'+s.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('');$('taskList').innerHTML=t.length?t.map(x=>`<div class="item"><div><strong>${esc(x.title)}</strong><small>${esc(s.find(z=>z.id===x.assignee)?.name||'Unassigned')}</small></div><select style="max-width:180px" onchange="updateTask('${esc(x.id)}',this.value)">${['To do','In progress','For approval','Completed'].map(st=>`<option ${x.status===st?'selected':''}>${st}</option>`).join('')}</select>${x.assignee?'<button class="secondary" style="margin-left:8px" onclick="runStaffTask(\''+esc(x.id)+'\',this)">Run AI</button>':''}</div>`).join(''):'<p>No tasks created yet.</p>';
+$('assignee').innerHTML='<option value="">Unassigned</option>'+s.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('');
+renderOfficeTasks(t,s);
 $('deskList').innerHTML=s.length?s.map(x=>{const active=t.filter(y=>y.assignee===x.id&&y.status!=='Completed');return `<div class="desk">${staffPortrait(x)}<strong>${esc(x.name)}</strong><div class="muted">${esc(x.role)}</div><div class="surface"></div><span class="tag">${active.length?active.length+' open task(s)':'No active tasks'}</span></div>`}).join(''):'<div class="notice">Hire AI staff to create workstations.</div>';
 renderOrganization();$('lessonList').innerHTML=l.length?l.map(x=>`<div class="item"><div><strong>${esc(x.title)}</strong><small>${esc(x.kind)} · ${esc(x.assigned||'Not assigned')} · ${esc(x.status)}</small></div></div>`).join(''):'<p>No learning sources registered.</p>';$('auditList').innerHTML=state.audit.slice(0,12).map(x=>`<div class="item"><strong>${esc(x.action)}</strong><small>${esc(x.detail)}</small></div>`).join('')||'<p>No activity recorded.</p>'}
 function addMeita(role,content){const d=document.createElement('div');d.style.cssText='padding:12px;margin:9px 0;border-radius:10px;background:'+(role==='user'?'#eef3f7':'#f8fafb');const b=document.createElement('strong');b.textContent=role==='user'?'CEO':'Meita';d.appendChild(b);const p=document.createElement('div');p.textContent=content;d.appendChild(p);$('meitaChat').appendChild(d);$('meitaChat').scrollTop=$('meitaChat').scrollHeight}
@@ -294,12 +423,115 @@ $('directorForm').addEventListener('submit',async e=>{
   finally{button.disabled=false;button.textContent='Request Director Plan'}
 });
 
+
+let monthlyData={assignments:[],templates:[]};
+let editingMonthlyTemplate=null;
+function malaysiaPeriod(){
+  const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit'}).formatToParts(new Date());
+  return parts.find(p=>p.type==='year').value+'-'+parts.find(p=>p.type==='month').value;
+}
+function mNode(tag,text,cls){
+  const d=document.createElement(tag);
+  if(text!==undefined)d.textContent=text;
+  if(cls)d.className=cls;
+  return d;
+}
+async function loadMonthly(){
+  const root=$('monthlyAssignments');
+  try{
+    const period=$('monthlyPeriod').value||malaysiaPeriod();
+    monthlyData=await api('monthly?period='+encodeURIComponent(period));
+    $('monthlyRegion').textContent=monthlyData.region_focus||'—';
+    $('monthlyProgress').textContent=(monthlyData.completed||0)+' / '+(monthlyData.total||0)+' completed';
+    root.textContent='';
+    const groups=new Map();
+    for(const task of monthlyData.assignments||[]){
+      const key=task.department||'Former department';
+      if(!groups.has(key))groups.set(key,[]);
+      groups.get(key).push(task);
+    }
+    if(!groups.size)root.textContent='No Director assignments for this period.';
+    for(const [dept,items] of groups){
+      const card=mNode('div',undefined,'person');
+      card.append(mNode('strong',dept));
+      card.append(mNode('p',items[0].director_name||'Unassigned','muted'));
+      for(const task of items){
+        const item=mNode('div',undefined,'task-entry');
+        item.append(mNode('strong',task.title||'Unavailable task'));
+        const due=String(task.due_date||'').slice(0,10);
+        item.append(mNode('small','Due '+due+' · '+(task.status||'Unknown'),'muted'));
+        const p=mNode('p',task.brief||'');p.style.fontSize='12px';item.append(p);
+        const actions=mNode('div',undefined,'task-actions');
+        const locked=['Completed','For approval'].includes(task.status);
+        if(!locked){
+          const edit=mNode('button','Edit task','secondary');
+          edit.type='button';
+          edit.onclick=()=>{show('tasks');editOfficeTask(task.task_id)};
+          actions.append(edit);
+          if(state.tasks.some(t=>t.id===task.task_id&&t.assignee&&t.description&&!t.ai_run_started)){
+            const run=mNode('button','Run AI','primary');
+            run.type='button';
+            run.onclick=async()=>{await runStaffTask(task.task_id,run);await loadMonthly()};
+            actions.append(run);
+          }
+        }
+        item.append(actions);card.append(item);
+      }
+      root.append(card);
+    }
+    const templates=$('monthlyTemplateList');templates.textContent='';
+    for(const tpl of monthlyData.templates||[]){
+      const row=mNode('div',undefined,'item');
+      const details=mNode('div');
+      details.append(mNode('strong',tpl.title));
+      details.append(mNode('small',tpl.department+' · Day '+tpl.due_day+' · '+(tpl.enabled?'Enabled':'Disabled')));
+      const edit=mNode('button','Edit','secondary');
+      edit.type='button';edit.onclick=()=>editMonthlyTemplate(tpl.key);
+      row.append(details,edit);templates.append(row);
+    }
+  }catch(e){
+    root.textContent='Unable to load Monthly Workplan: '+e.message;
+  }
+}
+function editMonthlyTemplate(key){
+  const item=(monthlyData.templates||[]).find(t=>t.key===key);
+  if(!item)return;
+  editingMonthlyTemplate=key;
+  $('mtTitle').value=item.title;
+  $('mtBrief').value=item.brief;
+  $('mtDue').value=item.due_day;
+  $('mtEnabled').value=String(item.enabled);
+  $('monthlyTemplateHeading').textContent='Edit recurring responsibility';
+  $('monthlyTemplateList').classList.remove('hidden');
+  $('monthlyTemplateForm').classList.remove('hidden');
+  $('monthlyTemplateForm').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function cancelMonthlyTemplate(){
+  editingMonthlyTemplate=null;
+  $('monthlyTemplateForm').reset();
+  $('monthlyTemplateForm').classList.add('hidden');
+}
+$('monthlyPeriod').addEventListener('change',loadMonthly);
+$('monthlyTemplateForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  if(!editingMonthlyTemplate)return;
+  const btn=$('mtSave');btn.disabled=true;
+  try{
+    const body={title:$('mtTitle').value.trim(),brief:$('mtBrief').value.trim(),
+      due_day:Number($('mtDue').value),enabled:$('mtEnabled').value==='true'};
+    await api('monthly/templates/'+encodeURIComponent(editingMonthlyTemplate),
+      {method:'PUT',body:JSON.stringify(body)});
+    cancelMonthlyTemplate();await loadMonthly();
+    msg('Future monthly responsibility updated');
+  }catch(e){msg(e.message)}finally{btn.disabled=false}
+});
+
 async function refresh(){state=await api('office');render();renderDirectorSelect()}
 async function updateTask(id,status){try{await api('tasks/'+id,{method:'PATCH',body:JSON.stringify({status})});await refresh();msg('Task updated')}catch(e){msg(e.message);await refresh()}}
 $('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b)show(b.dataset.view)});
 $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').textContent='';try{await api('login',{method:'POST',body:JSON.stringify({password:$('password').value})});$('password').value='';await enter()}catch(err){$('loginError').textContent=err.message}});
-async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await loadMeita();await loadMemory();await loadRuns();await loadDelegations();await loadDirectorPlans()}catch(e){msg(e.message)}}
+async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await loadMeita();await loadMemory();await loadRuns();await loadDelegations();await loadDirectorPlans();$('monthlyPeriod').value=malaysiaPeriod();await loadMonthly()}catch(e){msg(e.message)}}
 $('logout').onclick=async()=>{await api('logout',{method:'POST'});location.reload()};
-for(const [form,path] of [['newTaskForm','tasks'],['newLessonForm','lessons']])$(form).addEventListener('submit',async e=>{e.preventDefault();const body=Object.fromEntries(new FormData(e.target));try{await api(path,{method:'POST',body:JSON.stringify(body)});e.target.reset();e.target.closest('.card').classList.add('hidden');await refresh();msg('Saved successfully')}catch(err){msg(err.message)}});
+for(const [form,path] of [['newLessonForm','lessons']])$(form).addEventListener('submit',async e=>{e.preventDefault();const body=Object.fromEntries(new FormData(e.target));try{await api(path,{method:'POST',body:JSON.stringify(body)});e.target.reset();e.target.closest('.card').classList.add('hidden');await refresh();msg('Saved successfully')}catch(err){msg(err.message)}});
 $('integrationList').innerHTML=['Instagram / Facebook','TikTok / YouTube','WhatsApp Business','Gmail / Outlook','Canva / Adobe','CapCut / Video tools','Finance / Banking'].map(n=>`<div class="person"><strong>${esc(n)}</strong><span class="tag">Not connected</span><p class="muted">Requires supported integration and CEO authorization.</p></div>`).join('');$('today').textContent=new Date().toLocaleDateString('en-MY',{weekday:'long',day:'numeric',month:'long',year:'numeric'});api('me').then(x=>{if(x.authenticated)enter()}).catch(()=>{});
 </script></body></html>

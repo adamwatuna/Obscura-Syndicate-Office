@@ -1,4 +1,5 @@
-import os, json, hmac, hashlib, secrets, time, urllib.request, urllib.error
+import os, json, hmac, hashlib, secrets, time, urllib.request, urllib.error, asyncio
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.responses import FileResponse
@@ -9,6 +10,8 @@ from backend import workforce as office_workforce
 from backend import delegation as office_delegation
 from backend import office_db
 from backend import organization as org
+from backend import monthly
+from backend import task_schedule
 
 ROOT=Path(__file__).resolve().parent.parent
 PASSWORD=os.environ.get('CEO_PASSWORD')
@@ -18,7 +21,20 @@ if not PASSWORD or not SECRET or len(SECRET)<32:
 # Database initialization is atomic and imports any accessible legacy SQLite in read-only mode.
 office_db.bootstrap()
 connect=office_db.connect
-app=FastAPI(title='AI Private Office',docs_url=None,redoc_url=None)
+
+@asynccontextmanager
+async def lifespan(app):
+    # The database bootstrap has already generated any missing current-month tasks.
+    # This clock keeps assignments recurring even if the CEO does not open the UI.
+    ticker=asyncio.create_task(monthly.monthly_clock(connect))
+    try:
+        yield
+    finally:
+        ticker.cancel()
+        with suppress(asyncio.CancelledError):
+            await ticker
+
+app=FastAPI(title='AI Private Office',docs_url=None,redoc_url=None,lifespan=lifespan)
 app.add_middleware(SessionMiddleware,secret_key=SECRET,https_only=os.environ.get('COOKIE_SECURE','true').lower()=='true',same_site='lax',max_age=28800)
 
 class Login(BaseModel):password:str
@@ -32,7 +48,13 @@ class Staff(BaseModel):
     org_role: str | None = None
     manager_id: str | None = None
     delegation_permission: str | None = None
-class Task(BaseModel):title:str=Field(min_length=1,max_length=250);assignee:str=''
+class Task(BaseModel):
+    title: str = Field(min_length=1,max_length=250)
+    description: str = Field(default='',max_length=3000)
+    assignee: str = ''
+    priority: str = 'Normal'
+    due_date: str | None = None
+    recurrence: str = 'None'
 class Lesson(BaseModel):title:str=Field(min_length=1,max_length=200);kind:str;source:str=Field(min_length=1,max_length=3000);assigned:str=''
 class Status(BaseModel):status:str
 class MeitaMessage(BaseModel):message:str=Field(min_length=1,max_length=6000)
@@ -54,11 +76,16 @@ def me(req:Request):return {'authenticated':req.session.get('authorized') is Tru
 @app.get('/api/office',dependencies=[Depends(guard)])
 def office():
     with connect() as db:
+        monthly.generate_month(db)
+        task_schedule.generate_due(db)
         result = {'staff': [dict(x) for x in db.execute(
             'SELECT id,name,role,department,status,org_role,manager_id,delegation_permission,portrait_slot FROM staff ORDER BY department,name')]}
-        for table in ('tasks', 'lessons', 'audit'):
-            result[table] = [dict(x) for x in db.execute(
-                'SELECT * FROM '+table+' ORDER BY created DESC, id DESC')]
+        result['tasks']=[dict(x) for x in db.execute("""SELECT t.*,
+            EXISTS(SELECT 1 FROM monthly_assignments m WHERE m.task_id=t.id) AS is_monthly
+            FROM tasks t ORDER BY created DESC,id DESC LIMIT 1000""")]
+        for table in ('lessons','audit'):
+            result[table]=[dict(x) for x in db.execute(
+                'SELECT * FROM '+table+' ORDER BY created DESC,id DESC')]
         return result
 @app.get('/api/organization',dependencies=[Depends(guard)])
 def get_organization():
@@ -133,11 +160,18 @@ def delete_staff(ident:str):
 
 @app.post('/api/tasks',dependencies=[Depends(guard)])
 def create_task(body:Task):
-    ident=secrets.token_hex(12)
     with connect() as db:
-        db.execute('INSERT INTO tasks VALUES(%s,%s,%s,%s,%s)',(ident,body.title,body.assignee,'To do',int(time.time())))
-        audit(db,'task.created',body.title)
-    return {'id':ident}
+        result=task_schedule.create(db,body)
+        audit(db,'task.created',f'{result["id"]}: {body.title}')
+    return result
+
+@app.put('/api/tasks/{ident}',dependencies=[Depends(guard)])
+def edit_task(ident:str,body:Task):
+    with connect() as db:
+        result=task_schedule.update(db,ident,body)
+        audit(db,'task.updated',f'{ident}: {body.title}')
+    return result
+
 @app.patch('/api/tasks/{ident}',dependencies=[Depends(guard)])
 def update_task(ident:str,body:Status):
     if body.status not in ('To do','In progress','For approval','Completed'):raise HTTPException(400,'Invalid status')
@@ -241,13 +275,34 @@ def workforce_runs():
 @app.post('/api/workforce/run/{task_id}',dependencies=[Depends(guard)])
 def workforce_run(task_id:str):
     with connect() as db:
-        task=db.execute('SELECT * FROM tasks WHERE id=%s',(task_id,)).fetchone()
-        if task is None: raise HTTPException(404,'Task not found')
-        if not task['assignee']: raise HTTPException(400,'Assign a staff member before running this task')
-        staff=db.execute('SELECT * FROM staff WHERE id=%s',(task['assignee'],)).fetchone()
-        if staff is None: raise HTTPException(404,'Assigned staff not found')
-        task=dict(task); staff=dict(staff)
-    result=office_workforce.execute(task,staff)
+        record=db.execute('SELECT * FROM tasks WHERE id=%s FOR UPDATE',(task_id,)).fetchone()
+        if record is None:raise HTTPException(404,'Task not found')
+        if record['ai_run_started'] or record['status'] in ('For approval','Completed'):
+            raise HTTPException(409,'AI task already started or completed')
+        if not record['assignee']:
+            raise HTTPException(400,'Assign an AI staff member before running this task')
+        if not record['description'].strip():
+            raise HTTPException(400,'Add task description before running AI')
+        staff=db.execute('SELECT * FROM staff WHERE id=%s',(record['assignee'],)).fetchone()
+        if staff is None:raise HTTPException(404,'Assigned staff not found')
+        task=dict(record);staff=dict(staff)
+        old_status=task['status']
+        task['brief']=task['description']
+        monthly_note=monthly.detail_for_task(db,task_id)
+        if monthly_note:
+            task['brief']+='\nMonthly assignment context: '+monthly_note[-160:]
+        if task.get('due_date'):
+            task['brief']+='\nDue date (Malaysia): '+task['due_date'].isoformat()
+        task['brief']+='\nPriority: '+task['priority']
+        db.execute("UPDATE tasks SET ai_run_started=TRUE,status='In progress' WHERE id=%s",(task_id,))
+    try:
+        result=office_workforce.execute(task,staff)
+    except Exception:
+        # API/network failures should not lock an unexecuted task forever.
+        with connect() as db:
+            db.execute("""UPDATE tasks SET ai_run_started=FALSE,status=%s
+                WHERE id=%s AND status='In progress'""",(old_status,task_id))
+        raise
     with connect() as db:
         db.execute("UPDATE tasks SET status='For approval' WHERE id=%s",(task_id,))
         audit(db,'workforce.deliverable',task_id)
@@ -349,3 +404,26 @@ def run_department_job(ident:str):
         org.finish_job(db,ident,result['id'])
         audit(db,'director.job.delivered',f'{ident}: {result["id"]}')
     return result
+
+
+@app.get('/api/monthly',dependencies=[Depends(guard)])
+def monthly_overview(period:str|None=None):
+    with connect() as db:
+        if not period or period==monthly.period_now():
+            monthly.generate_month(db)
+        return monthly.summary(db,period)
+
+@app.post('/api/monthly/generate',dependencies=[Depends(guard)])
+def monthly_generate_current():
+    with connect() as db:
+        outcome=monthly.generate_month(db)
+        if outcome['created']:
+            audit(db,'monthly.generated.manual',outcome['period'])
+        return outcome
+
+@app.put('/api/monthly/templates/{key}',dependencies=[Depends(guard)])
+def monthly_edit_template(key:str,body:monthly.TemplateUpdate):
+    with connect() as db:
+        result=monthly.update_template(db,key,body)
+        audit(db,'monthly.template.updated',key)
+        return result
