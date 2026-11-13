@@ -769,7 +769,7 @@ async def upload_delivery_file(ident:str,file:UploadFile=File(...)):
     return await run_in_threadpool(store)
 
 @app.get('/api/deliverables/{ident}/files/{asset_id}',dependencies=[Depends(guard)])
-def download_delivery_file(ident:str,asset_id:str):
+def download_delivery_file(ident:str,asset_id:str,preview:bool=False):
     with connect() as db:
         row=staff_deliverables.get_asset(db,ident,asset_id)
     name=row["filename"]
@@ -777,7 +777,8 @@ def download_delivery_file(ident:str,asset_id:str):
     # inject response headers. Browsers still get a forced attachment.
     from urllib.parse import quote as url_quote
     return Response(content=bytes(row["content"]),media_type=row["media_type"],
-       headers={"Content-Disposition":"attachment; filename*=UTF-8''"+url_quote(name,safe=""),
+       headers={"Content-Disposition":("inline" if preview and row["kind"] in ("image","video")
+                                   else "attachment; filename*=UTF-8''"+url_quote(name,safe="")),
                 "X-Content-Type-Options":"nosniff","Cache-Control":"private, no-store"})
 
 @app.get('/api/deliverables/{ident}/report.txt',dependencies=[Depends(guard)])
