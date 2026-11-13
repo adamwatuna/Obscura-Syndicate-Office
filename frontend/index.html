@@ -175,10 +175,42 @@
 .task-more-menu>button.danger{color:#af5151}
 .task-more-menu>button.danger:hover{background:#fff0ef}
 .task-entry:has(.task-more[open]),.meita-task-card:has(.task-more[open]){position:relative;z-index:9}
+
+/* Staff Deliverables inbox: a central editorial workspace, not another task list. */
+.delivery-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:17px 0}
+.delivery-summary>div{border-radius:13px;padding:14px 16px;background:#f8fbfd;border:1px solid #e4eaf0;border-top:3px solid #4c9a98}
+.delivery-summary>div:nth-child(2){border-top-color:#d5a65e}.delivery-summary>div:nth-child(3){border-top-color:#608bc8}.delivery-summary>div:nth-child(4){border-top-color:#9078bc}
+.delivery-summary strong{font-size:27px;display:block;line-height:1.3;color:#294b64}.delivery-summary span{font-size:11px;color:#758a9c}
+.delivery-main{padding:19px!important}.delivery-controls{display:grid;grid-template-columns:auto minmax(210px,1fr) auto minmax(150px,230px);gap:11px;align-items:center;margin-bottom:16px}
+.delivery-controls label{font-size:11px;color:#53697d;margin:0}
+.delivery-controls input,.delivery-controls select{width:100%;min-width:0}
+.delivery-layout{display:grid;grid-template-columns:minmax(245px,.8fr) minmax(0,1.6fr);gap:15px;align-items:start;min-height:390px}
+.delivery-list{border:1px solid #e7edf2;border-radius:12px;background:#f8fafc;max-height:740px;overflow-y:auto;padding:8px;min-width:0}
+.delivery-item{width:100%;display:block;padding:14px 12px;margin-bottom:5px;border:1px solid transparent;border-radius:10px;background:transparent;text-align:left;cursor:pointer;color:#324b61}
+.delivery-item:hover,.delivery-item:focus-visible{background:#eef5f9;border-color:#e0eaf1}
+.delivery-item.active{background:#fff;border:1px solid #b8cddc;box-shadow:0 2px 9px #3e617018}
+.delivery-item strong{display:block;font-size:13px;overflow-wrap:anywhere;line-height:1.45}.delivery-item small{display:block;margin-top:6px;color:#7d8e9e;font-size:11px}
+.delivery-item .delivery-chip{margin-top:9px}
+.delivery-chip{display:inline-block;font-size:10px;background:#eef5f8;padding:4px 7px;border-radius:7px;color:#54728b;font-weight:650}
+.delivery-chip.approved{background:#e7f5f1;color:#2e887c}.delivery-chip.review{background:#fff3e3;color:#a57434}
+.delivery-detail{border:1px solid #e6edf4;border-radius:13px;padding:20px;background:#fff;min-height:380px;min-width:0}
+.delivery-detail h3{font-size:20px;margin:8px 0;color:#28425b;line-height:1.35}
+.delivery-detail .byline{color:#647d91;font-size:12px;margin-bottom:13px}
+.delivery-report{white-space:pre-wrap;overflow-wrap:anywhere;padding:17px;background:#f7fafc;color:#3b5063;border:1px solid #e5ecf2;border-radius:12px;font:inherit;font-size:13px;line-height:1.65;max-height:540px;overflow:auto}
+.delivery-file-grid{display:flex;gap:11px;flex-wrap:wrap;margin:11px 0}
+.delivery-file-card{border:1px solid #e3eaf0;border-radius:10px;background:#f9fbfd;padding:11px;min-width:150px;max-width:100%}
+.delivery-file-card strong{display:block;font-size:12px;overflow-wrap:anywhere}
+.delivery-file-card a{font-size:12px;display:inline-block;margin-top:7px;color:#3d78ac}
+.delivery-file-card img,.delivery-file-card video{max-width:260px;max-height:175px;object-fit:contain;display:block;border-radius:8px;margin:7px 0}
+.delivery-actions{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+.delivery-actions a,.delivery-actions button{font-size:12px}
+.delivery-detail .file-input{font-size:12px;max-width:100%;margin-top:7px}
+@media(max-width:980px){.delivery-layout{grid-template-columns:1fr}.delivery-list{max-height:320px}.delivery-controls{grid-template-columns:1fr 1fr}.delivery-controls label{grid-column:span 1}}
+@media(max-width:600px){.delivery-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.delivery-controls{display:flex;flex-direction:column;align-items:stretch;gap:8px}.delivery-main{padding:12px!important}}
 </style></head><body><div id="login" class="login"><div class="panel"><div class="eyebrow">PRIVATE EXECUTIVE WORKSPACE</div><h1>AI Private Office</h1><p>Welcome back. Sign in to access your executive workspace.</p><form id="loginForm"><label for="password">CEO password</label><input id="password" type="password" autocomplete="current-password" required>
  <div id="loginMfaWrap" class="hidden" style="margin-top:14px"><label for="loginMfaCode">Authenticator or recovery code</label><input id="loginMfaCode" type="text" autocomplete="one-time-code" inputmode="text" maxlength="32" placeholder="6-digit code or saved recovery code"><p class="muted">Enter the code from your authenticator app. Recovery codes work once.</p></div>
  <div style="height:18px"></div><button class="primary" style="width:100%">Sign in securely</button><p id="loginError" class="err"></p></form><p style="font-size:11px">Authorized access only.</p></div></div>
-<div id="app" class="shell hidden"><aside><div class="brand">AI Private Office<small>EXECUTIVE WORKSPACE</small></div><div class="nav" id="nav"><button data-view="hq" class="active">◫ &nbsp; Executive HQ</button><button data-view="meita">✦ &nbsp; Meita AI</button><button data-view="memory">◈ &nbsp; Memory Centre</button><button data-view="workforce">♙ &nbsp; AI Workforce</button><button data-view="desks">▦ &nbsp; Live Desks</button><button data-view="tasks">☑ &nbsp; Task Centre</button><button data-view="monthly">▣ &nbsp; Monthly Workplan</button><button data-view="academy">▤ &nbsp; Learning Academy</button><button data-view="research">⌕ &nbsp; Research Intelligence</button><button data-view="finance">◈ &nbsp; Finance & Audit</button><button data-view="integrations">⌘ &nbsp; Integration Centre</button><button data-view="governance">◇ &nbsp; Governance</button></div><div class="bottom"><button class="secondary" id="logout">Sign out</button><p>Private office environment</p></div></aside><main><header class="top"><div><div class="eyebrow">YOUR EXECUTIVE WORKSPACE</div><h1 id="pageTitle">Executive HQ</h1><div class="muted" id="today"></div></div><span class="pill">● Private workspace</span></header>
+<div id="app" class="shell hidden"><aside><div class="brand">AI Private Office<small>EXECUTIVE WORKSPACE</small></div><div class="nav" id="nav"><button data-view="hq" class="active">◫ &nbsp; Executive HQ</button><button data-view="meita">✦ &nbsp; Meita AI</button><button data-view="memory">◈ &nbsp; Memory Centre</button><button data-view="workforce">♙ &nbsp; AI Workforce</button><button data-view="desks">▦ &nbsp; Live Desks</button><button data-view="tasks">☑ &nbsp; Task Centre</button><button data-view="deliverables">▧ &nbsp; Submitted Work</button><button data-view="monthly">▣ &nbsp; Monthly Workplan</button><button data-view="academy">▤ &nbsp; Learning Academy</button><button data-view="research">⌕ &nbsp; Research Intelligence</button><button data-view="finance">◈ &nbsp; Finance & Audit</button><button data-view="integrations">⌘ &nbsp; Integration Centre</button><button data-view="governance">◇ &nbsp; Governance</button></div><div class="bottom"><button class="secondary" id="logout">Sign out</button><p>Private office environment</p></div></aside><main><header class="top"><div><div class="eyebrow">YOUR EXECUTIVE WORKSPACE</div><h1 id="pageTitle">Executive HQ</h1><div class="muted" id="today"></div></div><span class="pill">● Private workspace</span></header>
 <section class="view active" id="hq">
 <div class="hq-hero">
  <div><div class="hq-kicker">OBSCURA · EXECUTIVE COMMAND DESK</div>
@@ -349,7 +381,33 @@
 <button class="primary" id="taskSave" type="submit">Create task</button><button type="button" class="secondary" onclick="cancelOfficeTask()">Cancel</button>
 </form></div>
 <div class="card" style="margin-top:20px"><div class="toolbar"><div><h3>Assigned Tasks</h3><p>Edit a task before Run AI. Sort by priority and nearest deadline.</p></div><button class="secondary" onclick="refresh()">Refresh tasks</button></div><div id="taskList"></div></div>
-<div class="card" style="margin-top:20px"><div class="toolbar"><div><h3>AI deliverables · CEO review</h3><p>Run an assigned task to generate an actual OpenAI deliverable. Results remain internal until approved.</p></div><button class="secondary" onclick="loadRuns()">Refresh results</button></div><div id="runList"><p>No AI deliverables yet.</p></div></div></section>
+<div class="card" style="margin-top:20px"><div class="toolbar"><div><h3>Staff submissions &amp; completed work</h3><p>All AI reports, CEO approvals and genuine files now live together in Submitted Work.</p></div><button class="primary" type="button" onclick="show('deliverables');loadDeliveryInbox()">Open Submitted Work</button></div><div id="runList" class="muted" style="font-size:12px">Review AI output and download files from Submitted Work.</div></div></section>
+<section class="view" id="deliverables">
+ <div class="toolbar"><div><p>One inbox for all completed and submitted AI staff work, across every department. Reports are real saved outputs; media appears only if actual files exist.</p></div><button type="button" class="secondary" onclick="loadDeliveryInbox()">Refresh submissions</button></div>
+ <div class="delivery-summary" id="deliveryStats">
+  <div><strong id="deliveryCountAll">0</strong><span>All submissions</span></div>
+  <div><strong id="deliveryCountReview">0</strong><span>For CEO approval</span></div>
+  <div><strong id="deliveryCountApproved">0</strong><span>Approved</span></div>
+  <div><strong id="deliveryCountFiles">0</strong><span>Attached files</span></div>
+ </div>
+ <div class="card delivery-main">
+  <div class="delivery-controls">
+   <label for="deliverySearch">Find staff work</label>
+   <input id="deliverySearch" placeholder="Search tasks, staff, roles or departments…" oninput="renderDeliveryInbox()" autocomplete="off">
+   <label for="deliveryFilter">Review status</label>
+   <select id="deliveryFilter" onchange="renderDeliveryInbox()">
+    <option value="all">All submitted work</option>
+    <option value="For approval">Awaiting CEO review</option>
+    <option value="Approved">Approved / completed</option>
+    <option value="Revision requested">Revision requested</option>
+   </select>
+  </div>
+  <div class="delivery-layout">
+   <div class="delivery-list" id="deliveryInbox" aria-label="Submitted staff work" role="list"><p class="muted">Loading AI submissions…</p></div>
+   <article id="deliveryDetail" class="delivery-detail" aria-label="Selected staff work"><p class="muted">Select an AI staff submission to view the full work, review it or download its files.</p></article>
+  </div>
+ </div>
+</section>
 <section class="view" id="monthly">
 <div class="toolbar"><div><p>Recurring responsibilities for all nine Directors, with flexible task descriptions and CEO oversight.</p></div><button class="secondary" onclick="loadMonthly()">Refresh</button></div>
 <div class="card" style="margin-top:20px"><div class="toolbar">
@@ -583,7 +641,7 @@ async function copyCEORecoveryCodes(){
 async function api(path,options={}){const r=await fetch('/api/'+path,{credentials:'same-origin',headers:{'Content-Type':'application/json'},...options});if(r.status===401){$('app').classList.add('hidden');$('login').classList.remove('hidden');throw Error('Session expired. Please sign in.')}if(!r.ok){let j=await r.json().catch(()=>({}));throw Error(j.detail||'Request failed')}return r.json()}
 function msg(s){$('toast').textContent=s;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',3000)}
 function toggle(id){$(id).classList.toggle('hidden')}
-function show(id){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('active',e.id===id));document.querySelectorAll('[data-view]').forEach(e=>e.classList.toggle('active',e.dataset.view===id));$('pageTitle').textContent=({hq:'Executive HQ',meita:'Meita · Acting COO',memory:'Memory Centre',workforce:'Your AI Workforce',desks:'Live Desks',tasks:'Task Centre',monthly:'Monthly Workplan',academy:'Learning Academy',research:'Research Intelligence',finance:'Finance & Audit',integrations:'Integration Centre',governance:'Governance'})[id];window.scrollTo(0,0)}
+function show(id){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('active',e.id===id));document.querySelectorAll('[data-view]').forEach(e=>e.classList.toggle('active',e.dataset.view===id));$('pageTitle').textContent=({hq:'Executive HQ',meita:'Meita · Acting COO',memory:'Memory Centre',workforce:'Your AI Workforce',desks:'Live Desks',tasks:'Task Centre',monthly:'Monthly Workplan',academy:'Learning Academy',research:'Research Intelligence',finance:'Finance & Audit',deliverables:'Submitted Work',integrations:'Integration Centre',governance:'Governance'})[id];window.scrollTo(0,0)}
 function staffPortrait(s){
   const slot=Number(s.portrait_slot);
   if(s.portrait_slot!==null && s.portrait_slot!==undefined && Number.isInteger(slot)&&slot>=0&&slot<9){
@@ -1816,7 +1874,142 @@ async function loadMemory(){try{const r=await api('memory');memoryItems=r.memori
 $('memoryForm').addEventListener('submit',async e=>{e.preventDefault();const body={title:$('memoryTitle').value.trim(),category:$('memoryCategory').value,content:$('memoryContent').value.trim()};if(!body.title||!body.content)return;const btn=$('memorySave');btn.disabled=true;try{await api(editingMemory?'memory/'+encodeURIComponent(editingMemory):'memory',{method:editingMemory?'PUT':'POST',body:JSON.stringify(body)});resetMemory();await loadMemory();msg('Memory saved')}catch(err){msg(err.message)}finally{btn.disabled=false}});
 let runItems=[];
 async function runStaffTask(id,button){if(!confirm('Generate an AI deliverable for this assigned task? This uses your OpenAI API account.'))return;button.disabled=true;const old=button.textContent;button.textContent='Generating…';try{const result=await api('workforce/run/'+encodeURIComponent(id),{method:'POST'});await refresh();await loadRuns();await loadNewsBriefings();msg('AI draft created for CEO review')}catch(e){msg(e.message)}finally{button.disabled=false;button.textContent=old}}
-async function loadRuns(){try{const data=await api('workforce/runs');runItems=data.runs||[];const root=$('runList');root.textContent='';if(!runItems.length){root.textContent='No AI deliverables yet.';return}for(const run of runItems){const wrap=document.createElement('div');wrap.className='item';wrap.style.display='block';wrap.dataset.runId=run.id;const title=document.createElement('strong');title.textContent=run.task_title+' · '+run.staff_name;const meta=document.createElement('small');meta.textContent=run.status+' · '+run.model;const body=document.createElement('pre');body.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;font-family:inherit;font-size:13px;line-height:1.6;background:#f8fafb;padding:14px;border-radius:10px';body.textContent=run.result;wrap.append(title,meta,body);if(run.status==='For approval'){for(const status of ['Approved','Revision requested']){const btn=document.createElement('button');btn.className='secondary';btn.style.marginRight='8px';btn.textContent=status;btn.onclick=async()=>{try{await api('workforce/runs/'+encodeURIComponent(run.id)+'/review',{method:'POST',body:JSON.stringify({status})});await loadRuns();await loadNewsBriefings();msg('Review saved')}catch(e){msg(e.message)}};wrap.append(btn)}}root.append(wrap)}}catch(e){$('runList').textContent=e.message}}
+async function loadRuns(){return loadDeliveryInbox()}
+
+
+let submittedWork=[],selectedSubmission=null;
+function deliveryText(tag,value,cls){
+ const node=document.createElement(tag);
+ if(value!==undefined)node.textContent=value;
+ if(cls)node.className=cls;
+ return node;
+}
+function deliveryLink(label,url){
+ const link=deliveryText('a',label);
+ link.href=url;link.rel='noopener';return link;
+}
+async function loadDeliveryInbox(){
+ const root=$('deliveryInbox');
+ try{
+  const data=await api('deliverables');
+  submittedWork=data.items||[];
+  $('deliveryCountAll').textContent=String(submittedWork.length);
+  $('deliveryCountReview').textContent=String(submittedWork.filter(x=>x.status==='For approval').length);
+  $('deliveryCountApproved').textContent=String(submittedWork.filter(x=>x.status==='Approved').length);
+  $('deliveryCountFiles').textContent=String(submittedWork.reduce((sum,x)=>sum+(x.assets||[]).length,0));
+  if(selectedSubmission&&!submittedWork.some(x=>x.id===selectedSubmission))selectedSubmission=null;
+  if(!selectedSubmission && submittedWork.length)selectedSubmission=submittedWork[0].id;
+  renderDeliveryInbox();
+ }catch(err){
+  root.textContent='Could not load submissions: '+err.message;
+ }
+}
+function renderDeliveryInbox(){
+ const root=$('deliveryInbox');root.textContent='';
+ const search=$('deliverySearch').value.trim().toLowerCase(),filter=$('deliveryFilter').value;
+ const matches=submittedWork.filter(x=>(filter==='all'||x.status===filter)&&
+   [x.task_title,x.staff_name,x.staff_role,x.department,x.excerpt].join(' ').toLowerCase().includes(search));
+ if(!matches.length){
+  root.append(deliveryText('p','No matching staff submissions. Completed tasks will appear here once AI has saved a real deliverable.','muted'));
+  $('deliveryDetail').textContent='Choose a submission from the list to see its full details.';
+  return;
+ }
+ if(!matches.some(x=>x.id===selectedSubmission))selectedSubmission=matches[0].id;
+ for(const item of matches){
+  const button=deliveryText('button',undefined,'delivery-item'+(item.id===selectedSubmission?' active':''));
+  button.type='button';button.setAttribute('role','listitem');
+  button.append(deliveryText('strong',item.task_title),
+    deliveryText('small',(item.staff_role||'AI Staff')+' · '+item.department),
+    deliveryText('small',item.staff_name+' · '+new Date(item.created_at).toLocaleDateString('en-MY',{timeZone:'Asia/Kuala_Lumpur',day:'numeric',month:'short',year:'numeric'})));
+  const badge=deliveryText('span',item.status,item.status==='Approved'?'delivery-chip approved':item.status==='For approval'?'delivery-chip review':'delivery-chip');
+  button.append(badge);
+  if((item.assets||[]).length)button.append(deliveryText('small','📎 '+item.assets.length+' actual file(s)'));
+  button.onclick=()=>{selectedSubmission=item.id;renderDeliveryInbox()};
+  root.append(button);
+ }
+ renderSelectedSubmission();
+}
+async function renderSelectedSubmission(){
+ const id=selectedSubmission,root=$('deliveryDetail');root.textContent='';
+ const item=submittedWork.find(x=>x.id===id);
+ if(!item){root.textContent='Select an AI staff submission.';return}
+ root.append(deliveryText('span',item.status,item.status==='Approved'?'delivery-chip approved':'delivery-chip review'));
+ root.append(deliveryText('h3',item.task_title));
+ root.append(deliveryText('div',(item.staff_role||'AI Staff')+' · '+item.staff_name+' · '+item.department,'byline'));
+ const details=deliveryText('p','Submitted: '+new Date(item.created_at).toLocaleString('en-MY',{timeZone:'Asia/Kuala_Lumpur',dateStyle:'medium',timeStyle:'short'})+
+   ' · Task status: '+(item.task_status||'Historical'),'muted');root.append(details);
+ if(item.task_description)root.append(deliveryText('p','Task brief: '+item.task_description,'muted'));
+ const controls=deliveryText('div',undefined,'delivery-actions');
+ controls.append(deliveryLink('Download full report (.txt)','/api/deliverables/'+encodeURIComponent(id)+'/report.txt'),
+     deliveryLink('Download presentation (.pptx)','/api/deliverables/'+encodeURIComponent(id)+'/presentation.pptx'));
+ if(item.meita_project_id){
+  controls.append(deliveryLink('Meita project deck (.pptx)','/api/meita/deliverables/'+encodeURIComponent(item.meita_project_id)+'/powerpoint'));
+ }
+ if(item.status==='For approval'){
+  for(const status of ['Approved','Revision requested']){
+   const button=deliveryText('button',status==='Approved'?'Approve deliverable':'Request revision',status==='Approved'?'primary':'secondary');
+   button.type='button';
+   button.onclick=async()=>{
+    if(!confirm((status==='Approved'?'Approve':'Request revision for')+' this real AI staff result?'))return;
+    try{
+     await api('workforce/runs/'+encodeURIComponent(id)+'/review',{method:'POST',body:JSON.stringify({status})});
+     await Promise.all([loadDeliveryInbox(),refresh(),loadMeitaTaskHistory()]);
+     msg('CEO review saved');
+    }catch(err){msg(err.message)}
+   };controls.append(button);
+  }
+ }
+ root.append(controls);
+ const detail=deliveryText('p','Loading complete staff report…','muted');root.append(detail);
+ try{
+  const report=await api('deliverables/'+encodeURIComponent(id));
+  if(selectedSubmission!==id)return;
+  detail.remove();
+  const heading=deliveryText('h4','Full staff submission');root.append(heading);
+  const full=deliveryText('div',report.result||'No report text saved.','delivery-report');root.append(full);
+  const fileHeader=deliveryText('h4','Completed files');fileHeader.style.marginTop='18px';root.append(fileHeader);
+  const grid=deliveryText('div',undefined,'delivery-file-grid');
+  for(const file of item.assets||[]){
+   const card=deliveryText('div',undefined,'delivery-file-card');
+   card.append(deliveryText('strong',file.filename),deliveryText('small',file.kind+' · '+(file.size_bytes/1024/1024).toFixed(2)+' MB'));
+   const fileUrl='/api/deliverables/'+encodeURIComponent(id)+'/files/'+encodeURIComponent(file.id);
+   if(file.kind==='image'){
+    const image=document.createElement('img');image.alt='Submitted staff image: '+file.filename;
+    image.loading='lazy';image.src=fileUrl+'?preview=true';card.append(image);
+   }else if(file.kind==='video'){
+    const video=document.createElement('video');video.controls=true;video.preload='metadata';
+    video.src=fileUrl+'?preview=true';video.setAttribute('aria-label','Submitted video: '+file.filename);card.append(video);
+   }
+   card.append(deliveryLink('Download original file',fileUrl));grid.append(card);
+  }
+  if(!item.assets?.length)grid.append(deliveryText('p','No photo, video or source file has been submitted for this task yet. The written report and downloadable slides are available above.','muted'));
+  root.append(grid);
+  const uploadRow=deliveryText('div',undefined);
+  uploadRow.style.marginTop='17px';
+  uploadRow.append(deliveryText('label','Attach a finished file to this submission (CEO upload)'));
+  const fileInput=document.createElement('input');fileInput.type='file';fileInput.className='file-input';
+  fileInput.accept='.png,.jpg,.jpeg,.webp,.pdf,.docx,.pptx,.mp4,.mov,.webm';
+  const statusText=deliveryText('div','','muted');statusText.setAttribute('role','status');
+  fileInput.onchange=async()=>{
+   const file=fileInput.files?.[0];if(!file)return;
+   if(file.size>20*1024*1024){statusText.textContent='File exceeds 20 MB.';return}
+   statusText.textContent='Uploading '+file.name+'…';fileInput.disabled=true;
+   try{
+    const form=new FormData();form.append('file',file,file.name);
+    const res=await fetch('/api/deliverables/'+encodeURIComponent(id)+'/files',
+      {method:'POST',body:form,credentials:'same-origin'});
+    if(!res.ok){
+     const error=await res.json().catch(()=>({}));
+     throw Error(error.detail||'Upload failed (HTTP '+res.status+')');
+    }
+    statusText.textContent='Finished asset attached successfully.';
+    await loadDeliveryInbox();
+   }catch(err){statusText.textContent=err.message;fileInput.disabled=false}
+  };
+  uploadRow.append(fileInput,statusText);
+  root.append(uploadRow);
+ }catch(err){detail.textContent='Could not load full result: '+err.message}
+}
 
 let delegations={proposals:[],jobs:[]};
 function el(tag,content,cls){const node=document.createElement(tag);if(content!==undefined)node.textContent=content;if(cls)node.className=cls;return node}
@@ -2444,9 +2637,9 @@ function renderResearchRoster(){
 }
 async function refresh(){state=await api('office');render();renderDirectorSelect()}
 async function updateTask(id,status){try{await api('tasks/'+id,{method:'PATCH',body:JSON.stringify({status})});await refresh();msg('Task updated')}catch(e){msg(e.message);await refresh()}}
-$('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){show(b.dataset.view);if(b.dataset.view==='hq')loadNewsBriefings();if(b.dataset.view==='integrations')loadSocial();if(b.dataset.view==='academy')loadAcademyLibrary();if(b.dataset.view==='finance')loadFinancePlanning();if(b.dataset.view==='meita')loadAiDiagnostics();if(b.dataset.view==='governance')loadCEOSecurityStatus()}});
+$('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){show(b.dataset.view);if(b.dataset.view==='hq')loadNewsBriefings();if(b.dataset.view==='integrations')loadSocial();if(b.dataset.view==='academy')loadAcademyLibrary();if(b.dataset.view==='finance')loadFinancePlanning();if(b.dataset.view==='deliverables')loadDeliveryInbox();if(b.dataset.view==='meita')loadAiDiagnostics();if(b.dataset.view==='governance')loadCEOSecurityStatus()}});
 $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').textContent='';try{await api('login',{method:'POST',body:JSON.stringify({password:$('password').value,otp:$('loginMfaCode').value.trim()})});$('password').value='';$('loginMfaCode').value='';await enter()}catch(err){$('loginError').textContent=err.message}});
-async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await refreshLiveActivity();await loadMeita();await loadMeitaConfiguration();await loadMeitaTaskHistory();await loadAiDiagnostics();await loadCEOSecurityStatus();await loadMeitaDeck();await loadMemory();await loadAcademyLibrary();await loadFinancePlanning();await loadRuns();await loadDirectorPlans();$('monthlyPeriod').value=malaysiaPeriod();await loadMonthly();await loadNewsBriefings();await loadSocial();const oauthParams=new URLSearchParams(window.location.search);
+async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await refreshLiveActivity();await loadMeita();await loadMeitaConfiguration();await loadMeitaTaskHistory();await loadAiDiagnostics();await loadCEOSecurityStatus();await loadMeitaDeck();await loadMemory();await loadAcademyLibrary();await loadFinancePlanning();await loadDeliveryInbox();await loadRuns();await loadDirectorPlans();$('monthlyPeriod').value=malaysiaPeriod();await loadMonthly();await loadNewsBriefings();await loadSocial();const oauthParams=new URLSearchParams(window.location.search);
 const integ=oauthParams.get('integration');
 if(integ){
   const reasons={
