@@ -19,6 +19,7 @@ from backend import meita_chat_delegate
 from backend import meita_autowork, meita_decks
 from backend import social, social_publish
 from backend import references as office_references
+from backend import academy as office_academy
 
 ROOT=Path(__file__).resolve().parent.parent
 PASSWORD=os.environ.get('CEO_PASSWORD')
@@ -230,9 +231,30 @@ def create_lesson(body:Lesson):
     if body.kind!='Note' and not body.source.startswith(('https://','http://')):raise HTTPException(400,'A valid URL is required')
     ident=secrets.token_hex(12)
     with connect() as db:
-        db.execute('INSERT INTO lessons VALUES(%s,%s,%s,%s,%s,%s,%s)',(ident,body.title,body.kind,body.source,body.assigned,'Pending review',int(time.time())))
+        db.execute('''INSERT INTO lessons(id,title,kind,source,assigned,status,created)\n            VALUES(%s,%s,%s,%s,%s,%s,%s)''',(ident,body.title,body.kind,body.source,body.assigned,'Pending review',int(time.time())))
         audit(db,'academy.added',body.title)
     return {'id':ident}
+
+@app.get('/api/academy/library',dependencies=[Depends(guard)])
+def academy_library(search:str='',kind:str='all',include_archived:bool=False):
+    with connect() as db:
+        return office_academy.library(db,search[:120],kind[:40],include_archived=include_archived)
+
+@app.patch('/api/academy/references/{ident}',dependencies=[Depends(guard)])
+def academy_edit_reference(ident:str,body:office_academy.LibraryReferenceEdit):
+    with connect() as db:
+        result=office_academy.update_reference(db,ident,body)
+        audit(db,'academy.reference.updated',ident)
+    return result
+
+@app.post('/api/academy/visions/message/{ident}',dependencies=[Depends(guard)])
+def academy_save_vision(ident:int):
+    with connect() as db:
+        saved=office_academy.save_vision_from_chat(db,ident)
+        if saved['created']:
+            audit(db,'academy.vision.saved',f'{saved["id"]} from Meita message {ident}')
+    return saved
+
 @app.get('/api/capabilities',dependencies=[Depends(guard)])
 def capabilities():
     return {'working':['Password-protected CEO session','Director-led staff hierarchy','Scoped internal AI delegation','AI-generated internal task drafts','CEO review','PostgreSQL records and memory','Knowledge source registry','Audit log'], 'planned':['MFA and multi-user roles','YouTube transcript ingestion','File processing','External-app OAuth integrations','Accounting engine','Independent staff identity and external action permissions']}
@@ -311,8 +333,17 @@ def meita_chat(body:MeitaMessage):
     with connect() as db:
         office_delegation.init(db)
         refs=office_references.validate_ids(db,body.reference_ids)
-        reference_context=office_references.summaries(db,body.reference_ids,max_chars=5500)
-        reference_images=office_references.images(db,body.reference_ids)
+        related=office_academy.relevant(
+            db,body.message,exclude_ids=body.reference_ids,
+            limit=min(2,6-len(body.reference_ids)))
+        effective_reference_ids=body.reference_ids+related['reference_ids']
+        reference_context=office_references.summaries(
+            db,body.reference_ids,max_chars=4500)
+        if related['context']:
+            reference_context+=("\\n\\nRelevant Learning Academy knowledge:\\n"+
+                                related['context'][:3500])
+        reference_images=(office_references.images(db,body.reference_ids)+
+                          related['images'])[:4]
         history=list(reversed(db.execute("""SELECT role,content FROM meita_messages
             ORDER BY created DESC,id DESC LIMIT 12""").fetchall()))
         leadership=[dict(x) for x in db.execute("""SELECT name,role,department
@@ -364,7 +395,7 @@ def meita_chat(body:MeitaMessage):
                     "Team configuration changed; please repeat the instruction")
             proposal=office_delegation.save_proposal(
                 db,routed["delegation_brief"],proposal_plan,
-                chat_message_id=message["id"],reference_ids=body.reference_ids)
+                chat_message_id=message["id"],reference_ids=effective_reference_ids)
             if config["auto_execute_internal"]:
                 if os.getenv("MEITA_AUTO_WORKER_ENABLED","true").lower()!="true":
                     raise HTTPException(503,"Meita internal auto-worker is disabled")
