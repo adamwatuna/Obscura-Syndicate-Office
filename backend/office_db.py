@@ -8,6 +8,7 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 from backend import organization
+from backend import leadership_seed
 
 logger = logging.getLogger("office.storage")
 ROOT = Path(__file__).resolve().parent.parent
@@ -48,6 +49,7 @@ def ensure_schema(db):
     db.execute("ALTER TABLE staff ADD COLUMN IF NOT EXISTS org_role TEXT NOT NULL DEFAULT 'Specialist'")
     db.execute("ALTER TABLE staff ADD COLUMN IF NOT EXISTS manager_id TEXT")
     db.execute("ALTER TABLE staff ADD COLUMN IF NOT EXISTS delegation_permission TEXT NOT NULL DEFAULT 'none'")
+    db.execute("ALTER TABLE staff ADD COLUMN IF NOT EXISTS portrait_slot SMALLINT")
     db.execute("""CREATE TABLE IF NOT EXISTS office_schema_migrations (
         name TEXT PRIMARY KEY, done_at TIMESTAMPTZ NOT NULL DEFAULT NOW())""")
     db.execute("""CREATE TABLE IF NOT EXISTS office_import_log (
@@ -113,6 +115,7 @@ def bootstrap(legacy_path=None):
             db.execute("INSERT INTO office_schema_migrations(name) VALUES ('director_led_v1')")
         db.execute("""CREATE UNIQUE INDEX IF NOT EXISTS unique_staff_director_per_dept
             ON staff (department) WHERE org_role='Director'""")
+        leadership_seed.install(db)
         db.execute("""INSERT INTO office_import_log
             (source_state,source_rows,copied_rows) VALUES (%s,%s,%s)""",
             (state,Jsonb(counts),Jsonb(copied)))
