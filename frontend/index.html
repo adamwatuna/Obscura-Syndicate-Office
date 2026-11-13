@@ -85,6 +85,88 @@ function person(s,editable=false){
   return `<div class="person">${staffPortrait(s)}<strong>${esc(s.name)}</strong><div class="muted">${esc(s.role)}</div><span class="tag">${esc(s.department)}</span><span class="tag" style="margin-left:6px">${esc(s.org_role||'Specialist')}</span><p class="muted">${esc(report)}</p>${actions}</div>`;
 }
 
+
+let staffNewsBriefings=[];
+function newNewsTask(){
+  newOfficeTask();
+  const form=$('newTaskForm');
+  form.elements.category.value='News Update';
+  const preferred=state.staff.find(x=>x.department==='Research & Intelligence'
+                                     &&x.org_role==='Director');
+  if(preferred)form.elements.assignee.value=preferred.id;
+  form.elements.title.value='Current news briefing — ';
+  form.elements.description.placeholder='Specify topic, region, news window, exact sources and output format. E.g. Summarize Malaysian technology policy updates from the past 7 days, with dated source links and implications.';
+  $('taskFormHeading').textContent='Assign news monitoring brief';
+  form.elements.title.focus();
+}
+function openStaffNewsReport(id){
+  show('tasks');
+  loadRuns().then(()=>{
+    const match=[...document.querySelectorAll('#runList [data-run-id]')]
+      .find(x=>x.dataset.runId===id);
+    (match||$('runList')).scrollIntoView({behavior:'smooth',block:'center'});
+  });
+}
+function newsNode(tag,text,cls){
+  const n=document.createElement(tag);
+  if(text!==undefined)n.textContent=text;
+  if(cls)n.className=cls;
+  return n;
+}
+async function loadNewsBriefings(){
+  const root=$('hqNewsList');
+  try{
+    const response=await api('news-briefings');
+    staffNewsBriefings=response.briefings||[];
+    root.textContent='';
+    if(!staffNewsBriefings.length){
+      const n=newsNode('div',undefined,'notice');
+      n.textContent='No news briefings yet. Assign a News Update task, add a detailed description, select Run AI, then review the sourced report.';
+      root.append(n);return;
+    }
+    for(const report of staffNewsBriefings){
+      const card=newsNode('div',undefined,'news-entry');
+      const heading=newsNode('strong',report.task_title||'Staff news briefing');
+      card.append(heading);
+      const status=report.status==='Approved'?'Approved by CEO':'Awaiting CEO review';
+      const created=report.searched_at||report.created_at;
+      const shown=created?new Date(created).toLocaleString('en-MY',{
+        timeZone:'Asia/Kuala_Lumpur',dateStyle:'medium',timeStyle:'short'}):'Unknown date';
+      card.append(newsNode('div',(report.staff_name||'AI staff')+' · Research: '+shown+' MYT · '+status,'news-meta'));
+      const result=String(report.result||'');
+      card.append(newsNode('p',result.slice(0,530)+(result.length>530?'…':''),'news-snippet'));
+      const sources=newsNode('div',undefined,'news-sources');
+      const urls=Array.isArray(report.sources)?report.sources:[];
+      for(const [index,source] of urls.slice(0,4).entries()){
+        if(!source||typeof source.url!=='string')continue;
+        let link;
+        try{link=new URL(source.url);if(!['http:','https:'].includes(link.protocol))continue}
+        catch(e){continue}
+        const a=newsNode('a',(source.title||link.hostname||'Source '+(index+1)).slice(0,65));
+        a.href=link.href;a.target='_blank';a.rel='noopener noreferrer';
+        sources.append(a);
+      }
+      card.append(sources);
+      const actions=newsNode('div',undefined,'task-actions');
+      const read=newsNode('button','Read full briefing','secondary');
+      read.type='button';
+      const full=newsNode('pre',result,'news-report');full.hidden=true;
+      read.onclick=()=>{full.hidden=!full.hidden;read.textContent=full.hidden?'Read full briefing':'Hide full briefing'};
+      actions.append(read);
+      if(report.status==='For approval'){
+        const review=newsNode('button','Review in Task Centre','primary');
+        review.type='button';
+        review.onclick=()=>openStaffNewsReport(report.id);
+        actions.append(review);
+      }
+      card.append(actions,full);
+      root.append(card);
+    }
+  }catch(err){
+    root.textContent='Could not load staff news briefings: '+err.message;
+  }
+}
+
 let editingTaskId=null;
 function malaysiaDate(offset=0){
   const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
@@ -217,8 +299,8 @@ function resetMemory(){editingMemory=null;$('memoryForm').reset();$('memoryHeadi
 async function loadMemory(){try{const r=await api('memory');memoryItems=r.memories||[];const out=$('memoryList');out.textContent='';if(!memoryItems.length){out.textContent='No memories saved yet.';return}for(const m of memoryItems){const d=document.createElement('div');d.className='item';const details=document.createElement('div');const strong=document.createElement('strong');strong.textContent=m.title;const small=document.createElement('small');small.textContent=m.category;const p=document.createElement('p');p.textContent=m.content;details.append(strong,small,p);const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px;flex-wrap:wrap';const edit=document.createElement('button');edit.className='secondary';edit.textContent='Edit';edit.onclick=()=>{editingMemory=m.id;$('memoryTitle').value=m.title;$('memoryContent').value=m.content;$('memoryCategory').value=m.category;$('memoryHeading').textContent='Edit memory';$('memorySave').textContent='Update memory';show('memory');$('memoryTitle').focus()};const del=document.createElement('button');del.className='secondary';del.textContent='Delete';del.onclick=async()=>{if(!confirm('Delete this memory permanently?'))return;try{await api('memory/'+encodeURIComponent(m.id),{method:'DELETE'});if(editingMemory===m.id)resetMemory();await loadMemory();msg('Memory deleted')}catch(e){msg(e.message)}};actions.append(edit,del);d.append(details,actions);out.appendChild(d)}}catch(e){$('memoryList').textContent=e.message}}
 $('memoryForm').addEventListener('submit',async e=>{e.preventDefault();const body={title:$('memoryTitle').value.trim(),category:$('memoryCategory').value,content:$('memoryContent').value.trim()};if(!body.title||!body.content)return;const btn=$('memorySave');btn.disabled=true;try{await api(editingMemory?'memory/'+encodeURIComponent(editingMemory):'memory',{method:editingMemory?'PUT':'POST',body:JSON.stringify(body)});resetMemory();await loadMemory();msg('Memory saved')}catch(err){msg(err.message)}finally{btn.disabled=false}});
 let runItems=[];
-async function runStaffTask(id,button){if(!confirm('Generate an AI deliverable for this assigned task? This uses your OpenAI API account.'))return;button.disabled=true;const old=button.textContent;button.textContent='Generating…';try{const result=await api('workforce/run/'+encodeURIComponent(id),{method:'POST'});await refresh();await loadRuns();msg('AI draft created for CEO review')}catch(e){msg(e.message)}finally{button.disabled=false;button.textContent=old}}
-async function loadRuns(){try{const data=await api('workforce/runs');runItems=data.runs||[];const root=$('runList');root.textContent='';if(!runItems.length){root.textContent='No AI deliverables yet.';return}for(const run of runItems){const wrap=document.createElement('div');wrap.className='item';wrap.style.display='block';const title=document.createElement('strong');title.textContent=run.task_title+' · '+run.staff_name;const meta=document.createElement('small');meta.textContent=run.status+' · '+run.model;const body=document.createElement('pre');body.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;font-family:inherit;font-size:13px;line-height:1.6;background:#f8fafb;padding:14px;border-radius:10px';body.textContent=run.result;wrap.append(title,meta,body);if(run.status==='For approval'){for(const status of ['Approved','Revision requested']){const btn=document.createElement('button');btn.className='secondary';btn.style.marginRight='8px';btn.textContent=status;btn.onclick=async()=>{try{await api('workforce/runs/'+encodeURIComponent(run.id)+'/review',{method:'POST',body:JSON.stringify({status})});await loadRuns();msg('Review saved')}catch(e){msg(e.message)}};wrap.append(btn)}}root.append(wrap)}}catch(e){$('runList').textContent=e.message}}
+async function runStaffTask(id,button){if(!confirm('Generate an AI deliverable for this assigned task? This uses your OpenAI API account.'))return;button.disabled=true;const old=button.textContent;button.textContent='Generating…';try{const result=await api('workforce/run/'+encodeURIComponent(id),{method:'POST'});await refresh();await loadRuns();await loadNewsBriefings();msg('AI draft created for CEO review')}catch(e){msg(e.message)}finally{button.disabled=false;button.textContent=old}}
+async function loadRuns(){try{const data=await api('workforce/runs');runItems=data.runs||[];const root=$('runList');root.textContent='';if(!runItems.length){root.textContent='No AI deliverables yet.';return}for(const run of runItems){const wrap=document.createElement('div');wrap.className='item';wrap.style.display='block';wrap.dataset.runId=run.id;const title=document.createElement('strong');title.textContent=run.task_title+' · '+run.staff_name;const meta=document.createElement('small');meta.textContent=run.status+' · '+run.model;const body=document.createElement('pre');body.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;font-family:inherit;font-size:13px;line-height:1.6;background:#f8fafb;padding:14px;border-radius:10px';body.textContent=run.result;wrap.append(title,meta,body);if(run.status==='For approval'){for(const status of ['Approved','Revision requested']){const btn=document.createElement('button');btn.className='secondary';btn.style.marginRight='8px';btn.textContent=status;btn.onclick=async()=>{try{await api('workforce/runs/'+encodeURIComponent(run.id)+'/review',{method:'POST',body:JSON.stringify({status})});await loadRuns();await loadNewsBriefings();msg('Review saved')}catch(e){msg(e.message)}};wrap.append(btn)}}root.append(wrap)}}catch(e){$('runList').textContent=e.message}}
 
 let delegations={proposals:[],jobs:[]};
 function el(tag,content,cls){const node=document.createElement(tag);if(content!==undefined)node.textContent=content;if(cls)node.className=cls;return node}
@@ -561,10 +643,12 @@ $('monthlyTemplateForm').addEventListener('submit',async e=>{
 
 async function refresh(){state=await api('office');render();renderDirectorSelect()}
 async function updateTask(id,status){try{await api('tasks/'+id,{method:'PATCH',body:JSON.stringify({status})});await refresh();msg('Task updated')}catch(e){msg(e.message);await refresh()}}
-$('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b)show(b.dataset.view)});
+$('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){show(b.dataset.view);if(b.dataset.view==='hq')loadNewsBriefings()}});
 $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').textContent='';try{await api('login',{method:'POST',body:JSON.stringify({password:$('password').value})});$('password').value='';await enter()}catch(err){$('loginError').textContent=err.message}});
-async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await loadMeita();await loadMemory();await loadRuns();await loadDelegations();await loadDirectorPlans();$('monthlyPeriod').value=malaysiaPeriod();await loadMonthly()}catch(e){msg(e.message)}}
+async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await loadMeita();await loadMemory();await loadRuns();await loadDelegations();await loadDirectorPlans();$('monthlyPeriod').value=malaysiaPeriod();await loadMonthly();await loadNewsBriefings()}catch(e){msg(e.message)}}
 $('logout').onclick=async()=>{await api('logout',{method:'POST'});location.reload()};
 for(const [form,path] of [['newLessonForm','lessons']])$(form).addEventListener('submit',async e=>{e.preventDefault();const body=Object.fromEntries(new FormData(e.target));try{await api(path,{method:'POST',body:JSON.stringify(body)});e.target.reset();e.target.closest('.card').classList.add('hidden');await refresh();msg('Saved successfully')}catch(err){msg(err.message)}});
 $('integrationList').innerHTML=['Instagram / Facebook','TikTok / YouTube','WhatsApp Business','Gmail / Outlook','Canva / Adobe','CapCut / Video tools','Finance / Banking'].map(n=>`<div class="person"><strong>${esc(n)}</strong><span class="tag">Not connected</span><p class="muted">Requires supported integration and CEO authorization.</p></div>`).join('');$('today').textContent=new Date().toLocaleDateString('en-MY',{weekday:'long',day:'numeric',month:'long',year:'numeric'});api('me').then(x=>{if(x.authenticated)enter()}).catch(()=>{});
+setInterval(()=>{if($('hq').classList.contains('active')
+     &&!$('app').classList.contains('hidden'))loadNewsBriefings()},60000);
 </script></body></html>
