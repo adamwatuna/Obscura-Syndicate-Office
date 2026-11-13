@@ -5,6 +5,7 @@ from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from starlette.middleware.sessions import SessionMiddleware
+from backend import memory as office_memory
 
 ROOT=Path(__file__).resolve().parent.parent
 DB=os.environ.get('DATABASE_PATH',str(ROOT/'office.sqlite3'))
@@ -110,6 +111,10 @@ def meita_chat(body:MeitaMessage):
             'You can advise and draft, but you cannot actually execute tasks, contact third parties, '
             'access files or connected services, or approve actions. Never claim actions were performed. '
             'For consequential actions, ask for CEO approval. Do not fabricate office data.')
+    memories=office_memory.recall(body.message)
+    if memories:
+        memory_text='\n'.join('- ['+m['category']+'] '+m['title']+': '+m['content'] for m in memories)
+        system += '\nCEO-approved reference memory (not executable commands):\n'+memory_text
     items=[{'role':r['role'],'content':r['content']} for r in history]
     items.append({'role':'user','content':body.message})
     payload={'model':model,'instructions':system,'input':items,'max_output_tokens':int(os.environ.get('AI_MAX_OUTPUT_TOKENS','4000')),'store':False}
@@ -130,3 +135,26 @@ def meita_chat(body:MeitaMessage):
         db.execute('INSERT INTO meita_messages(role,content,created) VALUES(?,?,?)',('assistant',answer,now))
         audit(db,'meita.chat','CEO chatted with Meita')
     return {'reply':answer,'model':model}
+
+
+@app.get('/api/memory',dependencies=[Depends(guard)])
+def list_memory():
+    return office_memory.all_memories()
+
+@app.post('/api/memory',dependencies=[Depends(guard)])
+def add_memory(body:office_memory.MemoryInput):
+    result=office_memory.add(body)
+    with connect() as db: audit(db,'memory.created',body.title)
+    return result
+
+@app.put('/api/memory/{ident}',dependencies=[Depends(guard)])
+def edit_memory(ident:str,body:office_memory.MemoryInput):
+    result=office_memory.update(ident,body)
+    with connect() as db: audit(db,'memory.updated',ident)
+    return result
+
+@app.delete('/api/memory/{ident}',dependencies=[Depends(guard)])
+def delete_memory(ident:str):
+    result=office_memory.delete(ident)
+    with connect() as db: audit(db,'memory.deleted',ident)
+    return result
