@@ -34,6 +34,9 @@ class MeetingBrief(BaseModel):
 class MeetingFollowup(BaseModel):
     instruction: str = Field(default="",max_length=1200)
 
+from backend import schema_state
+
+@schema_state.bootstrap_only
 def init(db):
     db.execute("""CREATE TABLE IF NOT EXISTS meita_configuration (
         id INTEGER PRIMARY KEY CHECK (id=1),
