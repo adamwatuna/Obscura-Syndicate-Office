@@ -31,6 +31,7 @@ def init(db):
         plan JSONB NOT NULL, status TEXT NOT NULL DEFAULT 'Pending approval',
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         reviewed_at TIMESTAMPTZ)""")
+    db.execute("ALTER TABLE coo_proposals ADD COLUMN IF NOT EXISTS chat_message_id BIGINT UNIQUE")
     db.execute("""CREATE TABLE IF NOT EXISTS coo_jobs (
         id TEXT PRIMARY KEY, proposal_id TEXT NOT NULL REFERENCES coo_proposals(id),
         title TEXT NOT NULL, brief TEXT NOT NULL, staff JSONB NOT NULL,
@@ -71,7 +72,7 @@ def parse_output(data, staff, max_jobs=9):
         title = "Meita delegation plan"
     return {"title": title.strip(), "jobs": clean}
 
-def propose(brief, staff, memories=None, max_jobs=9):
+def prepare_plan(brief, staff, memories=None, max_jobs=9):
     if os.getenv("AI_ENGINE_ENABLED", "false").lower() != "true":
         raise HTTPException(503, "AI engine is disabled")
     key = os.getenv("OPENAI_API_KEY", "").strip()
@@ -117,16 +118,30 @@ def propose(brief, staff, memories=None, max_jobs=9):
         raise HTTPException(502, "Meita plan generation failed (HTTP " + str(exc.code) + ")")
     except Exception:
         raise HTTPException(502, "Unable to reach OpenAI for delegation plan")
-    plan = parse_output(data, staff, max_jobs=max_jobs)
-    ident = secrets.token_hex(12)
+    return parse_output(data, staff, max_jobs=max_jobs)
+
+
+def save_proposal(db, brief, plan, chat_message_id=None):
+    """Save a validated plan, optionally linked to Meita's chat response.
+
+    Chat can call this in the same transaction as its messages; failed chat
+    saves cannot leave detached, approved or duplicate jobs behind.
+    """
+    init(db)
+    ident=secrets.token_hex(12)
+    db.execute("""INSERT INTO coo_proposals
+        (id,title,brief,plan,chat_message_id) VALUES (%s,%s,%s,%s,%s)""",
+        (ident,plan["title"],brief,Jsonb(plan),chat_message_id))
+    return {"id":ident,"status":"Pending approval","plan":plan,"title":plan["title"]}
+
+
+def propose(brief, staff, memories=None, max_jobs=9):
+    plan=prepare_plan(brief,staff,memories,max_jobs=max_jobs)
     try:
         with conn() as db:
-            init(db)
-            db.execute("INSERT INTO coo_proposals(id,title,brief,plan) VALUES (%s,%s,%s,%s)",
-                (ident, plan["title"], brief, Jsonb(plan)))
+            return save_proposal(db,brief,plan)
     except psycopg.Error:
-        raise HTTPException(503, "Unable to save delegation plan")
-    return {"id": ident, "status": "Pending approval", "plan": plan}
+        raise HTTPException(503,"Unable to save delegation plan")
 
 def list_all():
     try:

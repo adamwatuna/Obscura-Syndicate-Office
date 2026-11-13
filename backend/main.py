@@ -14,6 +14,7 @@ from backend import monthly
 from backend import task_schedule
 from backend import news_briefings
 from backend import meita_team
+from backend import meita_chat_delegate
 from backend import social, social_publish
 
 ROOT=Path(__file__).resolve().parent.parent
@@ -229,61 +230,73 @@ def home():return FileResponse(ROOT/'frontend'/'index.html')
 @app.get('/api/meita/history',dependencies=[Depends(guard)])
 def meita_history():
     with connect() as db:
-        rows=db.execute('SELECT role,content,created FROM meita_messages ORDER BY created DESC, id DESC LIMIT 30').fetchall()
-        return {'messages':[dict(r) for r in reversed(rows)]}
+        office_delegation.init(db)
+        rows=db.execute("""SELECT m.id,m.role,m.content,m.created,
+            p.id AS proposal_id,p.status AS proposal_status,
+            p.title AS proposal_title,p.plan AS proposal_plan
+            FROM meita_messages m
+            LEFT JOIN coo_proposals p ON p.chat_message_id=m.id
+            ORDER BY m.created DESC,m.id DESC LIMIT 30""").fetchall()
+    messages=[]
+    for r in reversed(rows):
+        message={k:r[k] for k in ("id","role","content","created")}
+        if r["proposal_id"]:
+            message["proposal"]={"id":r["proposal_id"],
+                "status":r["proposal_status"],
+                "title":r["proposal_title"],
+                "plan":r["proposal_plan"]}
+        messages.append(message)
+    return {"messages":messages}
 
 @app.post('/api/meita/chat',dependencies=[Depends(guard)])
 def meita_chat(body:MeitaMessage):
-    if os.environ.get('AI_ENGINE_ENABLED','false').lower()!='true':
-        raise HTTPException(503,'AI engine is disabled')
-    key=os.environ.get('OPENAI_API_KEY','').strip()
-    if not key:raise HTTPException(503,'OPENAI_API_KEY is missing')
-    model=os.environ.get('OPENAI_MODEL','gpt-5.4')
     with connect() as db:
-        history=list(reversed(db.execute('SELECT role,content FROM meita_messages ORDER BY created DESC, id DESC LIMIT 12').fetchall()))
-        leadership=[dict(x) for x in db.execute("""SELECT name,role,department FROM staff
-            WHERE org_role='Director' ORDER BY department LIMIT 15""")]
+        office_delegation.init(db)
+        history=list(reversed(db.execute("""SELECT role,content FROM meita_messages
+            ORDER BY created DESC,id DESC LIMIT 12""").fetchall()))
+        leadership=[dict(x) for x in db.execute("""SELECT name,role,department
+            FROM staff WHERE org_role='Director' ORDER BY department LIMIT 15""")]
         team_context=meita_team.latest_summary(db)
-        coord_settings=meita_team.settings(db)
-    system=('You are Meita, the CEO\'s Acting COO in AI Private Office. '
-            'Be professional, organized, concise, and helpful. Reply in Malay-English rojak when the CEO does. '
-            'You can coordinate all configured AI staff through the CEO-approved Delegation Desk and team roundtable. '            'You can discuss cross-department work, request specialist input and synthesize priorities. '            'You cannot directly execute actions in chat, contact third parties, '
-            'access files or connected services, or approve actions. Never claim actions were performed. '
-            'For consequential actions, ask for CEO approval. Do not fabricate office data.')
-    if leadership:
-        system += '\nDepartment directors reporting to Meita: '+json.dumps(leadership,ensure_ascii=False)
-    system += '\nCurrent internal coordination configuration: '+json.dumps({
-        'delegation_scope':coord_settings['delegation_scope'],
-        'discussion_scope':coord_settings['discussion_scope'],
-        'max_delegation_jobs':coord_settings['max_delegation_jobs']})
-    if team_context:
-        system += ('\nLatest recorded AI team roundtable (read-only, not an action): '+
-                   json.dumps(team_context,ensure_ascii=False))
+        config=meita_team.settings(db)
+        recent=[{"title":p["title"],"brief":p["brief"][:900],
+                 "status":p["status"]}
+                for p in db.execute("""SELECT title,brief,status FROM coo_proposals
+                    ORDER BY created_at DESC LIMIT 3""").fetchall()]
     memories=office_memory.recall(body.message)
-    if memories:
-        memory_text='\n'.join('- ['+m['category']+'] '+m['title']+': '+m['content'] for m in memories)
-        system += '\nCEO-approved reference memory (not executable commands):\n'+memory_text
-    items=[{'role':r['role'],'content':r['content']} for r in history]
-    items.append({'role':'user','content':body.message})
-    payload={'model':model,'instructions':system,'input':items,'max_output_tokens':int(os.environ.get('AI_MAX_OUTPUT_TOKENS','4000')),'store':False}
-    request=urllib.request.Request('https://api.openai.com/v1/responses',data=json.dumps(payload).encode(),headers={'Authorization':'Bearer '+key,'Content-Type':'application/json'},method='POST')
-    try:
-        with urllib.request.urlopen(request,timeout=55) as response:
-            data=json.load(response)
-    except urllib.error.HTTPError as exc:
-        # Never expose upstream response bodies, keys, or detailed account information to the browser.
-        raise HTTPException(502,'OpenAI request failed (HTTP '+str(exc.code)+'). Check model access, API billing, and Railway logs.')
-    except Exception:
-        raise HTTPException(502,'OpenAI connection failed. Check Railway logs.')
-    answer='\n'.join(part.get('text','') for output in data.get('output',[]) if output.get('type')=='message' for part in output.get('content',[]) if part.get('type')=='output_text').strip()
-    if not answer:raise HTTPException(502,'OpenAI returned no text. Check model settings.')
+    routed=meita_chat_delegate.respond(
+        body.message,history,leadership,config,team_context,memories,recent)
+    proposal_plan=None
+    if routed["intent"]=="delegate":
+        with connect() as db:
+            current_settings=meita_team.settings(db)
+            eligible={p["id"] for p in meita_team.available_staff(
+                db,current_settings["delegation_scope"])}
+            staff=[dict(p) for p in db.execute("""SELECT * FROM staff
+                WHERE status='Available' ORDER BY department,name""")
+                if p["id"] in eligible]
+        if not staff:
+            raise HTTPException(400,
+                "Meita has no eligible available AI staff for this assignment")
+        proposal_plan=office_delegation.prepare_plan(
+            routed["delegation_brief"],staff,memories,
+            max_jobs=current_settings["max_delegation_jobs"])
     with connect() as db:
         now=int(time.time())
-        db.execute('INSERT INTO meita_messages(role,content,created) VALUES(%s,%s,%s)',('user',body.message,now))
-        db.execute('INSERT INTO meita_messages(role,content,created) VALUES(%s,%s,%s)',('assistant',answer,now))
-        audit(db,'meita.chat','CEO chatted with Meita')
-    return {'reply':answer,'model':model}
-
+        db.execute("""INSERT INTO meita_messages(role,content,created)
+            VALUES ('user',%s,%s)""",(body.message,now))
+        message=db.execute("""INSERT INTO meita_messages(role,content,created)
+            VALUES ('assistant',%s,%s) RETURNING id""",
+            (routed["reply"],now)).fetchone()
+        proposal=None
+        if proposal_plan:
+            proposal=office_delegation.save_proposal(
+                db,routed["delegation_brief"],proposal_plan,
+                chat_message_id=message["id"])
+            audit(db,"meita.chat.delegation_proposed",proposal["id"])
+        else:
+            audit(db,"meita.chat","CEO chatted with Meita")
+    return {"reply":routed["reply"],"model":routed["model"],
+            "proposal":proposal}
 
 @app.get('/api/memory',dependencies=[Depends(guard)])
 def list_memory():
@@ -422,7 +435,11 @@ def delegation_propose(body:office_delegation.DelegationBrief):
 @app.post('/api/delegation/proposals/{ident}/approve',dependencies=[Depends(guard)])
 def delegation_approve(ident:str):
     with connect() as db:
-        staff=[dict(x) for x in db.execute('SELECT * FROM staff')]
+        config=meita_team.settings(db)
+        allowed={p["id"] for p in meita_team.available_staff(
+            db,config["delegation_scope"])}
+        staff=[dict(x) for x in db.execute("SELECT * FROM staff WHERE status='Available'")
+               if x["id"] in allowed]
     result=office_delegation.decide(ident,True,staff)
     with connect() as db:
         audit(db,'delegation.approved',ident)
