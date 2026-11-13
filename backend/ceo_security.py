@@ -17,6 +17,7 @@ from urllib.parse import quote
 
 from cryptography.fernet import Fernet, InvalidToken
 from fastapi import HTTPException
+from psycopg.types.json import Jsonb
 
 ISSUER="AI Private Office"
 MAX_SETUP_ATTEMPTS=5
@@ -99,7 +100,7 @@ def _consume_code(db,row,code):
             if hmac.compare_digest(entry,hashed):
                 matches.pop(index)
                 db.execute("UPDATE ceo_security SET recovery_hashes=%s WHERE id=1",
-                           (json.dumps(matches),))
+                           (Jsonb(matches),))
                 return True
     return False
 
@@ -172,7 +173,7 @@ def confirm_setup(db,code):
     db.execute("""UPDATE ceo_security SET totp_secret_encrypted=pending_secret_encrypted,
         pending_secret_encrypted=NULL,pending_created=NULL,pending_attempts=0,
         recovery_hashes=%s,last_totp_step=%s,session_version=session_version+1
-        WHERE id=1""",(json.dumps(hashes),step))
+        WHERE id=1""",(Jsonb(hashes),step))
     version=db.execute("SELECT session_version FROM ceo_security WHERE id=1").fetchone()["session_version"]
     return {"ok":True,"enabled":True,"recovery_codes":codes,"session_version":version}
 
