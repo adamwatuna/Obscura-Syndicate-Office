@@ -7,6 +7,7 @@ from psycopg.rows import dict_row
 from fastapi import HTTPException
 from backend import references as office_references
 from backend import academy as office_academy
+from backend import department_playbooks
 
 def dbconn():
     url=os.getenv("DATABASE_URL","").strip()
@@ -89,6 +90,8 @@ def execute(task,staff):
                  "Prefer clearly labelled visual tables or real data charts when possible; "
                  "never invent measurements, images or citations. "
                  "Produce useful, clearly labeled work product. Cite uncertainty when necessary.")
+    instruction+=" DEPARTMENT-SPECIFIC OPERATING POLICY: "+department_playbooks.job_policy(
+        staff.get("department",""),staff.get("role",""))
     if is_news:
         instruction+=(
             " NEWS UPDATE TASK: Use the web_search tool to retrieve actual public "
