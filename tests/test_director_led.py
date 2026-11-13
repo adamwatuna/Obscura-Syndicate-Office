@@ -19,6 +19,9 @@ class DirectorLedTests(unittest.TestCase):
     def tearDown(self):
         with office_db.connect() as db:
             for ident in self.plans:
+                db.execute("""DELETE FROM tasks WHERE id IN
+                    (SELECT task_id FROM director_jobs
+                     WHERE plan_id=%s AND task_id IS NOT NULL)""",(ident,))
                 db.execute('DELETE FROM director_jobs WHERE plan_id=%s',(ident,))
                 db.execute('DELETE FROM director_plans WHERE id=%s',(ident,))
             for ident,autonomy,permission in self.restores:
@@ -86,6 +89,9 @@ class DirectorLedTests(unittest.TestCase):
         self.plans.append(plan_id)
         job=next(j for j in self.client.get("/api/directors/plans").json()["jobs"]
                  if j["plan_id"]==plan_id)
+        self.assertIsNotNone(job["task_id"])
+        tasks=self.client.get("/api/office").json()["tasks"]
+        self.assertTrue(any(t["id"]==job["task_id"] and t["status"]=="To do" for t in tasks))
         with patch("backend.organization.workforce.execute",
                    return_value={"id":"mock-run-id","status":"For approval",
                                  "result":"Draft created"}) as execution:
@@ -93,6 +99,8 @@ class DirectorLedTests(unittest.TestCase):
         self.assertEqual(produced.status_code,200,produced.text)
         execution.assert_called_once()
         self.assertEqual(execution.call_args.args[1]["id"],specialist)
+        latest=self.client.get("/api/office").json()["tasks"]
+        self.assertTrue(any(t["id"]==job["task_id"] and t["status"]=="For approval" for t in latest))
 
         # Even an LLM returning an out-of-department ID cannot bypass scope.
         hostile={"title":"Invalid","jobs":[{"staff_id":outsider,"staff_name":"Researcher",
