@@ -14,6 +14,7 @@ from backend import finance_planning
 from backend import monthly
 from backend import task_schedule
 from backend import meita_autowork
+from backend import ceo_security
 from backend import memory as office_memory
 from backend import meita_team
 from backend import references as office_references
@@ -41,6 +42,7 @@ def ensure_login_security(db):
 
 def ensure_schema(db):
     ensure_login_security(db)
+    ceo_security.init(db)
     db.execute("""CREATE TABLE IF NOT EXISTS staff (
         id TEXT PRIMARY KEY, name TEXT NOT NULL, role TEXT NOT NULL,
         department TEXT NOT NULL, expertise TEXT NOT NULL DEFAULT '',
