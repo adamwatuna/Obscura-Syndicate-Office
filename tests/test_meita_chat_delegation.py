@@ -161,7 +161,7 @@ class MeitaChatDelegationTests(unittest.TestCase):
         with office_db.connect() as db:
             meita_team.save_settings(db,meita_team.MeitaSettings(
                 **{**self.config,"delegation_scope":"directors_only",
-                   "max_delegation_jobs":2}))
+                   "max_delegation_jobs":2,"auto_execute_internal":False}))
         with patch("backend.main.office_delegation.prepare_plan",
                    return_value=self._staff_plan()) as plan:
             result=self.send("delegate","Pending for CEO approval.",
