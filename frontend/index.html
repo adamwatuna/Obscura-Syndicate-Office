@@ -145,7 +145,19 @@
  </form></div>
  <div class="card" style="margin-top:20px"><h3>Previously registered learning sources</h3><div id="lessonList"></div></div>
 </section>
-<section class="view" id="research"><div class="card"><h3>Research workspace</h3><p>Planned: verified-source research, OSINT collection, citations, evidence review and reports.</p><span class="tag">Not connected</span></div></section>
+<section class="view" id="research">
+ <div class="toolbar"><div>
+  <p>Evidence-based intelligence · Faris Iskandar and Research specialists</p>
+  <p class="muted">Source-backed internal research, market intelligence, lawful OSINT and independent fact checking.</p></div>
+  <button class="primary" type="button" onclick="startResearchTask()">＋ Assign research task</button>
+ </div>
+ <div class="card" style="margin-top:20px">
+  <h3>Research delivery standard</h3>
+  <p>All live research assignments use real public web search. Reports require sources, dates, supporting evidence, methodology, confidence levels (High / Medium / Low) and explicit gaps. No unverified claims presented as facts.</p>
+  <div class="notice">A research role does not automatically provide access to private databases or hidden accounts. Research runs only when an authorized task is executed. Outputs require Director review and CEO approval.</div>
+  <div id="researchStaffSummary" class="task-meta"></div>
+ </div>
+</section>
 <section class="view" id="finance">
  <div class="toolbar"><div><p>Budget Planning Studio · Phase 1</p>
   <p class="muted">CEO-controlled scenario planning, proposed budgets and estimated cash flow — no banking connections or actual transaction data.</p></div>
@@ -439,7 +451,7 @@ $('newTaskForm').addEventListener('submit',async e=>{
 function render(){const s=state.staff,t=state.tasks,l=state.lessons;$('kStaff').textContent=s.length;$('kOpen').textContent=t.filter(x=>x.status!=='Completed').length;$('kApproval').textContent=t.filter(x=>x.status==='For approval').length;$('kLessons').textContent=academyTotal===null?l.length:academyTotal;$('hqStaff').innerHTML=s.length?s.slice(0,6).map(x=>person(x,false)).join(''):'<p>No staff hired yet.</p>';$('staffList').innerHTML=s.length?s.map(x=>person(x,true)).join(''):'<div class="notice">Your team is empty. Hire your first staff member.</div>';
 const taskrow=x=>`<div class="item"><div><strong>${esc(x.title)}</strong><small>${esc(s.find(z=>z.id===x.assignee)?.name||'Unassigned')} · ${esc(x.status)}</small></div></div>`;$('hqTasks').innerHTML=t.length?t.slice(0,5).map(taskrow).join(''):'<p>No tasks yet.</p>';
 $('assignee').innerHTML='<option value="">Unassigned</option>'+s.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('');
-renderOfficeTasks(t,s);
+renderOfficeTasks(t,s);renderResearchRoster();
 $('deskList').innerHTML=s.length?s.map(x=>{
  const jobs=liveActivity.filter(j=>j.staff_id===x.id);
  const running=jobs.find(j=>j.status==='Running'),queued=jobs.filter(j=>j.status==='Queued').length;
@@ -1591,6 +1603,20 @@ $('budgetDraftForm').onsubmit=async event=>{
  }catch(err){msg(err.message)}
 };
 
+function startResearchTask(){
+ newOfficeTask();
+ const specialist=state.staff.find(x=>x.department==='Research & Intelligence'&&x.org_role==='Specialist'&&x.status==='Available');
+ if(specialist)$('assignee').value=specialist.id;
+ $('newTaskForm').elements.title.placeholder='e.g. Verify industry trends and competitor positioning';
+ $('newTaskForm').elements.description.placeholder='Define research questions, timeframe, permitted public sources, evidence quality and confidence expectations.';
+}
+function renderResearchRoster(){
+ const root=$('researchStaffSummary');if(!root)return;
+ root.textContent='';
+ for(const staff of state.staff.filter(x=>x.department==='Research & Intelligence'&&x.org_role==='Specialist')){
+  const chip=document.createElement('span');chip.textContent=staff.role;root.append(chip);
+ }
+}
 async function refresh(){state=await api('office');render();renderDirectorSelect()}
 async function updateTask(id,status){try{await api('tasks/'+id,{method:'PATCH',body:JSON.stringify({status})});await refresh();msg('Task updated')}catch(e){msg(e.message);await refresh()}}
 $('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){show(b.dataset.view);if(b.dataset.view==='hq')loadNewsBriefings();if(b.dataset.view==='integrations')loadSocial();if(b.dataset.view==='academy')loadAcademyLibrary();if(b.dataset.view==='finance')loadFinancePlanning()}});
