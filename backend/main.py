@@ -157,7 +157,7 @@ def create_lesson(body:Lesson):
     return {'id':ident}
 @app.get('/api/capabilities',dependencies=[Depends(guard)])
 def capabilities():
-    return {'working':['Secure password login','Staff configuration and hiring','Task management','Knowledge source registry','Audit log','Desk status from task records'], 'planned':['MFA','AI execution','YouTube transcript ingestion','File processing','OAuth integrations','Accounting engine','Autonomous workflows','Multi-user permissions']}
+    return {'working':['Password-protected CEO session','Director-led staff hierarchy','Scoped internal AI delegation','AI-generated internal task drafts','CEO review','PostgreSQL records and memory','Knowledge source registry','Audit log'], 'planned':['MFA and multi-user roles','YouTube transcript ingestion','File processing','External-app OAuth integrations','Accounting engine','Independent staff identity and external action permissions']}
 @app.get('/')
 def home():return FileResponse(ROOT/'frontend'/'index.html')
 
