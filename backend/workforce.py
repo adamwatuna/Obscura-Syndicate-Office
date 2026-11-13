@@ -7,6 +7,7 @@ from psycopg.rows import dict_row
 from fastapi import HTTPException
 from backend import references as office_references
 from backend import academy as office_academy
+from backend import department_playbooks
 
 def dbconn():
     url=os.getenv("DATABASE_URL","").strip()
@@ -38,8 +39,24 @@ def review(ident,status):
     try:
         with dbconn() as db:
             init(db)
-            row=db.execute("UPDATE workforce_runs SET status=%s,reviewed_at=NOW() WHERE id=%s AND status='For approval' RETURNING id",(status,ident)).fetchone()
+            row=db.execute("""UPDATE workforce_runs SET status=%s,reviewed_at=NOW()
+                WHERE id=%s AND status='For approval' RETURNING id,task_id""",
+                (status,ident)).fetchone()
             if not row: raise HTTPException(404,"Pending result not found")
+            approved=status=="Approved"
+            db.execute("""UPDATE tasks SET status=%s
+                WHERE id=%s AND ai_run_started=TRUE AND deleted_at IS NULL""",
+                ("Completed" if approved else "To do",row["task_id"]))
+            # Director and Meita job statuses are downstream of the same actual
+            # workforce run. Review is propagated, not simulated.
+            db.execute("""UPDATE director_jobs
+                SET status=%s,updated_at=NOW()
+                WHERE workforce_run_id=%s AND status='For approval'""",
+                ("Completed" if approved else "Retry available",ident))
+            db.execute("""UPDATE coo_jobs
+                SET status=%s,updated_at=NOW()
+                WHERE workforce_run_id=%s AND status='Delivered'""",
+                ("Completed" if approved else "Retry available",ident))
         return {"ok":True}
     except psycopg.Error: raise HTTPException(503,"Unable to review workforce result")
 
@@ -78,6 +95,8 @@ def execute(task,staff):
     if len(task["title"])>250: raise HTTPException(400,"Task is too long")
     model=os.getenv("OPENAI_MODEL","gpt-5.4")
     is_news=task.get("category")=="News Update"
+    is_research=staff.get("department")=="Research & Intelligence"
+    source_required=is_news or is_research
     instruction=("You are an AI staff member producing an INTERNAL draft deliverable for CEO review only. "
                  "Your name: "+staff["name"][:100]+". Role: "+staff["role"][:120]+". Department: "+staff["department"][:100]+". "
                  "Expertise: "+staff["expertise"][:16000]+". "
@@ -89,6 +108,15 @@ def execute(task,staff):
                  "Prefer clearly labelled visual tables or real data charts when possible; "
                  "never invent measurements, images or citations. "
                  "Produce useful, clearly labeled work product. Cite uncertainty when necessary.")
+    instruction+=" DEPARTMENT-SPECIFIC OPERATING POLICY: "+department_playbooks.job_policy(
+        staff.get("department",""),staff.get("role",""))
+    if is_research:
+        instruction+=(
+            " RESEARCH & INTELLIGENCE REQUIREMENTS: perform current public-source "
+            "research through the available web_search tool. Cite actual evidence "
+            "with reliable URLs, dates, methodology, source limitations and a justified "
+            "High/Medium/Low confidence level for every significant conclusion. "
+            "If accessible evidence is missing, report an information gap, never invent.")
     if is_news:
         instruction+=(
             " NEWS UPDATE TASK: Use the web_search tool to retrieve actual public "
@@ -126,7 +154,7 @@ def execute(task,staff):
     if reference_images:
         original=payload['input'][0]['content']
         payload['input'][0]['content']=[{'type':'input_text','text':original},*reference_images]
-    if is_news:
+    if source_required:
         payload["tools"]=[{"type":"web_search","search_context_size":"medium",
                            "user_location":{"type":"approximate","country":"MY",
                                             "timezone":"Asia/Kuala_Lumpur"}}]
@@ -135,19 +163,19 @@ def execute(task,staff):
     request=urllib.request.Request("https://api.openai.com/v1/responses",
         data=json.dumps(payload).encode(),headers={"Authorization":"Bearer "+key,"Content-Type":"application/json"},method="POST")
     try:
-        with urllib.request.urlopen(request,timeout=85 if is_news else 55) as response: data=json.load(response)
+        with urllib.request.urlopen(request,timeout=85 if source_required else 55) as response: data=json.load(response)
     except urllib.error.HTTPError as exc: raise HTTPException(502,"AI generation failed (HTTP "+str(exc.code)+")")
     except Exception: raise HTTPException(502,"AI connection failed")
     answer="\n".join(p.get("text","") for o in data.get("output",[]) if o.get("type")=="message" for p in o.get("content",[]) if p.get("type")=="output_text").strip()
     if not answer: raise HTTPException(502,"AI returned no text")
     sources=[]
-    if is_news:
+    if source_required:
         searched=any(item.get("type")=="web_search_call"
                      for item in data.get("output",[]))
         sources=_news_sources(data)
         if not searched or not sources:
             raise HTTPException(502,
-                "No verifiable web-search sources returned; news briefing was not saved")
+                "No verifiable web-search sources returned; source-backed research was not saved")
     ident=secrets.token_hex(12)
     try:
         with dbconn() as db:
@@ -158,6 +186,6 @@ def execute(task,staff):
                 VALUES (%s,%s,%s,%s,%s,%s,%s,'For approval',%s,
                         CASE WHEN %s THEN NOW() ELSE NULL END,%s)""",
                 (ident,task["id"],task["title"],staff["id"],staff["name"],model,answer,
-                 is_news,is_news,Jsonb(sources)))
+                 source_required,source_required,Jsonb(sources)))
     except psycopg.Error: raise HTTPException(503,"AI generated work but saving failed; retry carefully")
     return {"id":ident,"status":"For approval","result":answer}

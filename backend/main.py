@@ -20,6 +20,7 @@ from backend import meita_autowork, meita_decks
 from backend import social, social_publish
 from backend import references as office_references
 from backend import academy as office_academy
+from backend import finance_planning
 
 ROOT=Path(__file__).resolve().parent.parent
 PASSWORD=os.environ.get('CEO_PASSWORD')
@@ -255,9 +256,26 @@ def academy_save_vision(ident:int):
             audit(db,'academy.vision.saved',f'{saved["id"]} from Meita message {ident}')
     return saved
 
+
+@app.get('/api/finance/planning',dependencies=[Depends(guard)])
+def finance_budget_planning():
+    with connect() as db:
+        return {"mode":"planning_only",
+                "bank_connected":False,
+                "actuals_available":False,
+                "drafts":finance_planning.list_drafts(db)}
+
+@app.post('/api/finance/planning/drafts',dependencies=[Depends(guard)])
+def create_finance_budget_draft(body:finance_planning.BudgetDraft):
+    with connect() as db:
+        result=finance_planning.save(db,body)
+        audit(db,'finance.budget.draft_created',
+              f'{result["id"]}: scenario={body.scenario} period={body.period}')
+    return result
+
 @app.get('/api/capabilities',dependencies=[Depends(guard)])
 def capabilities():
-    return {'working':['Password-protected CEO session','Director-led staff hierarchy','Scoped internal AI delegation','AI-generated internal task drafts','CEO review','PostgreSQL records and memory','Knowledge source registry','Audit log'], 'planned':['MFA and multi-user roles','YouTube transcript ingestion','File processing','External-app OAuth integrations','Accounting engine','Independent staff identity and external action permissions']}
+    return {'working':['Password-protected CEO session','Director-led staff hierarchy','Scoped internal AI delegation','AI-generated internal task drafts','CEO review','PostgreSQL records and memory','Knowledge source registry','Nine departments and 45 specialist roles','Planning-only budget drafts','Audit log'], 'planned':['MFA and multi-user roles','YouTube transcript ingestion','File processing','External-app OAuth integrations','Accounting engine','Independent staff identity and external action permissions']}
 @app.get('/')
 def home():return FileResponse(ROOT/'frontend'/'index.html')
 
@@ -299,11 +317,23 @@ def meita_live_activity():
         meita_autowork.init(db)
         rows=db.execute("""SELECT j.id,j.task_id,j.title,j.status,j.started_at,j.updated_at,
             j.staff->>'id' AS staff_id,j.staff->>'name' AS staff_name,
-            j.proposal_id,p.title AS project_title,t.status AS task_status
+            j.proposal_id,p.title AS project_title,t.status AS task_status,
+            'Meita' AS source
             FROM coo_jobs j JOIN coo_proposals p ON p.id=j.proposal_id
             LEFT JOIN tasks t ON t.id=j.task_id
             ORDER BY j.created_at DESC LIMIT 250""").fetchall()
-    return {'jobs':[dict(r) for r in rows]}
+        org.init_plans(db)
+        director_rows=db.execute("""SELECT j.id,j.task_id,j.title,j.status,
+            NULL::timestamptz AS started_at,j.updated_at,
+            j.staff_id,j.staff_name,j.plan_id AS proposal_id,
+            p.title AS project_title,t.status AS task_status,
+            'Director' AS source
+            FROM director_jobs j JOIN director_plans p ON p.id=j.plan_id
+            LEFT JOIN tasks t ON t.id=j.task_id
+            ORDER BY j.created_at DESC LIMIT 250""").fetchall()
+    combined=[dict(r) for r in rows]+[dict(r) for r in director_rows]
+    combined.sort(key=lambda r:r["updated_at"] or "",reverse=True)
+    return {'jobs':combined[:400]}
 
 @app.get('/api/meita/history',dependencies=[Depends(guard)])
 def meita_history():

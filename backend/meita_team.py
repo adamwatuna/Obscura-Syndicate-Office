@@ -94,6 +94,10 @@ def available_staff(db,scope):
         FROM staff """
     if scope=="directors_only":
         query+="WHERE org_role='Director' "
+    # Independent Internal Audit reports to the CEO and is outside Meita's
+    # automatic delegation/meeting pool.
+    query+=("AND org_role<>'Independent Auditor' " if "WHERE " in query
+            else "WHERE org_role<>'Independent Auditor' ")
     query+="ORDER BY CASE WHEN org_role='Director' THEN 0 ELSE 1 END, department,name"
     return [dict(p) for p in db.execute(query).fetchall()]
 
@@ -102,11 +106,38 @@ def create_meeting(db,topic):
     config=settings(db)
     roster=available_staff(db,config["discussion_scope"])
     if not roster:raise HTTPException(400,"No AI staff available for a team discussion")
-    if len(roster)>config["max_meeting_participants"]:
+    limit=config["max_meeting_participants"]
+    directors=[p for p in roster if p["org_role"]=="Director"]
+    if len(directors)>limit:
         raise HTTPException(400,
-            "This team has "+str(len(roster))+" members, beyond the configured "
+            "This team has "+str(len(directors))+" Directors, beyond the configured "
             "roundtable limit. Increase Meita's meeting limit (up to 20), "
-            "or select Directors only in Meita Configuration.")
+            "or choose a higher limit for Director coordination.")
+    if len(roster)>limit:
+        # Large AI organizations need an actual working meeting, not a
+        # 54-agent fanout that exceeds configured cost and participant bounds.
+        # Keep every department Director, choose matching specialists fairly
+        # by topic and then fill spare seats in stable round-robin order.
+        specialists=[p for p in roster if p["org_role"]=="Specialist"]
+        terms={w for w in __import__("re").findall(r"[a-z]{4,}",topic.casefold())
+               if w not in ("team","with","plan","work","across","about","from","this","that","internal","into")}
+        def score(p):
+            heading=(p["role"]+" "+p["department"]).casefold()
+            expertise=str(p.get("expertise") or "").casefold()[:300]
+            return sum(6 for t in terms if t in heading)+sum(
+                1 for t in terms if t in expertise)
+        # A fair rotation ensures a single department cannot consume
+        # every available slot when many roles match the same broad topic.
+        by_department={}
+        for p in sorted(specialists,key=lambda p:(-score(p),p["department"],p["name"])):
+            by_department.setdefault(p["department"],[]).append(p)
+        ordered=[]
+        departments=list(by_department)
+        while any(by_department.values()):
+            for dept in departments:
+                if by_department[dept]:
+                    ordered.append(by_department[dept].pop(0))
+        roster=directors+ordered[:limit-len(directors)]
     # Never pass confidential staff instructions or API tokens as attendee data.
     participants=[{k:p[k] for k in
         ("id","name","role","department","org_role")}|
