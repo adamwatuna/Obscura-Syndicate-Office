@@ -11,6 +11,8 @@ from backend import organization
 from backend import leadership_seed
 from backend import monthly
 from backend import task_schedule
+from backend import meita_autowork
+from backend import memory as office_memory
 from backend import meita_team
 
 logger = logging.getLogger("office.storage")
@@ -63,6 +65,12 @@ def ensure_schema(db):
     task_schedule.setup(db)
     monthly.setup(db)
     meita_team.init(db)
+    meita_autowork.init(db)
+    office_memory.setup(db)
+    db.execute("""INSERT INTO meita_memories (id,title,content,category)
+        VALUES ('ceo-visual-briefing-style-v1','CEO reporting preferences',
+                'CEO prefers concise staff updates, with clear summaries, real charts or visuals where supported and polished presentation decks for final task delivery. No fabricated data or images.',
+                'CEO preference') ON CONFLICT(id) DO NOTHING""")
 
 def _copy_table(db, old, name):
     source_count = copied_count = 0
