@@ -8,6 +8,7 @@ from backend import memory as office_memory
 from backend import workforce as office_workforce
 from backend import delegation as office_delegation
 from backend import office_db
+from backend import organization as org
 
 ROOT=Path(__file__).resolve().parent.parent
 PASSWORD=os.environ.get('CEO_PASSWORD')
@@ -28,6 +29,9 @@ class Staff(BaseModel):
     expertise: str = Field(default='', max_length=16000)
     tools: str = Field(default='', max_length=2000)
     autonomy: str = Field(default='Approval required', max_length=100)
+    org_role: str | None = None
+    manager_id: str | None = None
+    delegation_permission: str | None = None
 class Task(BaseModel):title:str=Field(min_length=1,max_length=250);assignee:str=''
 class Lesson(BaseModel):title:str=Field(min_length=1,max_length=200);kind:str;source:str=Field(min_length=1,max_length=3000);assigned:str=''
 class Status(BaseModel):status:str
@@ -51,58 +55,82 @@ def me(req:Request):return {'authenticated':req.session.get('authorized') is Tru
 def office():
     with connect() as db:
         result = {'staff': [dict(x) for x in db.execute(
-            'SELECT id,name,role,department,status FROM staff ORDER BY name')]}
+            'SELECT id,name,role,department,status,org_role,manager_id,delegation_permission FROM staff ORDER BY department,name')]}
         for table in ('tasks', 'lessons', 'audit'):
             result[table] = [dict(x) for x in db.execute(
                 'SELECT * FROM '+table+' ORDER BY created DESC, id DESC')]
         return result
+@app.get('/api/organization',dependencies=[Depends(guard)])
+def get_organization():
+    with connect() as db:
+        return org.summary(db)
+
 @app.post('/api/staff',dependencies=[Depends(guard)])
 def create_staff(body:Staff):
+    if not all((body.name.strip(),body.role.strip(),body.department.strip())):
+        raise HTTPException(400,'Name, title and department are required')
     ident=secrets.token_hex(12)
     with connect() as db:
-        db.execute('INSERT INTO staff VALUES(%s,%s,%s,%s,%s,%s,%s,%s)',(ident,body.name,body.role,body.department,body.expertise,body.tools,body.autonomy,'Available'))
-        audit(db,'staff.hired',body.name)
+        hierarchy=org.validate_staff(db,body)
+        db.execute("""INSERT INTO staff
+            (id,name,role,department,expertise,tools,autonomy,status,
+             org_role,manager_id,delegation_permission)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,'Available',%s,%s,%s)""",
+            (ident,body.name.strip(),body.role.strip(),hierarchy['department'],
+             body.expertise,body.tools,body.autonomy,hierarchy['org_role'],
+             hierarchy['manager_id'],hierarchy['delegation_permission']))
+        org.after_staff_saved(db,ident)
+        audit(db,'staff.hired',f'{ident}: {body.name.strip()} ({hierarchy["org_role"]})')
     return {'id':ident}
 
 @app.get('/api/staff/{ident}/configuration',dependencies=[Depends(guard)])
 def get_staff_configuration(ident:str):
-    # The regular office listing must never expose private staff configuration.
+    # Private expertise/instructions available only after CEO session validation.
     with connect() as db:
-        row = db.execute('SELECT id,name,role,department,expertise,tools,autonomy,status FROM staff WHERE id=%s',(ident,)).fetchone()
-        if row is None: raise HTTPException(404,'Staff not found')
+        row=db.execute('SELECT '+org.STAFF_COLUMNS+' FROM staff WHERE id=%s',
+                       (ident,)).fetchone()
+        if row is None:raise HTTPException(404,'Staff not found')
         return {'staff':dict(row)}
 
 @app.put('/api/staff/{ident}',dependencies=[Depends(guard)])
-def update_staff(ident:str, body:Staff):
-    if not body.name.strip() or not body.role.strip() or not body.department.strip():
-        raise HTTPException(400,'Name, job title and department are required')
+def update_staff(ident:str,body:Staff):
+    if not all((body.name.strip(),body.role.strip(),body.department.strip())):
+        raise HTTPException(400,'Name, title and department are required')
     with connect() as db:
-        existing=db.execute('SELECT name FROM staff WHERE id=%s FOR UPDATE',(ident,)).fetchone()
-        if not existing: raise HTTPException(404,'Staff not found')
-        db.execute("""UPDATE staff SET name=%s, role=%s, department=%s,
-            expertise=%s, tools=%s, autonomy=%s WHERE id=%s""",
-            (body.name.strip(),body.role.strip(),body.department.strip(),
-             body.expertise,body.tools,body.autonomy,ident))
-        audit(db,'staff.updated',f'{ident}: {existing["name"]} -> {body.name.strip()}')
+        existing=db.execute('SELECT * FROM staff WHERE id=%s FOR UPDATE',(ident,)).fetchone()
+        if not existing:raise HTTPException(404,'Staff not found')
+        old=dict(existing)
+        hierarchy=org.validate_staff(db,body,ident,old)
+        db.execute("""UPDATE staff SET name=%s,role=%s,department=%s,
+            expertise=%s,tools=%s,autonomy=%s,org_role=%s,
+            manager_id=%s,delegation_permission=%s WHERE id=%s""",
+            (body.name.strip(),body.role.strip(),hierarchy['department'],
+             body.expertise,body.tools,body.autonomy,hierarchy['org_role'],
+             hierarchy['manager_id'],hierarchy['delegation_permission'],ident))
+        org.after_staff_saved(db,ident,old)
+        audit(db,'staff.updated',f'{ident}: {old["name"]} -> {body.name.strip()}')
     return {'ok':True}
 
 @app.delete('/api/staff/{ident}',dependencies=[Depends(guard)])
 def delete_staff(ident:str):
-    # Preserve existing task records; clear their assignee instead of deleting tasks.
     with connect() as db:
-        existing=db.execute('SELECT name FROM staff WHERE id=%s FOR UPDATE',(ident,)).fetchone()
-        if existing is None: raise HTTPException(404,'Staff not found')
-        unassigned=db.execute("UPDATE tasks SET assignee='' WHERE assignee=%s",(ident,)).rowcount
-        # Keep historical delegation and AI result snapshots for CEO audit.
-        # Unstarted delegation jobs for this staff cannot be executed afterwards.
+        existing=db.execute('SELECT * FROM staff WHERE id=%s FOR UPDATE',(ident,)).fetchone()
+        if existing is None:raise HTTPException(404,'Staff not found')
+        reports=db.execute('UPDATE staff SET manager_id=NULL WHERE manager_id=%s',(ident,)).rowcount
+        org.cancel_director_plans(db,ident)
+        org.cancel_staff_jobs(db,ident)
+        unassigned=db.execute("UPDATE tasks SET assignee='' WHERE assignee=%s",
+                              (ident,)).rowcount
         job_count=0
         if db.execute("SELECT to_regclass('public.coo_jobs') AS tbl").fetchone()['tbl'] is not None:
             job_count=db.execute("""UPDATE coo_jobs SET status='Cancelled',
                 updated_at=NOW() WHERE staff->>'id'=%s
                 AND status IN ('Approved','Retry available')""",(ident,)).rowcount
         db.execute('DELETE FROM staff WHERE id=%s',(ident,))
-        audit(db,'staff.deleted',f'{ident}: {existing["name"]}; unassigned_tasks={unassigned}; cancelled_jobs={job_count}')
-    return {'ok':True,'unassigned_tasks':unassigned,'cancelled_jobs':job_count}
+        audit(db,'staff.deleted',f'{ident}: {existing["name"]}; unassigned_tasks={unassigned}; direct_reports_unassigned={reports}')
+    return {'ok':True,'unassigned_tasks':unassigned,'cancelled_jobs':job_count,
+            'direct_reports_unassigned':reports}
+
 @app.post('/api/tasks',dependencies=[Depends(guard)])
 def create_task(body:Task):
     ident=secrets.token_hex(12)
@@ -129,7 +157,7 @@ def create_lesson(body:Lesson):
     return {'id':ident}
 @app.get('/api/capabilities',dependencies=[Depends(guard)])
 def capabilities():
-    return {'working':['Secure password login','Staff configuration and hiring','Task management','Knowledge source registry','Audit log','Desk status from task records'], 'planned':['MFA','AI execution','YouTube transcript ingestion','File processing','OAuth integrations','Accounting engine','Autonomous workflows','Multi-user permissions']}
+    return {'working':['Password-protected CEO session','Director-led staff hierarchy','Scoped internal AI delegation','AI-generated internal task drafts','CEO review','PostgreSQL records and memory','Knowledge source registry','Audit log'], 'planned':['MFA and multi-user roles','YouTube transcript ingestion','File processing','External-app OAuth integrations','Accounting engine','Independent staff identity and external action permissions']}
 @app.get('/')
 def home():return FileResponse(ROOT/'frontend'/'index.html')
 
@@ -148,11 +176,15 @@ def meita_chat(body:MeitaMessage):
     model=os.environ.get('OPENAI_MODEL','gpt-5.4')
     with connect() as db:
         history=list(reversed(db.execute('SELECT role,content FROM meita_messages ORDER BY created DESC, id DESC LIMIT 12').fetchall()))
+        leadership=[dict(x) for x in db.execute("""SELECT name,role,department FROM staff
+            WHERE org_role='Director' ORDER BY department LIMIT 15""")]
     system=('You are Meita, the CEO\'s Acting COO in AI Private Office. '
             'Be professional, organized, concise, and helpful. Reply in Malay-English rojak when the CEO does. '
             'You can advise and draft and guide CEO to your Delegation Desk for task assignment and internal AI execution. You cannot directly execute actions in chat, contact third parties, '
             'access files or connected services, or approve actions. Never claim actions were performed. '
             'For consequential actions, ask for CEO approval. Do not fabricate office data.')
+    if leadership:
+        system += '\nDepartment directors reporting to Meita: '+json.dumps(leadership,ensure_ascii=False)
     memories=office_memory.recall(body.message)
     if memories:
         memory_text='\n'.join('- ['+m['category']+'] '+m['title']+': '+m['content'] for m in memories)
@@ -235,7 +267,10 @@ def delegation_proposals():
 @app.post('/api/delegation/proposals',dependencies=[Depends(guard)])
 def delegation_propose(body:office_delegation.DelegationBrief):
     with connect() as db:
-        staff=[dict(x) for x in db.execute('SELECT * FROM staff ORDER BY name')]
+        staff=[dict(x) for x in db.execute("""SELECT * FROM staff
+            WHERE org_role='Director' ORDER BY name""")]
+    if not staff:
+        raise HTTPException(400,'Configure a Department Director before requesting Meita delegation')
     memories=office_memory.recall(body.brief)
     result=office_delegation.propose(body.brief,staff,memories)
     with connect() as db:
@@ -269,3 +304,48 @@ def delegation_run(ident:str):
 @app.get('/api/database/status',dependencies=[Depends(guard)])
 def database_status():
     return office_db.status()
+
+
+@app.get('/api/directors/plans',dependencies=[Depends(guard)])
+def department_plans():
+    with connect() as db:
+        return org.list_plans(db)
+
+@app.post('/api/directors/{ident}/plans',dependencies=[Depends(guard)])
+def department_plan(ident:str,body:org.DirectorBrief):
+    # A CEO request starts planning. Director scope is always checked server-side.
+    with connect() as db:
+        director,staff=org.propose(db,ident,body.brief)
+    plan=org._openai_plan(director,staff,body.brief)
+    with connect() as db:
+        result=org.save_proposal(db,ident,body.brief,plan)
+        audit(db,'director.plan.proposed',f'{ident}: {result["id"]} - {result["status"]}')
+    return result
+
+@app.post('/api/directors/plans/{ident}/approve',dependencies=[Depends(guard)])
+def approve_department_plan(ident:str):
+    with connect() as db:
+        result=org.decide(db,ident,True)
+        audit(db,'director.plan.approved',ident)
+    return result
+
+@app.post('/api/directors/plans/{ident}/reject',dependencies=[Depends(guard)])
+def reject_department_plan(ident:str):
+    with connect() as db:
+        result=org.decide(db,ident,False)
+        audit(db,'director.plan.rejected',ident)
+    return result
+
+@app.post('/api/directors/jobs/{ident}/run',dependencies=[Depends(guard)])
+def run_department_job(ident:str):
+    with connect() as db:
+        task,staff=org.claim_job(db,ident)
+    try:
+        result=office_workforce.execute(task,staff)
+    except Exception:
+        with connect() as db:org.finish_job(db,ident)
+        raise
+    with connect() as db:
+        org.finish_job(db,ident,result['id'])
+        audit(db,'director.job.delivered',f'{ident}: {result["id"]}')
+    return result

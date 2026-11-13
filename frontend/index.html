@@ -2,14 +2,21 @@
 :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;color:#202b35;background:#f7f8fa}*{box-sizing:border-box}body{margin:0}button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:none!important}.login{min-height:100vh;display:grid;place-items:center;background:#f9fafb}.login .panel{width:min(420px,92vw);background:white;padding:42px;border:1px solid #e9edf0;border-radius:22px;box-shadow:0 18px 65px #25334b0b}.eyebrow{font-size:11px;letter-spacing:.19em;font-weight:800;color:#8b96a3;text-transform:uppercase}h1{font-size:30px;letter-spacing:-1.1px;margin:12px 0}p{color:#7c8795;line-height:1.65}input,select,textarea{background:white;border:1px solid #e2e7ec;border-radius:10px;padding:12px;width:100%;outline-color:#b7c6d8}label{display:block;font-size:12px;font-weight:700;color:#657080;margin:15px 0 7px}.primary{background:#283b51;color:white;border:0;padding:12px 18px;border-radius:10px;font-weight:650}.secondary{background:white;border:1px solid #e0e5ea;color:#46556a;padding:10px 14px;border-radius:10px}.shell{display:grid;grid-template-columns:238px 1fr;min-height:100vh}aside{background:white;border-right:1px solid #e8ecf0;padding:30px 18px;display:flex;flex-direction:column;gap:24px}.brand{font-weight:800;font-size:19px;letter-spacing:-.65px;padding:6px 12px}.brand small{display:block;font-size:10px;letter-spacing:.22em;color:#99a2ac;margin-top:5px}.nav{display:grid;gap:5px}.nav button{background:transparent;border:0;text-align:left;padding:12px 14px;color:#697788;border-radius:10px;font-weight:600;font-size:13px}.nav button.active,.nav button:hover{background:#eef3f7;color:#283b51}.bottom{margin-top:auto;padding:12px;color:#8b96a3;font-size:12px}main{padding:36px clamp(22px,4vw,64px);max-width:1600px;width:100%;margin:auto}.top{display:flex;justify-content:space-between;align-items:center;gap:20px}.top h1{margin:5px 0}.pill{border:1px solid #dfe8e5;background:#f5faf8;color:#477365;border-radius:50px;padding:9px 13px;font-size:12px;font-weight:700}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:28px 0}.card{background:white;border:1px solid #e8ecf0;border-radius:16px;padding:22px;box-shadow:0 6px 24px #1f354207}.metric{font-size:30px;font-weight:750;letter-spacing:-1px;margin-top:16px}.muted{color:#8a95a2;font-size:12px}.two{display:grid;grid-template-columns:1.45fr 1fr;gap:18px}.sectiontitle{font-size:16px;font-weight:750;margin:0 0 18px}.staffgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}.person{border:1px solid #e9edf1;border-radius:13px;padding:18px;background:white}.avatar{height:42px;width:42px;display:grid;place-items:center;background:#e9f0f5;color:#48647d;border-radius:12px;font-weight:800;margin-bottom:12px}.person strong{display:block}.tag{display:inline-block;background:#f3f6f8;color:#738294;padding:5px 9px;border-radius:7px;font-size:11px;margin-top:9px}.item{display:flex;justify-content:space-between;gap:10px;padding:13px 0;border-bottom:1px solid #f0f2f4;align-items:center}.item:last-child{border-bottom:0}.item strong{font-size:13px}.item small{display:block;color:#8b96a3;margin-top:5px}.view{display:none}.view.active{display:block}.actions{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 15px}.formgrid .wide{grid-column:1/-1}.deskgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.desk{min-height:175px;border:1px solid #e8edf0;border-radius:14px;padding:18px;background:linear-gradient(145deg,#fff,#f7f9fb)}.desk .surface{height:7px;background:#e4eaf0;border-radius:9px;margin:23px 0 10px}.notice{background:#f8fafb;border:1px solid #e5ebf0;padding:14px;border-radius:12px;color:#758293;font-size:12px;line-height:1.6;margin:15px 0}.err{color:#bd4d4d;font-size:13px}.toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}#toast{position:fixed;bottom:22px;right:22px;background:#293b50;color:white;padding:12px 18px;border-radius:10px;display:none;z-index:5}@media(max-width:1050px){.grid{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.deskgrid{grid-template-columns:repeat(2,1fr)}}@media(max-width:700px){.shell{display:block}aside{padding:15px;border-right:0;border-bottom:1px solid #eee}.nav{display:flex;overflow:auto}.nav button{white-space:nowrap}.bottom{display:none}main{padding:22px 16px}.grid,.deskgrid,.formgrid{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}}
 </style></head><body><div id="login" class="login"><div class="panel"><div class="eyebrow">PRIVATE EXECUTIVE WORKSPACE</div><h1>AI Private Office</h1><p>Welcome back. Sign in to access your executive workspace.</p><form id="loginForm"><label>CEO password</label><input id="password" type="password" autocomplete="current-password" required><div style="height:18px"></div><button class="primary" style="width:100%">Sign in securely</button><p id="loginError" class="err"></p></form><p style="font-size:11px">Authorized access only.</p></div></div>
 <div id="app" class="shell hidden"><aside><div class="brand">AI Private Office<small>EXECUTIVE WORKSPACE</small></div><div class="nav" id="nav"><button data-view="hq" class="active">◫ &nbsp; Executive HQ</button><button data-view="meita">✦ &nbsp; Meita AI</button><button data-view="memory">◈ &nbsp; Memory Centre</button><button data-view="workforce">♙ &nbsp; AI Workforce</button><button data-view="desks">▦ &nbsp; Live Desks</button><button data-view="tasks">☑ &nbsp; Task Centre</button><button data-view="academy">▤ &nbsp; Learning Academy</button><button data-view="research">⌕ &nbsp; Research Intelligence</button><button data-view="finance">◈ &nbsp; Finance & Audit</button><button data-view="integrations">⌘ &nbsp; Integration Centre</button><button data-view="governance">◇ &nbsp; Governance</button></div><div class="bottom"><button class="secondary" id="logout">Sign out</button><p>Private office environment</p></div></aside><main><header class="top"><div><div class="eyebrow">YOUR EXECUTIVE WORKSPACE</div><h1 id="pageTitle">Good day, CEO.</h1><div class="muted" id="today"></div></div><span class="pill">● Private workspace</span></header>
-<section class="view active" id="hq"><div class="grid"><div class="card"><div class="muted">AI Workforce</div><div class="metric" id="kStaff">0</div><div class="muted">Configured team members</div></div><div class="card"><div class="muted">Open tasks</div><div class="metric" id="kOpen">0</div><div class="muted">Awaiting completion</div></div><div class="card"><div class="muted">For approval</div><div class="metric" id="kApproval">0</div><div class="muted">CEO attention required</div></div><div class="card"><div class="muted">Knowledge sources</div><div class="metric" id="kLessons">0</div><div class="muted">Registered resources</div></div></div><div class="two"><div class="card"><div class="toolbar"><h2 class="sectiontitle">Leadership & workforce</h2><button class="secondary" onclick="show('workforce')">Manage team</button></div><div class="staffgrid" id="hqStaff"></div></div><div class="card"><h2 class="sectiontitle">Recent tasks</h2><div id="hqTasks"></div></div></div><div class="notice">Your office starts empty by design. Hire AI staff to configure your organization. AI execution and external tools are not connected yet; task status is recorded only when explicitly updated.</div></section>
+<section class="view active" id="hq"><div class="grid"><div class="card"><div class="muted">AI Workforce</div><div class="metric" id="kStaff">0</div><div class="muted">Configured team members</div></div><div class="card"><div class="muted">Open tasks</div><div class="metric" id="kOpen">0</div><div class="muted">Awaiting completion</div></div><div class="card"><div class="muted">For approval</div><div class="metric" id="kApproval">0</div><div class="muted">CEO attention required</div></div><div class="card"><div class="muted">Knowledge sources</div><div class="metric" id="kLessons">0</div><div class="muted">Registered resources</div></div></div><div class="two"><div class="card"><div class="toolbar"><h2 class="sectiontitle">Leadership & workforce</h2><button class="secondary" onclick="show('workforce')">Manage team</button></div><div class="staffgrid" id="hqStaff"></div></div><div class="card"><h2 class="sectiontitle">Recent tasks</h2><div id="hqTasks"></div></div></div><div class="notice">Manage departments through Meita and your Directors. Authorized AI staff can generate internal deliverables for CEO review; external application access, publishing and payments are not connected.</div></section>
 <section class="view" id="memory"><div class="toolbar"><div><h2>Meita Memory Centre</h2><p>CEO-controlled long-term memory stored in PostgreSQL. Only memories you save here are used by Meita.</p></div><button class="secondary" onclick="loadMemory()">Refresh</button></div><div class="card"><h3 id="memoryHeading">Save a memory</h3><form id="memoryForm"><label>Title</label><input id="memoryTitle" maxlength="120" required placeholder="CEO's communication style"><label>Category</label><select id="memoryCategory"><option>CEO instruction</option><option>CEO preference</option><option>Company knowledge</option><option>Task decision</option></select><label>Content</label><textarea id="memoryContent" rows="5" maxlength="3000" required placeholder="Approved information for Meita to remember"></textarea><div style="height:12px"></div><button class="primary" id="memorySave">Save memory</button> <button type="button" class="secondary" onclick="resetMemory()">Cancel edit</button></form></div><div class="card" style="margin-top:20px"><h3>Saved memories</h3><div id="memoryList"><p>Loading…</p></div></div><div class="notice">CEO approval is required to create or change memory. Memory access is currently limited to Meita. Do not store passwords or API keys.</div></section><section class="view" id="meita"><h2>Meita · Acting COO</h2><p>Talk directly to Meita using the OpenAI engine. Advisory conversations only; no autonomous external actions.</p><div class="card"><div id="meitaChat" style="height:340px;overflow:auto;white-space:pre-wrap;font-size:14px;line-height:1.65"><p>Start a conversation with Meita.</p></div><form id="meitaForm"><label>Message to Meita</label><textarea id="meitaInput" rows="3" maxlength="6000" required placeholder="Meita, help me prioritize today's work..."></textarea><div style="height:12px"></div><button class="primary" id="meitaSend">Send to Meita</button></form><p class="muted">AI can make mistakes. Do not enter sensitive company information until security review is complete.</p></div>
 <div class="card" style="margin-top:20px">
- <div class="toolbar"><div><h3>Meita · Delegation Desk</h3><p>Meita proposes jobs for your team. Nothing is assigned or executed until you approve it.</p></div><button class="secondary" onclick="loadDelegations()">Refresh</button></div>
+ <div class="toolbar"><div><h3>Meita · Delegation Desk</h3><p>Meita coordinates Department Directors. Each Director can delegate internally to their own specialists. Meita plans require CEO approval.</p></div><button class="secondary" onclick="loadDelegations()">Refresh</button></div>
  <form id="delegationForm"><label>CEO brief</label><textarea id="delegationBrief" maxlength="2500" rows="4" minlength="5" required placeholder="Meita, plan a social media launch. Assign content drafts to our marketing AI staff."></textarea><div style="height:12px"></div><button id="delegationGenerate" class="primary">Ask Meita to plan delegation</button></form>
  <div id="delegationList" style="margin-top:20px"><p>No delegation plans yet.</p></div>
  <p class="muted">Internal drafts only. External apps, publishing and financial actions are not connected.</p>
-</div></section><section class="view" id="workforce"><div class="toolbar"><div><h2>AI Workforce</h2><p>Build departments, hire specialists and configure access.</p></div><button class="primary" onclick="newStaff()">+ Hire AI staff</button></div><div id="staffForm" class="card hidden"><div class="toolbar"><h3 id="staffFormHeading">New AI staff configuration</h3><button type="button" class="secondary" onclick="cancelStaffForm()">Close</button></div><p class="muted">Configuration is stored privately. Staff cards show only public profile details.</p><form id="hireForm" class="formgrid"><div><label>Name</label><input name="name" required></div><div><label>Job title</label><input name="role" placeholder="Video Editor, Social Media Specialist..." required></div><div><label>Department</label><select name="department"><option>Executive Office</option><option>Creative</option><option>Marketing</option><option>Research</option><option>Production & Operations</option><option>Finance</option></select></div><div><label>Autonomy</label><select name="autonomy"><option>Approval required</option><option>Advisory only</option><option>Routine internal tasks only</option></select></div><div class="wide"><label>Expertise &amp; internal instructions</label><textarea name="expertise" rows="7" maxlength="16000" placeholder="Role expertise, reporting line, workflow and CEO-approved instructions..."></textarea></div><div class="wide"><label>Requested tools (not connected)</label><textarea name="tools" rows="3" maxlength="2000" placeholder="CapCut, Instagram, Canva..."></textarea></div><div class="wide"><button class="primary" id="staffSave">Save staff configuration</button> <button type="button" class="secondary" onclick="cancelStaffForm()">Cancel</button></div></form></div><div class="staffgrid" id="staffList" style="margin-top:22px"></div></section>
+</div></section><section class="view" id="workforce"><div class="toolbar"><div><h2>AI Workforce</h2><p>Build departments, hire specialists and configure access.</p></div><button class="primary" onclick="newStaff()">+ Hire AI staff</button></div><div id="staffForm" class="card hidden"><div class="toolbar"><h3 id="staffFormHeading">New AI staff configuration</h3><button type="button" class="secondary" onclick="cancelStaffForm()">Close</button></div><p class="muted">Configuration is stored privately. Staff cards show only public profile details.</p><form id="hireForm" class="formgrid"><div><label>Name</label><input name="name" required></div><div><label>Job title</label><input name="role" placeholder="Video Editor, Social Media Specialist..." required></div><div><label>Department</label><select name="department" id="staffDepartment"><option>Executive Office</option><option>Research &amp; Intelligence</option><option>Marketing &amp; Growth</option><option>Creative</option><option>Finance &amp; Treasury</option><option>Operations &amp; Project Management</option><option>Technology &amp; AI Systems</option><option>Strategy &amp; Business Development</option><option>Knowledge &amp; Learning Academy</option><option>Governance, Risk &amp; Compliance</option></select></div><div><label>Organizational position</label><select name="org_role" id="staffOrgRole"><option value="Specialist">AI Specialist (reports to Director)</option><option value="Director">Department Director (reports to Meita)</option></select></div><div id="staffManagerArea"><label>Reports to (Director)</label><select name="manager_id" id="staffManager"><option value="">Unassigned until Director is hired</option></select></div><div id="staffPermissionArea" class="hidden"><label>Director delegation authority</label><select name="delegation_permission" id="staffPermission"><option value="approval_required">CEO approves department assignments</option><option value="department_internal">Delegate routine internal work within department</option></select></div><div><label>Autonomy</label><select name="autonomy"><option>Approval required</option><option>Advisory only</option><option>Routine internal tasks only</option></select></div><div class="wide"><p class="muted" id="staffPolicyNote">Directors can assign only their own department specialists. External actions always require CEO approval.</p></div><div class="wide"><label>Expertise &amp; internal instructions</label><textarea name="expertise" rows="7" maxlength="16000" placeholder="Role expertise, reporting line, workflow and CEO-approved instructions..."></textarea></div><div class="wide"><label>Requested tools (not connected)</label><textarea name="tools" rows="3" maxlength="2000" placeholder="CapCut, Instagram, Canva..."></textarea></div><div class="wide"><button class="primary" id="staffSave">Save staff configuration</button> <button type="button" class="secondary" onclick="cancelStaffForm()">Cancel</button></div></form></div><div class="staffgrid" id="staffList" style="margin-top:22px"></div>
+<div class="card" style="margin-top:22px"><div class="toolbar"><div><h3>Organizational Structure</h3><p>CEO → Meita (Acting COO) → Department Directors → AI Specialists</p></div></div><div class="staffgrid" id="orgChart" style="margin-top:16px"></div><p class="muted">Risk &amp; Compliance can escalate independently to the CEO. Department leaders do not receive access to external applications automatically.</p></div>
+<div class="card" style="margin-top:22px">
+<div class="toolbar"><div><h3>Director Delegation Desk</h3><p>Assign an internal brief to a Director. They may delegate only to direct-report specialists.</p></div><button class="secondary" onclick="loadDirectorPlans()">Refresh</button></div>
+<form id="directorForm"><label>Department Director</label><select id="directorSelect" required><option value="">Choose a Director</option></select><label>CEO department brief</label><textarea id="directorBrief" rows="3" minlength="5" maxlength="2500" required placeholder="Prepare an internal launch campaign: research, messaging and draft deliverables..."></textarea><div style="height:14px"></div><button class="primary" id="directorPlanButton">Request Director Plan</button></form>
+<div class="notice">Routine internal delegation is allowed only for Directors authorized by the CEO. Finance, Technology, Strategy and Compliance plans always require CEO approval. No publishing, spending or external actions.</div>
+<div id="directorPlanList"><p>No Director plans yet.</p></div></div>
+</section>
 <section class="view" id="desks"><h2>Live Desks</h2><p>Clean interactive desk view. Each workstation reflects recorded tasks, not fictional activity.</p><div class="deskgrid" id="deskList"></div></section>
 <section class="view" id="tasks"><div class="toolbar"><div><h2>Task Centre</h2><p>Assign, track and approve work.</p></div><button class="primary" onclick="toggle('taskForm')">+ New task</button></div><div id="taskForm" class="card hidden"><form id="newTaskForm"><label>Task title</label><input name="title" required><label>Assign to</label><select name="assignee" id="assignee"><option value="">Unassigned</option></select><div style="height:15px"></div><button class="primary">Create task</button></form></div><div class="card" style="margin-top:20px" id="taskList"></div><div class="card" style="margin-top:20px"><div class="toolbar"><div><h3>AI deliverables · CEO review</h3><p>Run an assigned task to generate an actual OpenAI deliverable. Results remain internal until approved.</p></div><button class="secondary" onclick="loadRuns()">Refresh results</button></div><div id="runList"><p>No AI deliverables yet.</p></div></div></section>
 <section class="view" id="academy"><div class="toolbar"><div><h2>Learning Academy</h2><p>Register learning material and assign it to staff.</p></div><button class="primary" onclick="toggle('lessonForm')">+ Add learning source</button></div><div class="notice">YouTube and website links are saved as references. Transcription, ingestion, PDF processing and AI learning are not yet implemented. No staff receives automatic knowledge access.</div><div id="lessonForm" class="card hidden"><form id="newLessonForm"><div class="formgrid"><div><label>Title</label><input name="title" required></div><div><label>Source type</label><select name="kind"><option>YouTube link</option><option>Website link</option><option>Note</option></select></div><div class="wide"><label>URL or note</label><textarea name="source" required></textarea></div><div class="wide"><label>Assigned staff / department (reference only)</label><input name="assigned" placeholder="e.g. Creative"></div></div><div style="height:15px"></div><button class="primary">Register source</button></form></div><div class="card" style="margin-top:20px" id="lessonList"></div></section>
@@ -25,13 +32,15 @@ function toggle(id){$(id).classList.toggle('hidden')}
 function show(id){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('active',e.id===id));document.querySelectorAll('[data-view]').forEach(e=>e.classList.toggle('active',e.dataset.view===id));$('pageTitle').textContent=({hq:'Good day, CEO.',meita:'Meita · Acting COO',memory:'Memory Centre',workforce:'Your AI Workforce',desks:'Live Desks',tasks:'Task Centre',academy:'Learning Academy',research:'Research Intelligence',finance:'Finance & Audit',integrations:'Integration Centre',governance:'Governance'})[id];window.scrollTo(0,0)}
 function person(s,editable=false){
   const actions=editable?`<div class="actions" style="margin:14px 0 0"><button class="secondary" type="button" onclick="editStaff('${esc(s.id)}')">Edit</button><button class="secondary" type="button" onclick="deleteStaff('${esc(s.id)}')">Delete</button></div>`:'';
-  return `<div class="person"><div class="avatar">${esc(s.name.slice(0,2).toUpperCase())}</div><strong>${esc(s.name)}</strong><div class="muted">${esc(s.role)}</div><span class="tag">${esc(s.department)}</span><span class="tag" style="margin-left:6px">${esc(s.status)}</span>${actions}</div>`;
+  const director=state.staff.find(x=>x.id===s.manager_id);
+  const report=s.org_role==='Director'?'Reports to Meita':director?'Reports to '+director.name:'Reporting line unassigned';
+  return `<div class="person"><div class="avatar">${esc(s.name.slice(0,2).toUpperCase())}</div><strong>${esc(s.name)}</strong><div class="muted">${esc(s.role)}</div><span class="tag">${esc(s.department)}</span><span class="tag" style="margin-left:6px">${esc(s.org_role||'Specialist')}</span><p class="muted">${esc(report)}</p>${actions}</div>`;
 }
 function render(){const s=state.staff,t=state.tasks,l=state.lessons;$('kStaff').textContent=s.length;$('kOpen').textContent=t.filter(x=>x.status!=='Completed').length;$('kApproval').textContent=t.filter(x=>x.status==='For approval').length;$('kLessons').textContent=l.length;$('hqStaff').innerHTML=s.length?s.slice(0,6).map(x=>person(x,false)).join(''):'<p>No staff hired yet.</p>';$('staffList').innerHTML=s.length?s.map(x=>person(x,true)).join(''):'<div class="notice">Your team is empty. Hire your first staff member.</div>';
 const taskrow=x=>`<div class="item"><div><strong>${esc(x.title)}</strong><small>${esc(s.find(z=>z.id===x.assignee)?.name||'Unassigned')} · ${esc(x.status)}</small></div></div>`;$('hqTasks').innerHTML=t.length?t.slice(0,5).map(taskrow).join(''):'<p>No tasks yet.</p>';
 $('assignee').innerHTML='<option value="">Unassigned</option>'+s.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('');$('taskList').innerHTML=t.length?t.map(x=>`<div class="item"><div><strong>${esc(x.title)}</strong><small>${esc(s.find(z=>z.id===x.assignee)?.name||'Unassigned')}</small></div><select style="max-width:180px" onchange="updateTask('${esc(x.id)}',this.value)">${['To do','In progress','For approval','Completed'].map(st=>`<option ${x.status===st?'selected':''}>${st}</option>`).join('')}</select>${x.assignee?'<button class="secondary" style="margin-left:8px" onclick="runStaffTask(\''+esc(x.id)+'\',this)">Run AI</button>':''}</div>`).join(''):'<p>No tasks created yet.</p>';
 $('deskList').innerHTML=s.length?s.map(x=>{const active=t.filter(y=>y.assignee===x.id&&y.status!=='Completed');return `<div class="desk"><div class="avatar">${esc(x.name.slice(0,2).toUpperCase())}</div><strong>${esc(x.name)}</strong><div class="muted">${esc(x.role)}</div><div class="surface"></div><span class="tag">${active.length?active.length+' open task(s)':'No active tasks'}</span></div>`}).join(''):'<div class="notice">Hire AI staff to create workstations.</div>';
-$('lessonList').innerHTML=l.length?l.map(x=>`<div class="item"><div><strong>${esc(x.title)}</strong><small>${esc(x.kind)} · ${esc(x.assigned||'Not assigned')} · ${esc(x.status)}</small></div></div>`).join(''):'<p>No learning sources registered.</p>';$('auditList').innerHTML=state.audit.slice(0,12).map(x=>`<div class="item"><strong>${esc(x.action)}</strong><small>${esc(x.detail)}</small></div>`).join('')||'<p>No activity recorded.</p>'}
+renderOrganization();$('lessonList').innerHTML=l.length?l.map(x=>`<div class="item"><div><strong>${esc(x.title)}</strong><small>${esc(x.kind)} · ${esc(x.assigned||'Not assigned')} · ${esc(x.status)}</small></div></div>`).join(''):'<p>No learning sources registered.</p>';$('auditList').innerHTML=state.audit.slice(0,12).map(x=>`<div class="item"><strong>${esc(x.action)}</strong><small>${esc(x.detail)}</small></div>`).join('')||'<p>No activity recorded.</p>'}
 function addMeita(role,content){const d=document.createElement('div');d.style.cssText='padding:12px;margin:9px 0;border-radius:10px;background:'+(role==='user'?'#eef3f7':'#f8fafb');const b=document.createElement('strong');b.textContent=role==='user'?'CEO':'Meita';d.appendChild(b);const p=document.createElement('div');p.textContent=content;d.appendChild(p);$('meitaChat').appendChild(d);$('meitaChat').scrollTop=$('meitaChat').scrollHeight}
 async function loadMeita(){try{const r=await api('meita/history');$('meitaChat').textContent='';r.messages.forEach(m=>addMeita(m.role,m.content));if(!r.messages.length)addMeita('assistant','Hello CEO. How may I assist?')}catch(e){msg(e.message)}}
 $('meitaForm').addEventListener('submit',async e=>{e.preventDefault();const input=$('meitaInput'),message=input.value.trim();if(!message)return;const btn=$('meitaSend');btn.disabled=true;btn.textContent='Meita is thinking…';addMeita('user',message);input.value='';try{const r=await api('meita/chat',{method:'POST',body:JSON.stringify({message})});addMeita('assistant',r.reply)}catch(err){addMeita('assistant','Request failed: '+err.message)}finally{btn.disabled=false;btn.textContent='Send to Meita'}});
@@ -111,6 +120,44 @@ $('delegationForm').addEventListener('submit',async e=>{
   finally{btn.disabled=false;btn.textContent='Ask Meita to plan delegation'}
 });
 
+const OFFICE_DEPARTMENTS=['Executive Office','Research & Intelligence','Marketing & Growth','Creative','Finance & Treasury','Operations & Project Management','Technology & AI Systems','Strategy & Business Development','Knowledge & Learning Academy','Governance, Risk & Compliance'];
+const RESTRICTED_DEPARTMENTS=new Set(['Finance & Treasury','Technology & AI Systems','Strategy & Business Development','Governance, Risk & Compliance']);
+function updateStaffOrgFields(managerValue){
+  const form=$('hireForm'),department=form.elements.department.value,role=form.elements.org_role.value;
+  if(department==='Executive Office'&&role==='Director'){form.elements.org_role.value='Specialist';}
+  const isDirector=form.elements.org_role.value==='Director';
+  $('staffManagerArea').classList.toggle('hidden',isDirector);
+  $('staffPermissionArea').classList.toggle('hidden',!isDirector);
+  const select=form.elements.manager_id;
+  const directors=state.staff.filter(x=>x.org_role==='Director'&&x.department===department&&x.id!==editingStaffId);
+  const chosen=managerValue!==undefined?managerValue:select.value;
+  select.innerHTML='<option value="">No Director assigned</option>'+directors.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.name)+'</option>').join('');
+  if(chosen&&directors.some(d=>d.id===chosen))select.value=chosen;
+  else if(!editingStaffId&&directors.length===1)select.value=directors[0].id;
+  const restricted=RESTRICTED_DEPARTMENTS.has(department);
+  $('staffPermission').querySelector('[value="department_internal"]').disabled=restricted;
+  if(restricted&&form.elements.delegation_permission.value==='department_internal')form.elements.delegation_permission.value='approval_required';
+  $('staffPolicyNote').textContent=restricted?
+    'This department requires CEO approval for AI delegation. All external actions remain blocked.':
+    'Directors can delegate routine internal drafts only to specialists reporting directly to them. External actions remain blocked.';
+}
+function renderOrganization(){
+  const root=$('orgChart');if(!root)return;root.textContent='';
+  for(const dept of OFFICE_DEPARTMENTS.filter(x=>x!=='Executive Office')){
+    const people=state.staff.filter(s=>s.department===dept);
+    const director=people.find(s=>s.org_role==='Director');
+    const reports=director?people.filter(s=>s.org_role!=='Director'&&s.manager_id===director.id):[];
+    const unattached=people.filter(s=>s.org_role!=='Director'&&(!director||s.manager_id!==director.id));
+    const item=document.createElement('div');item.className='person';
+    const h=document.createElement('strong');h.textContent=dept;item.append(h);
+    const lead=document.createElement('p');lead.textContent=director?'Director: '+director.name:'Director not hired';lead.className='muted';item.append(lead);
+    const detail=document.createElement('div');detail.className='muted';
+    detail.textContent=reports.length+' direct reports'+(unattached.length?' · '+unattached.length+' awaiting assignment':'');
+    item.append(detail);root.append(item);
+  }
+}
+$('staffDepartment').addEventListener('change',()=>updateStaffOrgFields());
+$('staffOrgRole').addEventListener('change',()=>updateStaffOrgFields());
 let editingStaffId=null;
 function cancelStaffForm(){
   editingStaffId=null;
@@ -118,6 +165,7 @@ function cancelStaffForm(){
   $('staffForm').classList.add('hidden');
   $('staffFormHeading').textContent='New AI staff configuration';
   $('staffSave').textContent='Save staff configuration';
+  updateStaffOrgFields();
 }
 function newStaff(){
   cancelStaffForm();
@@ -131,10 +179,11 @@ async function editStaff(id){
     const staff=result.staff;
     editingStaffId=id;
     const form=$('hireForm');
-    for(const field of ['name','role','department','autonomy','expertise','tools']){
+    for(const field of ['name','role','department','autonomy','expertise','tools','org_role','delegation_permission']){
       const input=form.elements.namedItem(field);
       if(input)input.value=staff[field]??'';
     }
+    updateStaffOrgFields(staff.manager_id||'');
     $('staffFormHeading').textContent='Edit staff · '+staff.name;
     $('staffSave').textContent='Save changes';
     show('workforce');
@@ -150,7 +199,7 @@ async function deleteStaff(id){
     await api('staff/'+encodeURIComponent(id),{method:'DELETE'});
     if(editingStaffId===id)cancelStaffForm();
     await refresh();
-    await loadDelegations();
+    await loadDelegations();await loadDirectorPlans();
     msg('Staff deleted. Historic work preserved.');
   }catch(err){msg(err.message)}
 }
@@ -171,11 +220,76 @@ $('hireForm').addEventListener('submit',async e=>{
   finally{btn.disabled=false}
 });
 
-async function refresh(){state=await api('office');render()}
+let directorState={plans:[],jobs:[]};
+function renderDirectorSelect(){
+  const select=$('directorSelect'),chosen=select.value;
+  select.textContent='';
+  const blank=document.createElement('option');blank.value='';blank.textContent='Choose a Director';select.append(blank);
+  for(const d of state.staff.filter(s=>s.org_role==='Director')){
+    const opt=document.createElement('option');opt.value=d.id;opt.textContent=d.name+' · '+d.department;select.append(opt);
+  }
+  if([...select.options].some(o=>o.value===chosen))select.value=chosen;
+}
+async function loadDirectorPlans(){
+  const root=$('directorPlanList');
+  try{
+    directorState=await api('directors/plans');
+    root.textContent='';
+    if(!directorState.plans.length){root.textContent='No Director plans yet.';return}
+    for(const plan of directorState.plans){
+      const card=document.createElement('div');card.className='person';card.style.marginTop='12px';
+      const header=document.createElement('strong');header.textContent=plan.title;card.append(header);
+      const meta=document.createElement('p');meta.className='muted';meta.textContent=plan.director_name+' · '+plan.department+' · '+plan.status+' · '+plan.approval_mode;card.append(meta);
+      if(plan.status==='Pending approval'){
+        for(const j of plan.plan.jobs){
+          const row=document.createElement('p');row.textContent='• '+j.staff_name+': '+j.title+' — '+j.brief;row.style.fontSize='13px';card.append(row);
+        }
+        for(const action of ['approve','reject']){
+          const button=document.createElement('button');button.className='secondary';button.style.marginRight='8px';
+          button.textContent=action==='approve'?'Approve assignments':'Reject plan';
+          button.onclick=async()=>{if(!confirm(action+' this Director plan?'))return;button.disabled=true;
+            try{await api('directors/plans/'+encodeURIComponent(plan.id)+'/'+action,{method:'POST'});await loadDirectorPlans();msg('Director decision saved')}
+            catch(err){msg(err.message);button.disabled=false}};
+          card.append(button);
+        }
+      }else if(plan.status==='Approved'){
+        const jobs=directorState.jobs.filter(j=>j.plan_id===plan.id);
+        for(const job of jobs){
+          const row=document.createElement('div');row.className='item';
+          const summary=document.createElement('div');const strong=document.createElement('strong');strong.textContent=job.title;summary.append(strong);
+          const caption=document.createElement('small');caption.textContent=job.staff_name+' · '+job.status;summary.append(caption);
+          const paragraph=document.createElement('p');paragraph.textContent=job.brief;summary.append(paragraph);row.append(summary);
+          if(['Approved','Retry available'].includes(job.status)){
+            const button=document.createElement('button');button.className='secondary';button.textContent='Run AI';
+            button.onclick=async()=>{if(!confirm('Generate internal AI deliverable using your OpenAI API?'))return;button.disabled=true;button.textContent='Generating…';
+              try{await api('directors/jobs/'+encodeURIComponent(job.id)+'/run',{method:'POST'});await loadDirectorPlans();await loadRuns();msg('Director job ready for CEO review')}
+              catch(err){await loadDirectorPlans();msg(err.message)}};
+            row.append(button);
+          }else if(job.status==='For approval'){
+            const button=document.createElement('button');button.className='secondary';button.textContent='Review result';
+            button.onclick=()=>{show('tasks');loadRuns()};row.append(button);
+          }card.append(row);
+        }
+      }
+      root.append(card);
+    }
+  }catch(err){root.textContent='Could not load Director plans: '+err.message}
+}
+$('directorForm').addEventListener('submit',async e=>{
+  e.preventDefault();const id=$('directorSelect').value,brief=$('directorBrief').value.trim();
+  if(!id||brief.length<5)return;
+  const button=$('directorPlanButton');button.disabled=true;button.textContent='Director is planning…';
+  try{await api('directors/'+encodeURIComponent(id)+'/plans',{method:'POST',body:JSON.stringify({brief})});
+      $('directorBrief').value='';await loadDirectorPlans();msg('Director plan saved')}
+  catch(err){msg(err.message)}
+  finally{button.disabled=false;button.textContent='Request Director Plan'}
+});
+
+async function refresh(){state=await api('office');render();renderDirectorSelect()}
 async function updateTask(id,status){try{await api('tasks/'+id,{method:'PATCH',body:JSON.stringify({status})});await refresh();msg('Task updated')}catch(e){msg(e.message);await refresh()}}
 $('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b)show(b.dataset.view)});
 $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').textContent='';try{await api('login',{method:'POST',body:JSON.stringify({password:$('password').value})});$('password').value='';await enter()}catch(err){$('loginError').textContent=err.message}});
-async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await loadMeita();await loadMemory();await loadRuns();await loadDelegations()}catch(e){msg(e.message)}}
+async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await loadMeita();await loadMemory();await loadRuns();await loadDelegations();await loadDirectorPlans()}catch(e){msg(e.message)}}
 $('logout').onclick=async()=>{await api('logout',{method:'POST'});location.reload()};
 for(const [form,path] of [['newTaskForm','tasks'],['newLessonForm','lessons']])$(form).addEventListener('submit',async e=>{e.preventDefault();const body=Object.fromEntries(new FormData(e.target));try{await api(path,{method:'POST',body:JSON.stringify(body)});e.target.reset();e.target.closest('.card').classList.add('hidden');await refresh();msg('Saved successfully')}catch(err){msg(err.message)}});
 $('integrationList').innerHTML=['Instagram / Facebook','TikTok / YouTube','WhatsApp Business','Gmail / Outlook','Canva / Adobe','CapCut / Video tools','Finance / Banking'].map(n=>`<div class="person"><strong>${esc(n)}</strong><span class="tag">Not connected</span><p class="muted">Requires supported integration and CEO authorization.</p></div>`).join('');$('today').textContent=new Date().toLocaleDateString('en-MY',{weekday:'long',day:'numeric',month:'long',year:'numeric'});api('me').then(x=>{if(x.authenticated)enter()}).catch(()=>{});

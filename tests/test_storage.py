@@ -11,7 +11,7 @@ from backend.main import Staff, Task, Lesson, create_staff, create_task, create_
 class OfficePersistenceTests(unittest.TestCase):
     def test_new_staff_tasks_lessons_use_postgres(self):
         marker="CI-"+uuid4().hex[:12]
-        staff_id=create_staff(Staff(name=marker,role="Creative Director",
+        staff_id=create_staff(Staff(name=marker,role="Content Writer",
             department="Creative",expertise="Direction"))["id"]
         task_id=create_task(Task(title=marker+" brief",assignee=staff_id))["id"]
         lesson_id=create_lesson(Lesson(title=marker+" SOP",kind="Note",
