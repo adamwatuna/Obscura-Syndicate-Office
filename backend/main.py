@@ -494,7 +494,15 @@ def social_oauth_callback(provider:str,req:Request,
             added=social.oauth_complete(db,provider,code)
             audit(db,'social.oauth.connected',f'{provider}: {added} account(s)')
         return RedirectResponse('/?integration=connected',status_code=303)
-    except HTTPException:
+    except HTTPException as exc:
+        # Report only fixed, human-readable diagnostic categories; never put
+        # authorization codes, provider payloads or secrets in URL parameters.
+        reason=str(exc.detail)
+        if provider=='google' and reason in (
+            'google_token_exchange','youtube_channel_access','youtube_no_channel'
+        ):
+            return RedirectResponse(
+                '/?integration=failed&reason='+reason,status_code=303)
         return RedirectResponse('/?integration=failed',status_code=303)
     except Exception:
         return RedirectResponse('/?integration=failed',status_code=303)
