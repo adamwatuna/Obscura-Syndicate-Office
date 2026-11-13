@@ -134,7 +134,7 @@ async function removeOfficeTask(id){
   }
   const type=task.is_monthly
     ? 'This removes the current monthly assignment only. Next month will still be scheduled.'
-    : task.series_id&&task.id===task.series_origin_id
+    : task.series_id&&task.is_series_origin
       ? 'This also stops future recurring assignments.'
       : task.series_id?'Only this occurrence will be removed. Future recurring tasks remain scheduled.':'This task will disappear from your active Task Centre.';
   if(!confirm('Remove task: '+task.title+'?\n\n'+type+'\n\nAI work and other historical records will be preserved.'))return;
