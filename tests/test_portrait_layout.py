@@ -13,7 +13,7 @@ class PortraitStyleTests(unittest.TestCase):
         self.assertGreater(photo,base)
         base_rule=html[base:html.find("}",base)]
         photo_rule=html[photo:html.find("}",photo)]
-        self.assertNotRegex(base_rule,r"(?<!-)\\bbackground\\s*:")
+        self.assertNotRegex(base_rule,r"(?<!-)\bbackground\s*:")
         self.assertIn("background-size:300% 300%",photo_rule)
         self.assertIn("width:76px",photo_rule)
         self.assertIn("height:76px",photo_rule)
