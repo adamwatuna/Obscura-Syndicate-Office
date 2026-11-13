@@ -157,6 +157,24 @@
 #hq .hq-recent-tasks-panel #hqTasks strong{font-size:13px;line-height:1.5;overflow-wrap:anywhere}
 #hq .hq-recent-tasks-panel #hqTasks small{display:block;margin-top:4px;overflow-wrap:anywhere}
 @media(max-width:1060px){#hq .hq-summary-row{grid-template-columns:1fr}}
+
+/* Compact task actions: approachable, unobtrusive and keyboard accessible. */
+.task-more{position:relative;display:inline-flex;align-self:flex-start;flex-shrink:0}
+.task-more>summary{list-style:none;cursor:pointer;width:34px;height:32px;display:grid;place-items:center;
+ border:1px solid #e0e7ee;background:#fff;color:#516c82;border-radius:9px;
+ font-weight:800;font-size:18px;line-height:1;user-select:none;letter-spacing:1px}
+.task-more>summary::-webkit-details-marker{display:none}
+.task-more[open]>summary,.task-more>summary:hover{background:#eef5fa;border-color:#c1d4e3}
+.task-more>summary:focus-visible{outline:2px solid #517eaa;outline-offset:2px}
+.task-more-menu{position:absolute;z-index:40;right:0;top:calc(100% + 5px);width:178px;
+ background:#fff;border:1px solid #e1e7ef;border-radius:11px;padding:6px;
+ box-shadow:0 12px 32px #122e4630;display:grid;gap:2px}
+.task-more-menu>button{width:100%;text-align:left;border:0;background:transparent;
+ padding:9px 10px;color:#405b71;border-radius:7px;font-size:12px}
+.task-more-menu>button:hover,.task-more-menu>button:focus-visible{background:#f2f6fa}
+.task-more-menu>button.danger{color:#af5151}
+.task-more-menu>button.danger:hover{background:#fff0ef}
+.task-entry:has(.task-more[open]),.meita-task-card:has(.task-more[open]){position:relative;z-index:9}
 </style></head><body><div id="login" class="login"><div class="panel"><div class="eyebrow">PRIVATE EXECUTIVE WORKSPACE</div><h1>AI Private Office</h1><p>Welcome back. Sign in to access your executive workspace.</p><form id="loginForm"><label>CEO password</label><input id="password" type="password" autocomplete="current-password" required><div style="height:18px"></div><button class="primary" style="width:100%">Sign in securely</button><p id="loginError" class="err"></p></form><p style="font-size:11px">Authorized access only.</p></div></div>
 <div id="app" class="shell hidden"><aside><div class="brand">AI Private Office<small>EXECUTIVE WORKSPACE</small></div><div class="nav" id="nav"><button data-view="hq" class="active">◫ &nbsp; Executive HQ</button><button data-view="meita">✦ &nbsp; Meita AI</button><button data-view="memory">◈ &nbsp; Memory Centre</button><button data-view="workforce">♙ &nbsp; AI Workforce</button><button data-view="desks">▦ &nbsp; Live Desks</button><button data-view="tasks">☑ &nbsp; Task Centre</button><button data-view="monthly">▣ &nbsp; Monthly Workplan</button><button data-view="academy">▤ &nbsp; Learning Academy</button><button data-view="research">⌕ &nbsp; Research Intelligence</button><button data-view="finance">◈ &nbsp; Finance & Audit</button><button data-view="integrations">⌘ &nbsp; Integration Centre</button><button data-view="governance">◇ &nbsp; Governance</button></div><div class="bottom"><button class="secondary" id="logout">Sign out</button><p>Private office environment</p></div></aside><main><header class="top"><div><div class="eyebrow">YOUR EXECUTIVE WORKSPACE</div><h1 id="pageTitle">Executive HQ</h1><div class="muted" id="today"></div></div><span class="pill">● Private workspace</span></header>
 <section class="view active" id="hq">
@@ -629,6 +647,43 @@ async function removeOfficeTask(id){
   }catch(err){msg(err.message)}
 }
 
+
+async function controlOfficeTask(id,action){
+ const task=state.tasks.find(t=>t.id===id);
+ if(!task)return;
+ const abandoning=action==='abandon';
+ const detail=abandoning?
+  'Abandon this task? Queued AI work will be cancelled. If AI is already running, its provider request may finish, but the result will not be delivered as active work.':
+  'Remove this task from Task Centre and Meita active lists? It will be archived, not permanently erased. Queued work will stop and existing deliverables/audit records are preserved.';
+ if(!confirm((abandoning?'Abandon':'Remove')+' task: '+task.title+'?\n\n'+detail))return;
+ try{
+  const result=await api('tasks/'+encodeURIComponent(id)+'/'+action,{method:'POST'});
+  if(editingTaskId===id)cancelOfficeTask();
+  await Promise.all([refresh(),loadMeitaTaskHistory(),refreshLiveActivity(),loadDirectorPlans(),loadMonthly()]);
+  msg(result.cancellation_pending?'Cancellation requested; in-flight AI may still finish.':abandoning?'Task abandoned':'Task removed from view');
+ }catch(error){msg(error.message)}
+}
+async function controlMeitaJob(id,action){
+ const abandoning=action==='abandon';
+ if(!confirm(abandoning?
+  'Abandon this Meita assignment? Queued work stops immediately; a running AI request may still finish upstream.':
+  'Remove this assignment from the active lists? Its history and existing AI outputs will be retained in storage.'))return;
+ try{
+  const result=await api('meita/jobs/'+encodeURIComponent(id)+'/'+action,{method:'POST'});
+  await Promise.all([refresh(),loadMeitaTaskHistory(),refreshLiveActivity(),loadDirectorPlans()]);
+  msg(result.cancellation_pending?'Cancellation requested; ongoing provider call may still finish.':
+      abandoning?'Meita assignment abandoned':'Meita assignment removed from view');
+ }catch(error){msg(error.message)}
+}
+// Native details supports keyboard navigation; close other open action menus.
+document.addEventListener('click',event=>{
+ const current=event.target.closest('.task-more');
+ document.querySelectorAll('.task-more[open]').forEach(menu=>{if(menu!==current)menu.open=false});
+});
+document.addEventListener('keydown',event=>{
+ if(event.key==='Escape')document.querySelectorAll('.task-more[open]').forEach(menu=>menu.open=false);
+});
+
 function renderOfficeTasks(tasks,staff){
   const box=$('taskList');
   const urgency={Urgent:0,High:1,Normal:2,Low:3};
@@ -652,8 +707,11 @@ function renderOfficeTasks(tasks,staff){
       (t.category==='News Update'?'<span>News Update</span>':'')+(activity?'<span>'+esc(liveJob.source||'Meita')+': '+esc(activity)+'</span>':'')+(t.reference_ids?.length?'<span>'+t.reference_ids.length+' references</span>':'')+'</div></div>'+
       '<div class="task-actions">'+
       (canEdit?'<button class="secondary" onclick="editOfficeTask(\''+esc(t.id)+'\')">Edit</button>':'')+
-      (canEdit?'<button class="secondary" onclick="removeOfficeTask(\''+esc(t.id)+'\')">Remove</button>':'')+
-      (liveJob?'<span class="tag">'+esc(activity)+'</span>':'<select style="max-width:155px" aria-label="Task status" onchange="updateTask(\''+esc(t.id)+'\',this.value)">'+statusOptions+'</select>')+
+      '<details class="task-more"><summary aria-label="More actions for '+esc(t.title)+'" title="Task actions">⋯</summary><div class="task-more-menu">'+
+        (t.status!=='Completed'&&t.status!=='Abandoned'?'<button type="button" onclick="controlOfficeTask(\''+esc(t.id)+'\',\'abandon\')">Abandon task</button>':'')+
+        '<button type="button" class="danger" onclick="controlOfficeTask(\''+esc(t.id)+'\',\'remove\')">Remove from view</button>'+
+        '</div></details>'+
+      (t.status==='Abandoned'?'<span class="tag">Abandoned</span>':liveJob?'<span class="tag">'+esc(activity)+'</span>':'<select style="max-width:155px" aria-label="Task status" onchange="updateTask(\''+esc(t.id)+'\',this.value)">'+statusOptions+'</select>')+
       (canEdit&&t.assignee&&t.description?.trim()?'<button class="primary" onclick="runStaffTask(\''+esc(t.id)+'\',this)">Run AI</button>':'')+
       '</div></div></div>';
   }).join('')||'<p>No tasks yet. Create your first assignment.</p>';
@@ -1049,6 +1107,7 @@ function meitaStatus(raw){
     'Delivered':'Delivered','For approval':'Report ready',
     'Retry available':'AI error · Retry available',
     'Needs verification':'Interrupted · Check before retry',
+    'Cancelled':'Abandoned','Cancellation requested':'Cancellation pending · AI call in progress',
     'Approved':'Assigned','Pending approval':'Awaiting CEO approval'
   })[raw]||raw;
 }
@@ -1149,6 +1208,16 @@ async function loadMeitaTaskHistory(){
           record.append(reason);
         }
         if(task.task_id){const jump=meitaNode('button','Open task','secondary');jump.type='button';jump.style.marginLeft='8px';jump.onclick=()=>show('tasks');record.append(jump);}
+        const more=meitaNode('details');more.className='task-more';more.style.marginLeft='8px';
+        const trigger=meitaNode('summary','⋯');trigger.title='More actions';trigger.setAttribute('aria-label','Actions for '+task.title);
+        const menu=meitaNode('div');menu.className='task-more-menu';
+        if(!['Completed','Cancelled','Cancellation requested'].includes(task.status)){
+          const abandon=meitaNode('button','Abandon task');abandon.type='button';
+          abandon.onclick=()=>controlMeitaJob(task.id,'abandon');menu.append(abandon);
+        }
+        const remove=meitaNode('button','Remove from view','danger');remove.type='button';
+        remove.onclick=()=>controlMeitaJob(task.id,'remove');menu.append(remove);
+        more.append(trigger,menu);record.append(more);
         if(task.status==='Retry available'){
           const retry=meitaNode('button','Retry AI task','secondary');
           retry.type='button';retry.style.marginLeft='10px';
