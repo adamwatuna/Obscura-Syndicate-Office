@@ -144,6 +144,19 @@
 @media (max-width:1000px){.hq-command-row{grid-template-columns:1fr}#hq .grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:600px){#hq .grid{grid-template-columns:1fr 1fr;gap:10px}#hq .hq-metric{min-height:137px;padding:13px}#hq .hq-metric .metric{font-size:29px}.hq-brief-summary{gap:5px}.hq-command-card{padding:15px}}
 @media (prefers-reduced-motion:reduce){.hq-week-bar{transition:none}}
+
+/* Executive overview: task detail gets the space; leadership remains compact. */
+#hq .hq-summary-row{display:grid;grid-template-columns:minmax(265px,.78fr) minmax(0,1.52fr);gap:18px;align-items:stretch}
+#hq .hq-summary-row>.card{min-width:0}
+#hq .hq-team-panel .hq-leaders{gap:8px;max-width:100%;overflow-x:auto;padding:6px 2px 12px}
+#hq .hq-team-panel .hq-leader{flex-basis:82px}
+#hq .hq-team-panel .hq-leader .avatar{width:48px;height:48px}
+#hq .hq-recent-tasks-panel .toolbar{margin-bottom:10px}
+#hq .hq-recent-tasks-panel #hqTasks .item{align-items:start;min-width:0}
+#hq .hq-recent-tasks-panel #hqTasks .item>div{min-width:0}
+#hq .hq-recent-tasks-panel #hqTasks strong{font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+#hq .hq-recent-tasks-panel #hqTasks small{display:block;margin-top:4px;overflow-wrap:anywhere}
+@media(max-width:1060px){#hq .hq-summary-row{grid-template-columns:1fr}}
 </style></head><body><div id="login" class="login"><div class="panel"><div class="eyebrow">PRIVATE EXECUTIVE WORKSPACE</div><h1>AI Private Office</h1><p>Welcome back. Sign in to access your executive workspace.</p><form id="loginForm"><label>CEO password</label><input id="password" type="password" autocomplete="current-password" required><div style="height:18px"></div><button class="primary" style="width:100%">Sign in securely</button><p id="loginError" class="err"></p></form><p style="font-size:11px">Authorized access only.</p></div></div>
 <div id="app" class="shell hidden"><aside><div class="brand">AI Private Office<small>EXECUTIVE WORKSPACE</small></div><div class="nav" id="nav"><button data-view="hq" class="active">◫ &nbsp; Executive HQ</button><button data-view="meita">✦ &nbsp; Meita AI</button><button data-view="memory">◈ &nbsp; Memory Centre</button><button data-view="workforce">♙ &nbsp; AI Workforce</button><button data-view="desks">▦ &nbsp; Live Desks</button><button data-view="tasks">☑ &nbsp; Task Centre</button><button data-view="monthly">▣ &nbsp; Monthly Workplan</button><button data-view="academy">▤ &nbsp; Learning Academy</button><button data-view="research">⌕ &nbsp; Research Intelligence</button><button data-view="finance">◈ &nbsp; Finance & Audit</button><button data-view="integrations">⌘ &nbsp; Integration Centre</button><button data-view="governance">◇ &nbsp; Governance</button></div><div class="bottom"><button class="secondary" id="logout">Sign out</button><p>Private office environment</p></div></aside><main><header class="top"><div><div class="eyebrow">YOUR EXECUTIVE WORKSPACE</div><h1 id="pageTitle">Executive HQ</h1><div class="muted" id="today"></div></div><span class="pill">● Private workspace</span></header>
 <section class="view active" id="hq">
@@ -187,7 +200,7 @@
   <p class="hq-command-caption">AI activity is shown only when supported by real execution records.</p>
  </section>
 </div>
-<div class="two"><div class="card"><div class="toolbar"><h2 class="sectiontitle">Meet your Directors</h2><button class="secondary" onclick="show('workforce')">Manage team</button></div><div class="hq-leaders" id="hqStaff"></div></div><div class="card"><h2 class="sectiontitle">Recent tasks</h2><div id="hqTasks"></div></div></div>
+<div class="two hq-summary-row"><div class="card hq-team-panel"><div class="toolbar"><h2 class="sectiontitle">Meet your Directors</h2><button class="secondary" onclick="show('workforce')">Manage team</button></div><div class="hq-leaders" id="hqStaff"></div></div><div class="card hq-recent-tasks-panel"><div class="toolbar"><h2 class="sectiontitle">Recent tasks</h2><button type="button" class="secondary" onclick="show('tasks')">View all tasks</button></div><div id="hqTasks"></div></div></div>
 <div class="card" style="margin-top:18px" id="hqNewsCard">
  <div class="toolbar"><div><h2 class="sectiontitle">Staff News Briefings</h2><p class="muted">Latest source-backed reports from AI staff, based only on news tasks assigned by the CEO.</p></div>
   <div class="task-actions"><button class="secondary" type="button" onclick="loadNewsBriefings()">Refresh news</button><button class="primary" type="button" onclick="newNewsTask()">+ Assign news task</button></div>
