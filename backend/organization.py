@@ -171,6 +171,7 @@ def init_plans(db):
         workforce_run_id TEXT,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())""")
+    db.execute("ALTER TABLE director_jobs ADD COLUMN IF NOT EXISTS task_id TEXT UNIQUE")
 
 def cancel_director_plans(db,director_id):
     if db.execute("SELECT to_regclass('public.director_plans') AS tbl").fetchone()["tbl"] is not None:
@@ -267,12 +268,22 @@ def _openai_plan(director,staff,brief):
     return _extract_plan(data,staff)
 
 def _add_jobs(db,plan_id,director_id,jobs):
+    """Create synchronized Task Centre assignments and Director jobs atomically."""
+    init_plans(db)
     for job in jobs:
+        task_id=secrets.token_hex(12)
+        job_id=secrets.token_hex(12)
+        db.execute("""INSERT INTO tasks
+            (id,title,description,category,assignee,priority,
+             status,recurrence,created,ai_run_started)
+            VALUES(%s,%s,%s,'General',%s,'Normal','To do','None',
+                   EXTRACT(EPOCH FROM NOW())::bigint,TRUE)""",
+            (task_id,job["title"][:250],job["brief"][:3000],job["staff_id"]))
         db.execute("""INSERT INTO director_jobs
-            (id,plan_id,director_id,staff_id,staff_name,title,brief)
-            VALUES (%s,%s,%s,%s,%s,%s,%s)""",
-            (secrets.token_hex(12),plan_id,director_id,job["staff_id"],
-             job["staff_name"],job["title"],job["brief"]))
+            (id,plan_id,director_id,staff_id,staff_name,title,brief,task_id)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s)""",
+            (job_id,plan_id,director_id,job["staff_id"],job["staff_name"],
+             job["title"],job["brief"],task_id))
 
 def propose(db, director_id, brief):
     # Read/plan outside a transaction when calling OpenAI (handled by caller).
@@ -328,7 +339,7 @@ def decide(db,ident,approved):
 
 def claim_job(db,ident):
     init_plans(db)
-    row=db.execute("""SELECT j.id,j.title,j.brief,j.director_id,j.staff_id,
+    row=db.execute("""SELECT j.id,j.title,j.brief,j.director_id,j.staff_id,j.task_id,
         j.status,p.department,p.status AS plan_status
         FROM director_jobs AS j JOIN director_plans AS p ON p.id=j.plan_id
         WHERE j.id=%s FOR UPDATE OF j""",(ident,)).fetchone()
@@ -340,13 +351,24 @@ def claim_job(db,ident):
         raise HTTPException(409,"Staff member is no longer an authorized direct report")
     person=next(s for s in staff if s["id"]==row["staff_id"])
     db.execute("UPDATE director_jobs SET status='Running',updated_at=NOW() WHERE id=%s",(ident,))
-    return {"id":row["id"],"title":row["title"],"brief":row["brief"]},person
+    if row["task_id"]:
+        db.execute("""UPDATE tasks SET status='In progress'
+            WHERE id=%s AND deleted_at IS NULL""",(row["task_id"],))
+    return {"id":row["task_id"] or row["id"],"title":row["title"],
+            "brief":row["brief"],"category":"General"},person
 
 def finish_job(db,ident,run_id=None):
+    job=db.execute("SELECT task_id FROM director_jobs WHERE id=%s",(ident,)).fetchone()
     if run_id:
         db.execute("""UPDATE director_jobs SET status='For approval',
             workforce_run_id=%s,updated_at=NOW()
             WHERE id=%s AND status='Running'""",(run_id,ident))
+        if job and job["task_id"]:
+            db.execute("""UPDATE tasks SET status='For approval'
+                WHERE id=%s AND status='In progress'""",(job["task_id"],))
     else:
         db.execute("""UPDATE director_jobs SET status='Retry available',
             updated_at=NOW() WHERE id=%s AND status='Running'""",(ident,))
+        if job and job["task_id"]:
+            db.execute("""UPDATE tasks SET status='To do'
+                WHERE id=%s AND status='In progress'""",(job["task_id"],))
