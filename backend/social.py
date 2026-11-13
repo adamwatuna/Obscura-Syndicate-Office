@@ -91,8 +91,10 @@ def schema(db):
         media_url TEXT,
         status TEXT NOT NULL,approval_mode TEXT NOT NULL,
         platform_post_id TEXT,error TEXT,
+        approved_at TIMESTAMPTZ,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())""")
+    db.execute("ALTER TABLE social_posts ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ")
     db.execute("CREATE INDEX IF NOT EXISTS social_posts_recency ON social_posts(created_at DESC)")
 
 
