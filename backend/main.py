@@ -1,4 +1,5 @@
-import os, json, hmac, hashlib, secrets, time, urllib.request, urllib.error
+import os, json, hmac, hashlib, secrets, time, urllib.request, urllib.error, asyncio
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.responses import FileResponse
@@ -9,6 +10,7 @@ from backend import workforce as office_workforce
 from backend import delegation as office_delegation
 from backend import office_db
 from backend import organization as org
+from backend import monthly
 
 ROOT=Path(__file__).resolve().parent.parent
 PASSWORD=os.environ.get('CEO_PASSWORD')
@@ -18,7 +20,20 @@ if not PASSWORD or not SECRET or len(SECRET)<32:
 # Database initialization is atomic and imports any accessible legacy SQLite in read-only mode.
 office_db.bootstrap()
 connect=office_db.connect
-app=FastAPI(title='AI Private Office',docs_url=None,redoc_url=None)
+
+@asynccontextmanager
+async def lifespan(app):
+    # The database bootstrap has already generated any missing current-month tasks.
+    # This clock keeps assignments recurring even if the CEO does not open the UI.
+    ticker=asyncio.create_task(monthly.monthly_clock(connect))
+    try:
+        yield
+    finally:
+        ticker.cancel()
+        with suppress(asyncio.CancelledError):
+            await ticker
+
+app=FastAPI(title='AI Private Office',docs_url=None,redoc_url=None,lifespan=lifespan)
 app.add_middleware(SessionMiddleware,secret_key=SECRET,https_only=os.environ.get('COOKIE_SECURE','true').lower()=='true',same_site='lax',max_age=28800)
 
 class Login(BaseModel):password:str
@@ -54,6 +69,7 @@ def me(req:Request):return {'authenticated':req.session.get('authorized') is Tru
 @app.get('/api/office',dependencies=[Depends(guard)])
 def office():
     with connect() as db:
+        monthly.generate_month(db)
         result = {'staff': [dict(x) for x in db.execute(
             'SELECT id,name,role,department,status,org_role,manager_id,delegation_permission,portrait_slot FROM staff ORDER BY department,name')]}
         for table in ('tasks', 'lessons', 'audit'):
@@ -247,6 +263,9 @@ def workforce_run(task_id:str):
         staff=db.execute('SELECT * FROM staff WHERE id=%s',(task['assignee'],)).fetchone()
         if staff is None: raise HTTPException(404,'Assigned staff not found')
         task=dict(task); staff=dict(staff)
+        monthly_brief=monthly.detail_for_task(db,task_id)
+        if monthly_brief:
+            task['brief']=monthly_brief
     result=office_workforce.execute(task,staff)
     with connect() as db:
         db.execute("UPDATE tasks SET status='For approval' WHERE id=%s",(task_id,))
@@ -349,3 +368,26 @@ def run_department_job(ident:str):
         org.finish_job(db,ident,result['id'])
         audit(db,'director.job.delivered',f'{ident}: {result["id"]}')
     return result
+
+
+@app.get('/api/monthly',dependencies=[Depends(guard)])
+def monthly_overview(period:str|None=None):
+    with connect() as db:
+        if not period or period==monthly.period_now():
+            monthly.generate_month(db)
+        return monthly.summary(db,period)
+
+@app.post('/api/monthly/generate',dependencies=[Depends(guard)])
+def monthly_generate_current():
+    with connect() as db:
+        outcome=monthly.generate_month(db)
+        if outcome['created']:
+            audit(db,'monthly.generated.manual',outcome['period'])
+        return outcome
+
+@app.put('/api/monthly/templates/{key}',dependencies=[Depends(guard)])
+def monthly_edit_template(key:str,body:monthly.TemplateUpdate):
+    with connect() as db:
+        result=monthly.update_template(db,key,body)
+        audit(db,'monthly.template.updated',key)
+        return result
