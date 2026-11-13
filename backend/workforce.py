@@ -16,6 +16,9 @@ def dbconn():
     try: return psycopg.connect(url,row_factory=dict_row,connect_timeout=8)
     except psycopg.Error: raise HTTPException(503,"Workforce database unavailable")
 
+from backend import schema_state
+
+@schema_state.bootstrap_only
 def init(db):
     db.execute("""CREATE TABLE IF NOT EXISTS workforce_runs (
         id TEXT PRIMARY KEY,task_id TEXT NOT NULL,task_title TEXT NOT NULL,
