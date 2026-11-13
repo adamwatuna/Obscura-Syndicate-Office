@@ -6,6 +6,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from starlette.middleware.sessions import SessionMiddleware
 from backend import memory as office_memory
+from backend import workforce as office_workforce
 
 ROOT=Path(__file__).resolve().parent.parent
 DB=os.environ.get('DATABASE_PATH',str(ROOT/'office.sqlite3'))
@@ -157,4 +158,30 @@ def edit_memory(ident:str,body:office_memory.MemoryInput):
 def delete_memory(ident:str):
     result=office_memory.delete(ident)
     with connect() as db: audit(db,'memory.deleted',ident)
+    return result
+
+
+@app.get('/api/workforce/runs',dependencies=[Depends(guard)])
+def workforce_runs():
+    return office_workforce.get_runs()
+
+@app.post('/api/workforce/run/{task_id}',dependencies=[Depends(guard)])
+def workforce_run(task_id:str):
+    with connect() as db:
+        task=db.execute('SELECT * FROM tasks WHERE id=?',(task_id,)).fetchone()
+        if task is None: raise HTTPException(404,'Task not found')
+        if not task['assignee']: raise HTTPException(400,'Assign a staff member before running this task')
+        staff=db.execute('SELECT * FROM staff WHERE id=?',(task['assignee'],)).fetchone()
+        if staff is None: raise HTTPException(404,'Assigned staff not found')
+        task=dict(task); staff=dict(staff)
+    result=office_workforce.execute(task,staff)
+    with connect() as db:
+        db.execute("UPDATE tasks SET status='For approval' WHERE id=?",(task_id,))
+        audit(db,'workforce.deliverable',task_id)
+    return result
+
+@app.post('/api/workforce/runs/{ident}/review',dependencies=[Depends(guard)])
+def workforce_review(ident:str,body:Status):
+    result=office_workforce.review(ident,body.status)
+    with connect() as db: audit(db,'workforce.review',ident+': '+body.status)
     return result
