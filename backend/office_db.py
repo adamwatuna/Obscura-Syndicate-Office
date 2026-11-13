@@ -15,6 +15,8 @@ from backend import monthly
 from backend import task_schedule
 from backend import meita_autowork
 from backend import ceo_security
+from backend import schema_state
+from backend import deliverables as staff_deliverables
 from backend import memory as office_memory
 from backend import meita_team
 from backend import references as office_references
@@ -30,6 +32,7 @@ def connect():
         raise RuntimeError("DATABASE_URL is required for office persistence")
     return psycopg.connect(url, row_factory=dict_row, connect_timeout=8)
 
+@schema_state.bootstrap_only
 def ensure_login_security(db):
     db.execute("""CREATE TABLE IF NOT EXISTS ceo_login_attempts (
         fingerprint TEXT PRIMARY KEY,
@@ -83,6 +86,8 @@ def ensure_schema(db):
     monthly.setup(db)
     meita_team.init(db)
     meita_autowork.init(db)
+    organization.init_plans(db)
+    staff_deliverables.init(db)
     office_references.init(db)
     office_academy.init(db)
     finance_planning.init(db)
@@ -138,7 +143,7 @@ def import_legacy(db, path):
 def bootstrap(legacy_path=None):
     path=Path(legacy_path) if legacy_path is not None else Path(
         os.environ.get("DATABASE_PATH", str(ROOT/"office.sqlite3")))
-    with connect() as db:
+    with schema_state.migration(), connect() as db:
         # Prevent concurrent schema/import races across multiple startup workers.
         db.execute("SELECT pg_advisory_xact_lock(815024, 12026)")
         ensure_schema(db)
@@ -157,6 +162,7 @@ def bootstrap(legacy_path=None):
         db.execute("""INSERT INTO office_import_log
             (source_state,source_rows,copied_rows) VALUES (%s,%s,%s)""",
             (state,Jsonb(counts),Jsonb(copied)))
+    schema_state.mark_ready()
     logger.info("Office PostgreSQL ready. Legacy import state=%s source=%s copied=%s",
                 state,counts,copied)
     return {"state":state,"source_rows":counts,"copied_rows":copied}
