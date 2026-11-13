@@ -94,6 +94,10 @@ def available_staff(db,scope):
         FROM staff """
     if scope=="directors_only":
         query+="WHERE org_role='Director' "
+    # Independent Internal Audit reports to the CEO and is outside Meita's
+    # automatic delegation/meeting pool.
+    query+=("AND org_role<>'Independent Auditor' " if "WHERE " in query
+            else "WHERE org_role<>'Independent Auditor' ")
     query+="ORDER BY CASE WHEN org_role='Director' THEN 0 ELSE 1 END, department,name"
     return [dict(p) for p in db.execute(query).fetchall()]
 
