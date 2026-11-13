@@ -12,6 +12,7 @@ from fastapi import HTTPException
 TZ=ZoneInfo("Asia/Kuala_Lumpur")
 PRIORITIES=("Urgent","High","Normal","Low")
 FREQUENCIES=("None","Daily","Weekly","Monthly")
+CATEGORIES=("General","News Update")
 
 def local_today():
     return datetime.now(TZ).date()
@@ -28,6 +29,8 @@ def validate(body):
         raise HTTPException(400,"Task title is required")
     if len(body.description)>3000:
         raise HTTPException(400,"Description cannot exceed 3000 characters")
+    if body.category not in CATEGORIES:
+        raise HTTPException(400,"Invalid task category")
     if body.priority not in PRIORITIES:
         raise HTTPException(400,"Invalid task priority")
     if body.recurrence not in FREQUENCIES:
@@ -37,6 +40,7 @@ def validate(body):
 
 def setup(db):
     db.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT ''")
+    db.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'General'")
     db.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS priority TEXT NOT NULL DEFAULT 'Normal'")
     db.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS due_date DATE")
     db.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS recurrence TEXT NOT NULL DEFAULT 'None'")
@@ -54,6 +58,7 @@ def setup(db):
         next_due_date DATE NOT NULL,
         enabled BOOLEAN NOT NULL DEFAULT TRUE,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())""")
+    db.execute("ALTER TABLE task_series ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'General'")
     db.execute("""CREATE UNIQUE INDEX IF NOT EXISTS unique_task_occurrence
         ON tasks(series_id,occurrence_date) WHERE series_id IS NOT NULL""")
 
@@ -78,16 +83,16 @@ def create(db,body):
     frequency=body.recurrence
     series_id=secrets.token_hex(12) if frequency!="None" else None
     db.execute("""INSERT INTO tasks
-        (id,title,description,assignee,priority,due_date,recurrence,
+        (id,title,description,category,assignee,priority,due_date,recurrence,
          series_id,occurrence_date,status,created)
-        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,'To do',%s)""",
-        (task_id,body.title.strip(),body.description.strip(),assignee,
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'To do',%s)""",
+        (task_id,body.title.strip(),body.description.strip(),body.category,assignee,
          body.priority,due,frequency,series_id,due if series_id else None,int(time.time())))
     if series_id:
         db.execute("""INSERT INTO task_series
-            (id,origin_task_id,title,description,assignee,priority,frequency,anchor_day,next_due_date)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
-            (series_id,task_id,body.title.strip(),body.description.strip(),
+            (id,origin_task_id,title,description,category,assignee,priority,frequency,anchor_day,next_due_date)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+            (series_id,task_id,body.title.strip(),body.description.strip(),body.category,
              assignee,body.priority,frequency,due.day,
              next_date(due,frequency,due.day)))
     return {"id":task_id,"series_id":series_id}
@@ -124,10 +129,10 @@ def update(db,task_id,body):
         db.execute("UPDATE task_series SET enabled=FALSE WHERE id=%s",(existing_series,))
         new_series_id=None
     elif existing_series and origin:
-        db.execute("""UPDATE task_series SET title=%s,description=%s,assignee=%s,
+        db.execute("""UPDATE task_series SET title=%s,description=%s,category=%s,assignee=%s,
             priority=%s,frequency=%s,anchor_day=%s,next_due_date=%s,enabled=TRUE
             WHERE id=%s""",
-            (body.title.strip(),body.description.strip(),assignee,body.priority,
+            (body.title.strip(),body.description.strip(),body.category,assignee,body.priority,
              body.recurrence,due.day,next_date(due,body.recurrence,due.day),
              existing_series))
     elif not existing_series and body.recurrence!="None" and not from_monthly:
@@ -135,13 +140,13 @@ def update(db,task_id,body):
         db.execute("""INSERT INTO task_series
             (id,origin_task_id,title,description,assignee,priority,frequency,anchor_day,next_due_date)
             VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
-            (new_series_id,task_id,body.title.strip(),body.description.strip(),
+            (new_series_id,task_id,body.title.strip(),body.description.strip(),body.category,
              assignee,body.priority,body.recurrence,due.day,
              next_date(due,body.recurrence,due.day)))
-    db.execute("""UPDATE tasks SET title=%s,description=%s,assignee=%s,priority=%s,
+    db.execute("""UPDATE tasks SET title=%s,description=%s,category=%s,assignee=%s,priority=%s,
         due_date=%s,recurrence=%s,series_id=%s,occurrence_date=%s
         WHERE id=%s""",
-        (body.title.strip(),body.description.strip(),assignee,body.priority,
+        (body.title.strip(),body.description.strip(),body.category,assignee,body.priority,
          due,body.recurrence,new_series_id,
          due if new_series_id else None,task_id))
     if from_monthly:
@@ -169,11 +174,11 @@ def generate_due(db,today=None,limit=120):
                 "SELECT 1 FROM staff WHERE id=%s",(row["assignee"],)
             ).fetchone() else ""
             result=db.execute("""INSERT INTO tasks
-                (id,title,description,assignee,priority,due_date,recurrence,
+                (id,title,description,category,assignee,priority,due_date,recurrence,
                  series_id,occurrence_date,status,created)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,'To do',%s)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'To do',%s)
                 ON CONFLICT DO NOTHING""",
-                (new_id,row["title"],row["description"],assignee,row["priority"],
+                (new_id,row["title"],row["description"],row["category"],assignee,row["priority"],
                  due,row["frequency"],row["id"],due,int(time.time())))
             created+=result.rowcount
             due=next_date(due,row["frequency"],row["anchor_day"])

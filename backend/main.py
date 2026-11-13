@@ -12,6 +12,7 @@ from backend import office_db
 from backend import organization as org
 from backend import monthly
 from backend import task_schedule
+from backend import news_briefings
 
 ROOT=Path(__file__).resolve().parent.parent
 PASSWORD=os.environ.get('CEO_PASSWORD')
@@ -51,6 +52,7 @@ class Staff(BaseModel):
 class Task(BaseModel):
     title: str = Field(min_length=1,max_length=250)
     description: str = Field(default='',max_length=3000)
+    category: str = 'General'
     assignee: str = ''
     priority: str = 'Normal'
     due_date: str | None = None
@@ -438,3 +440,10 @@ def monthly_edit_template(key:str,body:monthly.TemplateUpdate):
         result=monthly.update_template(db,key,body)
         audit(db,'monthly.template.updated',key)
         return result
+
+
+@app.get('/api/news-briefings',dependencies=[Depends(guard)])
+def executive_news_briefings():
+    """Authenticated HQ: actual web-sourced staff news deliverables for CEO review."""
+    with connect() as db:
+        return news_briefings.list_for_ceo(db)
