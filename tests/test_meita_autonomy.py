@@ -24,6 +24,7 @@ class AutonomousMeitaTests(unittest.TestCase):
             config={**self.original,"auto_execute_internal":True,
                     "delegation_scope":"all_staff","max_delegation_jobs":3}
             meita_team.save_settings(db,meita_team.MeitaSettings(**config))
+            meita_autowork.resume_provider(db)
             staff=db.execute("""SELECT * FROM staff
                 WHERE status='Available' AND org_role='Director'
                 ORDER BY department LIMIT 1""").fetchone()
@@ -52,6 +53,7 @@ class AutonomousMeitaTests(unittest.TestCase):
                 db.execute("DELETE FROM coo_proposals WHERE id=%s",(pid,))
             db.execute("DELETE FROM meita_messages WHERE id>%s",(self.last_message,))
             meita_team.save_settings(db,meita_team.MeitaSettings(**self.original))
+            meita_autowork.resume_provider(db)
         self.client.close()
 
     def assign(self):
