@@ -226,6 +226,9 @@ def remove_automatic_region(db):
     changed_templates=0
     changed_tasks=0
     this_period=period_now()
+    runs_exist=bool(db.execute("SELECT to_regclass('public.workforce_runs') AS t").fetchone()["t"])
+    no_runs_clause=("AND NOT EXISTS (SELECT 1 FROM workforce_runs w WHERE w.task_id=tasks.id)"
+                    if runs_exist else "")
     updated={row[0]:row for row in DEFAULTS}
     for old_key,dept,old_title,old_brief,due in LEGACY_DEFAULTS:
         new=updated[old_key]
@@ -249,7 +252,7 @@ def remove_automatic_region(db):
             updated_task=db.execute("""UPDATE tasks SET title=%s,description=%s
                 WHERE id=%s AND title=%s AND description=%s
                   AND status='To do' AND ai_run_started=FALSE AND deleted_at IS NULL
-                  AND NOT EXISTS (SELECT 1 FROM workforce_runs w WHERE w.task_id=tasks.id)""",
+                  """+no_runs_clause,
                 (revised_title,new[3],row["task_id"],prior_title,prior_brief))
             if updated_task.rowcount:
                 db.execute("""UPDATE monthly_assignments SET brief=%s
