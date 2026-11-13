@@ -340,7 +340,7 @@ def meita_chat(body:MeitaMessage):
         reference_context=office_references.summaries(
             db,body.reference_ids,max_chars=4500)
         if related['context']:
-            reference_context+=("\\n\\nRelevant Learning Academy knowledge:\\n"+
+            reference_context+=("\n\nRelevant Learning Academy knowledge:\n"+
                                 related['context'][:3500])
         reference_images=(office_references.images(db,body.reference_ids)+
                           related['images'])[:4]
