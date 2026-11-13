@@ -34,7 +34,7 @@ jobs:
         with:
           node-version: '20'
       - name: Install requirements
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt 'httpx>=0.27,<1'
       - name: Python syntax
         run: python -m compileall -q backend tests
       - name: JavaScript syntax

@@ -132,7 +132,17 @@ def list_all():
                 "SELECT * FROM coo_proposals ORDER BY created_at DESC LIMIT 50").fetchall()
             jobs = db.execute(
                 "SELECT * FROM coo_jobs ORDER BY created_at DESC LIMIT 100").fetchall()
-        return {"proposals": proposals, "jobs": jobs}
+        # The CEO-facing delegation list needs only the staff's public identity.
+        # Full staff instructions remain on the server for internal execution.
+        visible_jobs = []
+        for row in jobs:
+            job = dict(row)
+            staff = job.get("staff") or {}
+            if isinstance(staff, dict):
+                job["staff"] = {k: staff.get(k) for k in
+                    ("id", "name", "role", "department")}
+            visible_jobs.append(job)
+        return {"proposals": proposals, "jobs": visible_jobs}
     except psycopg.Error:
         raise HTTPException(503, "Unable to load delegations")
 
