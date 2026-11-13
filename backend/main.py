@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from starlette.middleware.sessions import SessionMiddleware
 from backend import memory as office_memory
 from backend import workforce as office_workforce
+from backend import delegation as office_delegation
 
 ROOT=Path(__file__).resolve().parent.parent
 DB=os.environ.get('DATABASE_PATH',str(ROOT/'office.sqlite3'))
@@ -109,7 +110,7 @@ def meita_chat(body:MeitaMessage):
         history=list(reversed(db.execute('SELECT role,content FROM meita_messages ORDER BY id DESC LIMIT 12').fetchall()))
     system=('You are Meita, the CEO\'s Acting COO in AI Private Office. '
             'Be professional, organized, concise, and helpful. Reply in Malay-English rojak when the CEO does. '
-            'You can advise and draft, but you cannot actually execute tasks, contact third parties, '
+            'You can advise and draft and guide CEO to your Delegation Desk for task assignment and internal AI execution. You cannot directly execute actions in chat, contact third parties, '
             'access files or connected services, or approve actions. Never claim actions were performed. '
             'For consequential actions, ask for CEO approval. Do not fabricate office data.')
     memories=office_memory.recall(body.message)
@@ -184,4 +185,42 @@ def workforce_run(task_id:str):
 def workforce_review(ident:str,body:Status):
     result=office_workforce.review(ident,body.status)
     with connect() as db: audit(db,'workforce.review',ident+': '+body.status)
+    return result
+
+
+@app.get('/api/delegation/proposals',dependencies=[Depends(guard)])
+def delegation_proposals():
+    return office_delegation.list_all()
+
+@app.post('/api/delegation/proposals',dependencies=[Depends(guard)])
+def delegation_propose(body:office_delegation.DelegationBrief):
+    with connect() as db:
+        staff=[dict(x) for x in db.execute('SELECT * FROM staff ORDER BY name')]
+    memories=office_memory.recall(body.brief)
+    result=office_delegation.propose(body.brief,staff,memories)
+    with connect() as db:
+        audit(db,'delegation.proposed',result['id'])
+    return result
+
+@app.post('/api/delegation/proposals/{ident}/approve',dependencies=[Depends(guard)])
+def delegation_approve(ident:str):
+    with connect() as db:
+        staff=[dict(x) for x in db.execute('SELECT * FROM staff')]
+    result=office_delegation.decide(ident,True,staff)
+    with connect() as db:
+        audit(db,'delegation.approved',ident)
+    return result
+
+@app.post('/api/delegation/proposals/{ident}/reject',dependencies=[Depends(guard)])
+def delegation_reject(ident:str):
+    result=office_delegation.decide(ident,False,[])
+    with connect() as db:
+        audit(db,'delegation.rejected',ident)
+    return result
+
+@app.post('/api/delegation/jobs/{ident}/run',dependencies=[Depends(guard)])
+def delegation_run(ident:str):
+    result=office_delegation.run(ident)
+    with connect() as db:
+        audit(db,'delegation.executed',ident)
     return result
