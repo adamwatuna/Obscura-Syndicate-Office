@@ -53,6 +53,9 @@ jobs:
         env:
           CI: 'true'
         run: |
-          command -v pg_dump
-          command -v pg_restore
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-16
+          export PATH="/usr/lib/postgresql/16/bin:$PATH"
+          pg_dump --version
+          pg_restore --version
           python scripts/backup_restore_drill.py
