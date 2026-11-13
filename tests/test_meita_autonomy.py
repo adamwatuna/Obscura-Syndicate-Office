@@ -90,7 +90,7 @@ class AutonomousMeitaTests(unittest.TestCase):
         self.assertEqual(task["assignee"],self.staff["id"])
         self.assertTrue(task["description"])
         self.assertTrue(task["ai_run_started"])
-        self.assertEqual(task["status"],"In progress")
+        self.assertEqual(task["status"],"To do")  # Queued is not active execution
         office=self.client.get("/api/office").json()
         self.assertTrue(any(t["id"]==self.task_ids[0] for t in office["tasks"]))
         task_history=self.client.get("/api/meita/task-history").json()["requests"]

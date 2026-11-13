@@ -22,9 +22,10 @@
    <label>Your instruction to Meita</label>
    <textarea id="meitaInput" rows="3" maxlength="6000" required placeholder="Meita, ask Maryam to prepare visual concepts, Aina to draft marketing copy and Faris to research our YouTube launch. Assign and run all internal AI work."></textarea>
    <div class="task-actions" style="margin-top:12px">
-     <button class="primary" id="meitaSend" type="submit">Send instruction</button>
+     <button class="secondary" id="meitaAddReference" type="button">＋ Attach / Link</button><input id="meitaReferenceInput" type="file" hidden multiple accept=".png,.jpg,.jpeg,.webp,.pdf,.docx,.pptx,.txt,.md,.csv,.mp4,.mov,.webm"><button class="primary" id="meitaSend" type="submit">Send instruction</button>
      <span class="muted">No need to open Delegation Desk or War Room.</span>
    </div>
+ <div id="meitaAttachedReferences" class="task-actions" style="margin-top:10px"></div><p class="muted">Maximum 6 references per instruction, 20 MB per file. Video still frames only; audio is not transcribed.</p>
  </form>
 </div>
 <div class="card" style="margin-top:20px" id="meitaTaskHistory">
@@ -164,7 +165,7 @@
 <section class="view" id="governance"><h2>Security & Governance</h2><div class="card"><h3>Security status</h3><p>Password-protected session is active. Multi-factor authentication, multi-user roles, account recovery and emergency stop are planned and must be implemented before production use.</p><h3>Recent audit activity</h3><div id="auditList"></div></div></section>
 </main></div><div id="toast"></div><script>
 const EXECUTIVE_ATLAS = "data:image/webp;base64,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";
-const $=id=>document.getElementById(id);let state={staff:[],tasks:[],lessons:[],audit:[]};const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=id=>document.getElementById(id);let state={staff:[],tasks:[],lessons:[],audit:[]};let liveActivity=[];const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function api(path,options={}){const r=await fetch('/api/'+path,{credentials:'same-origin',headers:{'Content-Type':'application/json'},...options});if(r.status===401){$('app').classList.add('hidden');$('login').classList.remove('hidden');throw Error('Session expired. Please sign in.')}if(!r.ok){let j=await r.json().catch(()=>({}));throw Error(j.detail||'Request failed')}return r.json()}
 function msg(s){$('toast').textContent=s;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',3000)}
 function toggle(id){$(id).classList.toggle('hidden')}
@@ -343,6 +344,8 @@ function renderOfficeTasks(tasks,staff){
   const today=malaysiaDate(),tomorrow=malaysiaDate(1);
   box.innerHTML=sorted.map(t=>{
     const canEdit=!t.ai_run_started&&!['For approval','Completed'].includes(t.status);
+    const liveJob=liveActivity.find(j=>j.task_id===t.id);
+    const activity=liveJob?meitaStatus(liveJob.status):null;
     const due=(t.due_date||'').slice(0,10);
     const label=due?(due<today?'Overdue · '+due:due===tomorrow?'Due tomorrow':due===today?'Due today':'Due '+due):'No deadline';
     const statusOptions=['To do','In progress','For approval','Completed'].map(st=>'<option value="'+esc(st)+'" '+(t.status===st?'selected':'')+'>'+esc(st)+'</option>').join('');
@@ -352,11 +355,11 @@ function renderOfficeTasks(tasks,staff){
       '<span class="'+(due<today?'overdue':'')+'">'+esc(label)+'</span>'+
       '<span>'+esc(t.recurrence&&t.recurrence!=='None'?'Repeats: '+t.recurrence:'One-time')+'</span>'+
       '<span>'+esc(staff.find(x=>x.id===t.assignee)?.name||'Unassigned')+'</span>'+
-      (t.category==='News Update'?'<span>News Update</span>':'')+'</div></div>'+
+      (t.category==='News Update'?'<span>News Update</span>':'')+(activity?'<span>Meita: '+esc(activity)+'</span>':'')+(t.reference_ids?.length?'<span>'+t.reference_ids.length+' references</span>':'')+'</div></div>'+
       '<div class="task-actions">'+
       (canEdit?'<button class="secondary" onclick="editOfficeTask(\''+esc(t.id)+'\')">Edit</button>':'')+
       (canEdit?'<button class="secondary" onclick="removeOfficeTask(\''+esc(t.id)+'\')">Remove</button>':'')+
-      '<select style="max-width:155px" aria-label="Task status" onchange="updateTask(\''+esc(t.id)+'\',this.value)">'+statusOptions+'</select>'+
+      (liveJob?'<span class="tag">'+esc(activity)+'</span>':'<select style="max-width:155px" aria-label="Task status" onchange="updateTask(\''+esc(t.id)+'\',this.value)">'+statusOptions+'</select>')+
       (canEdit&&t.assignee&&t.description?.trim()?'<button class="primary" onclick="runStaffTask(\''+esc(t.id)+'\',this)">Run AI</button>':'')+
       '</div></div></div>';
   }).join('')||'<p>No tasks yet. Create your first assignment.</p>';
@@ -387,7 +390,17 @@ function render(){const s=state.staff,t=state.tasks,l=state.lessons;$('kStaff').
 const taskrow=x=>`<div class="item"><div><strong>${esc(x.title)}</strong><small>${esc(s.find(z=>z.id===x.assignee)?.name||'Unassigned')} · ${esc(x.status)}</small></div></div>`;$('hqTasks').innerHTML=t.length?t.slice(0,5).map(taskrow).join(''):'<p>No tasks yet.</p>';
 $('assignee').innerHTML='<option value="">Unassigned</option>'+s.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('');
 renderOfficeTasks(t,s);
-$('deskList').innerHTML=s.length?s.map(x=>{const active=t.filter(y=>y.assignee===x.id&&y.status!=='Completed');return `<div class="desk">${staffPortrait(x)}<strong>${esc(x.name)}</strong><div class="muted">${esc(x.role)}</div><div class="surface"></div><span class="tag">${active.length?active.length+' open task(s)':'No active tasks'}</span></div>`}).join(''):'<div class="notice">Hire AI staff to create workstations.</div>';
+$('deskList').innerHTML=s.length?s.map(x=>{
+ const jobs=liveActivity.filter(j=>j.staff_id===x.id);
+ const running=jobs.find(j=>j.status==='Running'),queued=jobs.filter(j=>j.status==='Queued').length;
+ const blocked=jobs.filter(j=>['Retry available','Needs verification'].includes(j.status)).length;
+ const review=jobs.filter(j=>['Delivered','For approval'].includes(j.status)).length;
+ const manual=t.filter(y=>y.assignee===x.id&&!jobs.some(j=>j.task_id===y.id));
+ const manualRunning=manual.filter(y=>y.status==='In progress'&&y.ai_run_started).length;
+ const status=running?'Working · AI executing':manualRunning?'Working · manual AI run':queued?'Queued · waiting for execution':blocked?'Needs attention':review?'Review / delivered':'Idle';
+ const detail=running?running.title:queued?queued+' queued job(s)':blocked?blocked+' blocked job(s)':review?review+' delivered report(s)':manual.filter(y=>y.status==='To do').length+' assigned task(s)';
+ return `<div class="desk">${staffPortrait(x)}<strong>${esc(x.name)}</strong><div class="muted">${esc(x.role)}</div><div class="surface"></div><span class="tag">${esc(status)}</span><p class="muted">${esc(detail)}</p></div>`;
+ }).join(''):'<div class="notice">Hire AI staff to create workstations.</div>';
 renderOrganization();$('lessonList').innerHTML=l.length?l.map(x=>`<div class="item"><div><strong>${esc(x.title)}</strong><small>${esc(x.kind)} · ${esc(x.assigned||'Not assigned')} · ${esc(x.status)}</small></div></div>`).join(''):'<p>No learning sources registered.</p>';$('auditList').innerHTML=state.audit.slice(0,12).map(x=>`<div class="item"><strong>${esc(x.action)}</strong><small>${esc(x.detail)}</small></div>`).join('')||'<p>No activity recorded.</p>'}
 function addMeita(role,content,proposal=null){
   const container=$('meitaChat');
@@ -509,7 +522,7 @@ $('meitaSettingsForm').addEventListener('submit',async e=>{
   }catch(err){msg(err.message)}finally{btn.disabled=false}
 });
 async function refreshMeitaOffice(){
-  await Promise.all([loadMeita(),loadMeitaTaskHistory(),loadMeitaConfiguration()]);
+  await Promise.all([loadMeita(),loadMeitaTaskHistory(),loadMeitaConfiguration(),refreshLiveActivity()]);
   if($('meitaDeckSelect').value)await loadMeitaDeck();
 }
 function meitaStatus(raw){
@@ -521,6 +534,7 @@ function meitaStatus(raw){
     'Approved':'Assigned','Pending approval':'Awaiting CEO approval'
   })[raw]||raw;
 }
+async function refreshLiveActivity(){try{const data=await api('meita/live-activity');liveActivity=data.jobs||[];render()}catch(err){console.warn('Live activity unavailable',err)}}
 async function loadMeitaTaskHistory(){
   const root=$('meitaTaskList');
   try{
@@ -548,6 +562,7 @@ async function loadMeitaTaskHistory(){
         const record=meitaNode('p',task.staff_name+' · '+task.title+
           ' — '+meitaStatus(task.status));
         record.style.margin='6px 0';tasks.append(record);
+        if(task.task_id){const jump=meitaNode('button','Open task','secondary');jump.type='button';jump.style.marginLeft='8px';jump.onclick=()=>show('tasks');record.append(jump);}
         if(task.status==='Retry available'){
           const retry=meitaNode('button','Retry AI task','secondary');
           retry.type='button';retry.style.marginLeft='10px';
@@ -563,6 +578,7 @@ async function loadMeitaTaskHistory(){
           record.append(retry);
         }
       }
+      if(request.reference_ids?.length)item.append(meitaNode('p',request.reference_ids.length+' CEO reference(s) linked','muted'));
       item.append(tasks);
       const actions=meitaNode('div',undefined,'task-actions');
       const deck=meitaNode('button','View presentation','secondary');
@@ -694,20 +710,56 @@ async function loadMeita(){
   try{
     const r=await api('meita/history');
     $('meitaChat').textContent='';
-    r.messages.forEach(m=>addMeita(m.role,m.content,m.proposal||null));
+    r.messages.forEach(m=>{addMeita(m.role,m.content,m.proposal||null);if(m.reference_ids?.length)$('meitaChat').lastElementChild.append(meitaNode('p',m.reference_ids.length+' attached reference(s)','muted'));});
     if(!r.messages.length)addMeita('assistant','Hello CEO. Tell me what work to assign to our AI team.');
   }catch(e){msg(e.message)}
 }
+
+let pendingMeitaReferences=[];
+function renderMeitaReferences(){
+ const area=$('meitaAttachedReferences');area.textContent='';
+ for(const ref of pendingMeitaReferences){
+  const chip=meitaNode('span',ref.filename+' · '+ref.kind,'tag'),remove=meitaNode('button',' ×');
+  remove.type='button';remove.style.cssText='width:auto;border:0;background:transparent;padding:2px';
+  remove.onclick=()=>{pendingMeitaReferences=pendingMeitaReferences.filter(x=>x.id!==ref.id);renderMeitaReferences()};
+  chip.append(remove);area.append(chip);
+ }
+}
+$('meitaAddReference').onclick=()=>{
+ const url=prompt('Type FILE to select attachments, or paste an HTTPS website link:','FILE');
+ if(url===null)return;
+ if(!url.trim()||url.trim().toUpperCase()==='FILE')return $('meitaReferenceInput').click();
+ if(pendingMeitaReferences.length>=6)return msg('Maximum six references per instruction');
+ api('meita/references/link',{method:'POST',body:JSON.stringify({url:url.trim()})}).then(ref=>{pendingMeitaReferences.push(ref);renderMeitaReferences()}).catch(e=>msg(e.message));
+};
+$('meitaReferenceInput').onchange=async e=>{
+ const files=[...e.target.files];e.target.value='';$('meitaAddReference').disabled=true;
+ for(const file of files){
+  if(pendingMeitaReferences.length>=6){msg('Maximum six references');break}
+  if(file.size>20*1024*1024){msg(file.name+' exceeds 20 MB');continue}
+  try{
+   const fd=new FormData();fd.append('file',file,file.name);
+   const res=await fetch('/api/meita/references/upload',{method:'POST',body:fd,credentials:'same-origin'});
+   if(!res.ok){const err=await res.json().catch(()=>({}));throw Error(err.detail||'Upload failed')}
+   pendingMeitaReferences.push(await res.json());renderMeitaReferences();
+  }catch(err){msg(file.name+': '+err.message)}
+ }
+ $('meitaAddReference').disabled=false;
+};
+
 $('meitaForm').addEventListener('submit',async e=>{
   e.preventDefault();
   const input=$('meitaInput'),message=input.value.trim();
   if(!message)return;
+  const refs=[...pendingMeitaReferences];
   const btn=$('meitaSend');btn.disabled=true;btn.textContent='Meita is planning…';
   addMeita('user',message);input.value='';
   try{
-    const r=await api('meita/chat',{method:'POST',body:JSON.stringify({message})});
+    const r=await api('meita/chat',{method:'POST',body:JSON.stringify({message,reference_ids:refs.map(r=>r.id)})});
     addMeita('assistant',r.reply,r.proposal||null);
     if(r.proposal)await loadDelegations();
+    pendingMeitaReferences=[];renderMeitaReferences();
+    await Promise.all([refresh(),refreshLiveActivity(),loadMeitaTaskHistory()]);
   }catch(err){
     input.value=message;
     await loadMeita();
@@ -1259,7 +1311,7 @@ async function refresh(){state=await api('office');render();renderDirectorSelect
 async function updateTask(id,status){try{await api('tasks/'+id,{method:'PATCH',body:JSON.stringify({status})});await refresh();msg('Task updated')}catch(e){msg(e.message);await refresh()}}
 $('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){show(b.dataset.view);if(b.dataset.view==='hq')loadNewsBriefings();if(b.dataset.view==='integrations')loadSocial()}});
 $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').textContent='';try{await api('login',{method:'POST',body:JSON.stringify({password:$('password').value})});$('password').value='';await enter()}catch(err){$('loginError').textContent=err.message}});
-async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await loadMeita();await loadMeitaConfiguration();await loadMeitaTaskHistory();await loadMeitaDeck();await loadMemory();await loadRuns();await loadDirectorPlans();$('monthlyPeriod').value=malaysiaPeriod();await loadMonthly();await loadNewsBriefings();await loadSocial();const oauthParams=new URLSearchParams(window.location.search);
+async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await refreshLiveActivity();await loadMeita();await loadMeitaConfiguration();await loadMeitaTaskHistory();await loadMeitaDeck();await loadMemory();await loadRuns();await loadDirectorPlans();$('monthlyPeriod').value=malaysiaPeriod();await loadMonthly();await loadNewsBriefings();await loadSocial();const oauthParams=new URLSearchParams(window.location.search);
 const integ=oauthParams.get('integration');
 if(integ){
   const reasons={
@@ -1280,6 +1332,7 @@ if(integ){
 $('logout').onclick=async()=>{await api('logout',{method:'POST'});location.reload()};
 for(const [form,path] of [['newLessonForm','lessons']])$(form).addEventListener('submit',async e=>{e.preventDefault();const body=Object.fromEntries(new FormData(e.target));try{await api(path,{method:'POST',body:JSON.stringify(body)});e.target.reset();e.target.closest('.card').classList.add('hidden');await refresh();msg('Saved successfully')}catch(err){msg(err.message)}});
 $('today').textContent=new Date().toLocaleDateString('en-MY',{weekday:'long',day:'numeric',month:'long',year:'numeric'});api('me').then(x=>{if(x.authenticated)enter()}).catch(()=>{});
+setInterval(()=>{if(!$('app').classList.contains('hidden')&&['meita','tasks','desks','hq'].some(x=>$(x).classList.contains('active'))){Promise.all([refresh(),refreshLiveActivity(),loadMeitaTaskHistory()]).catch(()=>{})}},10000);
 setInterval(()=>{if($('hq').classList.contains('active')
      &&!$('app').classList.contains('hidden'))loadNewsBriefings()},60000);
 </script></body></html>

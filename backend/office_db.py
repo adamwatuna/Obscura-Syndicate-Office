@@ -14,6 +14,7 @@ from backend import task_schedule
 from backend import meita_autowork
 from backend import memory as office_memory
 from backend import meita_team
+from backend import references as office_references
 
 logger = logging.getLogger("office.storage")
 ROOT = Path(__file__).resolve().parent.parent
@@ -66,6 +67,7 @@ def ensure_schema(db):
     monthly.setup(db)
     meita_team.init(db)
     meita_autowork.init(db)
+    office_references.init(db)
     office_memory.setup(db)
     db.execute("""INSERT INTO meita_memories (id,title,content,category)
         VALUES ('ceo-visual-briefing-style-v1','CEO reporting preferences',

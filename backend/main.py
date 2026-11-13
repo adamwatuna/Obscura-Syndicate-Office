@@ -1,9 +1,10 @@
 import os, json, hmac, hashlib, secrets, time, urllib.request, urllib.error, asyncio
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
-from fastapi import FastAPI, HTTPException, Depends, Request
-from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
+from fastapi import FastAPI, HTTPException, Depends, Request, UploadFile, File
+from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse, Response
 from pydantic import BaseModel, Field
+from psycopg.types.json import Jsonb
 from starlette.middleware.sessions import SessionMiddleware
 from backend import memory as office_memory
 from backend import workforce as office_workforce
@@ -17,6 +18,7 @@ from backend import meita_team
 from backend import meita_chat_delegate
 from backend import meita_autowork, meita_decks
 from backend import social, social_publish
+from backend import references as office_references
 
 ROOT=Path(__file__).resolve().parent.parent
 PASSWORD=os.environ.get('CEO_PASSWORD')
@@ -84,7 +86,12 @@ class Task(BaseModel):
     recurrence: str = 'None'
 class Lesson(BaseModel):title:str=Field(min_length=1,max_length=200);kind:str;source:str=Field(min_length=1,max_length=3000);assigned:str=''
 class Status(BaseModel):status:str
-class MeitaMessage(BaseModel):message:str=Field(min_length=1,max_length=6000)
+class MeitaMessage(BaseModel):
+    message: str = Field(min_length=1,max_length=6000)
+    reference_ids: list[str] = Field(default_factory=list,max_length=6)
+
+class ReferenceUrl(BaseModel):
+    url: str = Field(min_length=10,max_length=1800)
 
 def guard(req:Request):
     if req.session.get('authorized') is not True:raise HTTPException(401,'Login required')
@@ -232,6 +239,50 @@ def capabilities():
 @app.get('/')
 def home():return FileResponse(ROOT/'frontend'/'index.html')
 
+
+@app.post('/api/meita/references/upload',dependencies=[Depends(guard)])
+async def upload_meita_reference(file:UploadFile=File(...)):
+    data=await file.read(office_references.MAX_BYTES+1)
+    await file.close()
+    with connect() as db:
+        return office_references.save_file(db,file.filename or 'reference',data)
+
+@app.post('/api/meita/references/link',dependencies=[Depends(guard)])
+def link_meita_reference(body:ReferenceUrl):
+    with connect() as db:
+        return office_references.save_url(db,body.url)
+
+@app.get('/api/meita/references',dependencies=[Depends(guard)])
+def list_meita_references():
+    with connect() as db:
+        return {'references':office_references.metadata(db)}
+
+@app.get('/api/meita/references/{ident}/content',dependencies=[Depends(guard)])
+def get_meita_reference_content(ident:str,preview:bool=False):
+    with connect() as db:
+        row=db.execute("""SELECT filename,mime_type,content,preview,source_url
+            FROM meita_references WHERE id=%s""",(ident,)).fetchone()
+    if not row:raise HTTPException(404,'Reference not found')
+    data=bytes(row['preview'] if preview and row['preview'] else row['content'] or b'')
+    if not data:raise HTTPException(404,'This reference has no downloadable file')
+    mime='image/jpeg' if preview and row['preview'] else row['mime_type']
+    return Response(content=data,media_type=mime,headers={
+        'Cache-Control':'private, no-store',
+        'Content-Disposition':'inline' if preview else 'attachment; filename="reference"',
+        'X-Content-Type-Options':'nosniff'})
+
+@app.get('/api/meita/live-activity',dependencies=[Depends(guard)])
+def meita_live_activity():
+    with connect() as db:
+        meita_autowork.init(db)
+        rows=db.execute("""SELECT j.id,j.task_id,j.title,j.status,j.started_at,j.updated_at,
+            j.staff->>'id' AS staff_id,j.staff->>'name' AS staff_name,
+            j.proposal_id,p.title AS project_title,t.status AS task_status
+            FROM coo_jobs j JOIN coo_proposals p ON p.id=j.proposal_id
+            LEFT JOIN tasks t ON t.id=j.task_id
+            ORDER BY j.created_at DESC LIMIT 250""").fetchall()
+    return {'jobs':[dict(r) for r in rows]}
+
 @app.get('/api/meita/history',dependencies=[Depends(guard)])
 def meita_history():
     with connect() as db:
@@ -239,13 +290,13 @@ def meita_history():
         rows=db.execute("""SELECT m.id,m.role,m.content,m.created,
             p.id AS proposal_id,p.status AS proposal_status,
             p.title AS proposal_title,p.plan AS proposal_plan,
-            p.auto_execute AS proposal_automatic
+            p.auto_execute AS proposal_automatic,m.reference_ids AS reference_ids
             FROM meita_messages m
             LEFT JOIN coo_proposals p ON p.chat_message_id=m.id
             ORDER BY m.created DESC,m.id DESC LIMIT 30""").fetchall()
     messages=[]
     for r in reversed(rows):
-        message={k:r[k] for k in ("id","role","content","created")}
+        message={k:r[k] for k in ("id","role","content","created","reference_ids")}
         if r["proposal_id"]:
             message["proposal"]={"id":r["proposal_id"],
                 "status":r["proposal_status"],
@@ -259,6 +310,9 @@ def meita_history():
 def meita_chat(body:MeitaMessage):
     with connect() as db:
         office_delegation.init(db)
+        refs=office_references.validate_ids(db,body.reference_ids)
+        reference_context=office_references.summaries(db,body.reference_ids,max_chars=5500)
+        reference_images=office_references.images(db,body.reference_ids)
         history=list(reversed(db.execute("""SELECT role,content FROM meita_messages
             ORDER BY created DESC,id DESC LIMIT 12""").fetchall()))
         leadership=[dict(x) for x in db.execute("""SELECT name,role,department
@@ -271,7 +325,8 @@ def meita_chat(body:MeitaMessage):
                     ORDER BY created_at DESC LIMIT 3""").fetchall()]
     memories=office_memory.recall(body.message)
     routed=meita_chat_delegate.respond(
-        body.message,history,leadership,config,team_context,memories,recent)
+        body.message,history,leadership,config,team_context,memories,recent,
+        reference_context=reference_context,reference_images=reference_images)
     proposal_plan=None
     if routed["intent"]=="delegate":
         with connect() as db:
@@ -286,11 +341,12 @@ def meita_chat(body:MeitaMessage):
                 "Meita has no eligible available AI staff for this assignment")
         proposal_plan=office_delegation.prepare_plan(
             routed["delegation_brief"],staff,memories,
-            max_jobs=current_settings["max_delegation_jobs"])
+            max_jobs=current_settings["max_delegation_jobs"],
+            reference_context=reference_context,reference_images=reference_images)
     with connect() as db:
         now=int(time.time())
-        db.execute("""INSERT INTO meita_messages(role,content,created)
-            VALUES ('user',%s,%s)""",(body.message,now))
+        db.execute("""INSERT INTO meita_messages(role,content,created,reference_ids)
+            VALUES ('user',%s,%s,%s)""",(body.message,now,Jsonb(body.reference_ids)))
         message=db.execute("""INSERT INTO meita_messages(role,content,created)
             VALUES ('assistant',%s,%s) RETURNING id""",
             (routed["reply"],now)).fetchone()
@@ -308,7 +364,7 @@ def meita_chat(body:MeitaMessage):
                     "Team configuration changed; please repeat the instruction")
             proposal=office_delegation.save_proposal(
                 db,routed["delegation_brief"],proposal_plan,
-                chat_message_id=message["id"])
+                chat_message_id=message["id"],reference_ids=body.reference_ids)
             if config["auto_execute_internal"]:
                 if os.getenv("MEITA_AUTO_WORKER_ENABLED","true").lower()!="true":
                     raise HTTPException(503,"Meita internal auto-worker is disabled")
