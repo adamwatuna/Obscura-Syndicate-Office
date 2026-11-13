@@ -16,17 +16,20 @@ from datetime import datetime, timezone
 from cryptography.fernet import Fernet, InvalidToken
 from fastapi import HTTPException
 
-PROVIDERS = ("meta", "google", "tiktok")
+PROVIDERS = ("instagram", "meta", "google", "tiktok")
 PLATFORMS = ("facebook", "instagram", "youtube", "tiktok")
 SUPPORTED_PUBLISH = ("facebook", "instagram")
 PERMISSION_MODES = ("off", "approval_required", "direct_publish")
 GRAPH = "https://graph.facebook.com/v27.0"
+INSTAGRAM_GRAPH = "https://graph.instagram.com/v27.0"
 CLIENT_VARS = {
+    "instagram": ("SOCIAL_INSTAGRAM_APP_ID", "SOCIAL_INSTAGRAM_APP_SECRET"),
     "meta": ("SOCIAL_META_APP_ID", "SOCIAL_META_APP_SECRET"),
     "google": ("SOCIAL_GOOGLE_CLIENT_ID", "SOCIAL_GOOGLE_CLIENT_SECRET"),
     "tiktok": ("SOCIAL_TIKTOK_CLIENT_KEY", "SOCIAL_TIKTOK_CLIENT_SECRET"),
 }
 SCOPES = {
+    "instagram": "instagram_business_basic,instagram_business_content_publish",
     "meta": "pages_show_list,pages_read_engagement,pages_manage_posts,instagram_basic,instagram_content_publish",
     "google": "https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/youtube.upload",
     "tiktok": "user.info.basic,video.publish",
@@ -133,6 +136,12 @@ def oauth_start(db,provider,session):
     db.execute("""INSERT INTO social_oauth_states(state_hash,session_hash,provider)
         VALUES (%s,%s,%s)""",(state_hash,nonce_hash,provider))
     redirect=f"{base}/api/social/oauth/{provider}/callback"
+    if provider=="instagram":
+        # Business Login for Instagram works WITHOUT Facebook login or linked Page.
+        return _query("https://www.instagram.com/oauth/authorize",{
+            "client_id":client,"redirect_uri":redirect,"state":state,
+            "response_type":"code","scope":SCOPES["instagram"],
+            "enable_fb_login":"false"})
     if provider=="meta":
         return _query("https://www.facebook.com/v27.0/dialog/oauth",{
             "client_id":client,"redirect_uri":redirect,"state":state,
@@ -192,6 +201,32 @@ def oauth_complete(db,provider,code):
     client,secret,base,_=_configuration(provider)
     redirect=f"{base}/api/social/oauth/{provider}/callback"
     if not code or len(code)>3000:raise HTTPException(400,"Missing OAuth authorization code")
+    if provider=="instagram":
+        # The ID/secret here are from Instagram -> API setup with Instagram login,
+        # NOT Meta's Facebook App Settings -> Basic.
+        short=_http_json("https://api.instagram.com/oauth/access_token",{
+            "client_id":client,"client_secret":secret,
+            "grant_type":"authorization_code","redirect_uri":redirect,
+            "code":code})
+        short_token=short.get("access_token")
+        if not short_token:
+            raise HTTPException(502,"Instagram authorization did not return a token")
+        long=_http_json(_query("https://graph.instagram.com/access_token",{
+            "grant_type":"ig_exchange_token","client_secret":secret,
+            "access_token":short_token}))
+        long_token=long.get("access_token")
+        if not long_token:
+            raise HTTPException(502,"Instagram long-lived access token was unavailable")
+        profile=_http_json(_query(INSTAGRAM_GRAPH+"/me",{
+            "fields":"user_id,username","access_token":long_token}))
+        external_id=profile.get("user_id") or profile.get("id") or short.get("user_id")
+        if not external_id:
+            raise HTTPException(502,"Instagram did not return a professional account ID")
+        username=profile.get("username") or "Instagram Professional"
+        _store_account(db,"instagram",provider,str(external_id),username,
+                       long_token,expires=_expiry(long.get("expires_in")),
+                       scope=SCOPES["instagram"])
+        return 1
     if provider=="meta":
         payload=_http_json(_query(GRAPH+"/oauth/access_token",{
             "client_id":client,"client_secret":secret,
@@ -277,10 +312,11 @@ def account_summary(db):
         ok=ready and bool(os.getenv(names[0])) and bool(os.getenv(names[1]))
         providers.append({
             "id":provider,
-            "name":{"meta":"Facebook & Instagram (Meta)","google":"YouTube (Google)",
-                    "tiktok":"TikTok"}[provider],
+            "name":{"instagram":"Instagram · Direct Login (no Facebook Page)",
+                    "meta":"Facebook Pages & Page-linked Instagram",
+                    "google":"YouTube (Google)","tiktok":"TikTok"}[provider],
             "configured":ok,
-            "publishing_available":provider=="meta",
+            "publishing_available":provider in ("instagram","meta"),
             "callback":base.rstrip("/")+f"/api/social/oauth/{provider}/callback" if base else "",
             "setup":"Developer app OAuth + HTTPS redirect + required platform approval"})
     return {"providers":providers,
@@ -312,3 +348,26 @@ def disconnect(db,account_id):
         WHERE account_id=%s AND status IN ('Pending approval','Ready')""",(account_id,))
     db.execute("DELETE FROM social_accounts WHERE id=%s",(account_id,))
     return {"ok":True,"platform":account["platform"],"display_name":account["display_name"]}
+
+
+def refresh_instagram(db,account_id):
+    """CEO-requested long-lived Instagram token refresh without exposing secrets."""
+    schema(db)
+    account=db.execute("""SELECT id,platform,provider,access_token_cipher,
+         token_expires_at FROM social_accounts WHERE id=%s FOR UPDATE""",
+         (account_id,)).fetchone()
+    if not account:raise HTTPException(404,"Social account not found")
+    if account["provider"]!="instagram" or account["platform"]!="instagram":
+        raise HTTPException(400,"Token refresh here is only supported for direct Instagram Login")
+    if (account["token_expires_at"] and
+        account["token_expires_at"]<=datetime.now(timezone.utc)):
+        raise HTTPException(409,"Instagram token expired; reconnect using Instagram Login")
+    token=decrypt(account["access_token_cipher"])
+    payload=_http_json(_query("https://graph.instagram.com/refresh_access_token",{
+        "grant_type":"ig_refresh_token","access_token":token}))
+    new_token=payload.get("access_token")
+    if not new_token:raise HTTPException(502,"Instagram did not return a refreshed token")
+    db.execute("""UPDATE social_accounts SET access_token_cipher=%s,
+        token_expires_at=%s WHERE id=%s""",
+        (encrypt(new_token),_expiry(payload.get("expires_in")),account_id))
+    return {"ok":True,"message":"Instagram token refreshed"}
