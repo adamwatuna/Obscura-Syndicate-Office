@@ -423,11 +423,114 @@ $('directorForm').addEventListener('submit',async e=>{
   finally{button.disabled=false;button.textContent='Request Director Plan'}
 });
 
+
+let monthlyData={assignments:[],templates:[]};
+let editingMonthlyTemplate=null;
+function malaysiaPeriod(){
+  const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit'}).formatToParts(new Date());
+  return parts.find(p=>p.type==='year').value+'-'+parts.find(p=>p.type==='month').value;
+}
+function mNode(tag,text,cls){
+  const d=document.createElement(tag);
+  if(text!==undefined)d.textContent=text;
+  if(cls)d.className=cls;
+  return d;
+}
+async function loadMonthly(){
+  const root=$('monthlyAssignments');
+  try{
+    const period=$('monthlyPeriod').value||malaysiaPeriod();
+    monthlyData=await api('monthly?period='+encodeURIComponent(period));
+    $('monthlyRegion').textContent=monthlyData.region_focus||'—';
+    $('monthlyProgress').textContent=(monthlyData.completed||0)+' / '+(monthlyData.total||0)+' completed';
+    root.textContent='';
+    const groups=new Map();
+    for(const task of monthlyData.assignments||[]){
+      const key=task.department||'Former department';
+      if(!groups.has(key))groups.set(key,[]);
+      groups.get(key).push(task);
+    }
+    if(!groups.size)root.textContent='No Director assignments for this period.';
+    for(const [dept,items] of groups){
+      const card=mNode('div',undefined,'person');
+      card.append(mNode('strong',dept));
+      card.append(mNode('p',items[0].director_name||'Unassigned','muted'));
+      for(const task of items){
+        const item=mNode('div',undefined,'task-entry');
+        item.append(mNode('strong',task.title||'Unavailable task'));
+        const due=String(task.due_date||'').slice(0,10);
+        item.append(mNode('small','Due '+due+' · '+(task.status||'Unknown'),'muted'));
+        const p=mNode('p',task.brief||'');p.style.fontSize='12px';item.append(p);
+        const actions=mNode('div',undefined,'task-actions');
+        const locked=['Completed','For approval'].includes(task.status);
+        if(!locked){
+          const edit=mNode('button','Edit task','secondary');
+          edit.type='button';
+          edit.onclick=()=>{show('tasks');editOfficeTask(task.task_id)};
+          actions.append(edit);
+          if(state.tasks.some(t=>t.id===task.task_id&&t.assignee&&t.description&&!t.ai_run_started)){
+            const run=mNode('button','Run AI','primary');
+            run.type='button';
+            run.onclick=async()=>{await runStaffTask(task.task_id,run);await loadMonthly()};
+            actions.append(run);
+          }
+        }
+        item.append(actions);card.append(item);
+      }
+      root.append(card);
+    }
+    const templates=$('monthlyTemplateList');templates.textContent='';
+    for(const tpl of monthlyData.templates||[]){
+      const row=mNode('div',undefined,'item');
+      const details=mNode('div');
+      details.append(mNode('strong',tpl.title));
+      details.append(mNode('small',tpl.department+' · Day '+tpl.due_day+' · '+(tpl.enabled?'Enabled':'Disabled')));
+      const edit=mNode('button','Edit','secondary');
+      edit.type='button';edit.onclick=()=>editMonthlyTemplate(tpl.key);
+      row.append(details,edit);templates.append(row);
+    }
+  }catch(e){
+    root.textContent='Unable to load Monthly Workplan: '+e.message;
+  }
+}
+function editMonthlyTemplate(key){
+  const item=(monthlyData.templates||[]).find(t=>t.key===key);
+  if(!item)return;
+  editingMonthlyTemplate=key;
+  $('mtTitle').value=item.title;
+  $('mtBrief').value=item.brief;
+  $('mtDue').value=item.due_day;
+  $('mtEnabled').value=String(item.enabled);
+  $('monthlyTemplateHeading').textContent='Edit recurring responsibility';
+  $('monthlyTemplateList').classList.remove('hidden');
+  $('monthlyTemplateForm').classList.remove('hidden');
+  $('monthlyTemplateForm').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function cancelMonthlyTemplate(){
+  editingMonthlyTemplate=null;
+  $('monthlyTemplateForm').reset();
+  $('monthlyTemplateForm').classList.add('hidden');
+}
+$('monthlyPeriod').addEventListener('change',loadMonthly);
+$('monthlyTemplateForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  if(!editingMonthlyTemplate)return;
+  const btn=$('mtSave');btn.disabled=true;
+  try{
+    const body={title:$('mtTitle').value.trim(),brief:$('mtBrief').value.trim(),
+      due_day:Number($('mtDue').value),enabled:$('mtEnabled').value==='true'};
+    await api('monthly/templates/'+encodeURIComponent(editingMonthlyTemplate),
+      {method:'PUT',body:JSON.stringify(body)});
+    cancelMonthlyTemplate();await loadMonthly();
+    msg('Future monthly responsibility updated');
+  }catch(e){msg(e.message)}finally{btn.disabled=false}
+});
+
 async function refresh(){state=await api('office');render();renderDirectorSelect()}
 async function updateTask(id,status){try{await api('tasks/'+id,{method:'PATCH',body:JSON.stringify({status})});await refresh();msg('Task updated')}catch(e){msg(e.message);await refresh()}}
 $('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b)show(b.dataset.view)});
 $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').textContent='';try{await api('login',{method:'POST',body:JSON.stringify({password:$('password').value})});$('password').value='';await enter()}catch(err){$('loginError').textContent=err.message}});
-async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await loadMeita();await loadMemory();await loadRuns();await loadDelegations();await loadDirectorPlans()}catch(e){msg(e.message)}}
+async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await loadMeita();await loadMemory();await loadRuns();await loadDelegations();await loadDirectorPlans();$('monthlyPeriod').value=malaysiaPeriod();await loadMonthly()}catch(e){msg(e.message)}}
 $('logout').onclick=async()=>{await api('logout',{method:'POST'});location.reload()};
 for(const [form,path] of [['newLessonForm','lessons']])$(form).addEventListener('submit',async e=>{e.preventDefault();const body=Object.fromEntries(new FormData(e.target));try{await api(path,{method:'POST',body:JSON.stringify(body)});e.target.reset();e.target.closest('.card').classList.add('hidden');await refresh();msg('Saved successfully')}catch(err){msg(err.message)}});
 $('integrationList').innerHTML=['Instagram / Facebook','TikTok / YouTube','WhatsApp Business','Gmail / Outlook','Canva / Adobe','CapCut / Video tools','Finance / Banking'].map(n=>`<div class="person"><strong>${esc(n)}</strong><span class="tag">Not connected</span><p class="muted">Requires supported integration and CEO authorization.</p></div>`).join('');$('today').textContent=new Date().toLocaleDateString('en-MY',{weekday:'long',day:'numeric',month:'long',year:'numeric'});api('me').then(x=>{if(x.authenticated)enter()}).catch(()=>{});
