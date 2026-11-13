@@ -45,6 +45,9 @@ class BudgetDraft(BaseModel):
         return value
 
 
+from backend import schema_state
+
+@schema_state.bootstrap_only
 def init(db):
     db.execute("""CREATE TABLE IF NOT EXISTS finance_budget_drafts (
         id TEXT PRIMARY KEY,
