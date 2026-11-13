@@ -16,7 +16,7 @@ class StaffConfigurationTests(unittest.TestCase):
     def test_staff_config_private_editable_and_deletable(self):
         marker="Staff-CI-"+uuid4().hex[:12]
         expert="Internal CEO expertise and instructions "+uuid4().hex
-        data={'name':marker,'role':'Creative Director','department':'Creative',
+        data={'name':marker,'role':'Creative Specialist','department':'Creative',
               'expertise':expert,'autonomy':'Approval required',
               'tools':'Premiere (requested only)'}
         created=self.client.post('/api/staff',json=data)
@@ -35,7 +35,7 @@ class StaffConfigurationTests(unittest.TestCase):
             self.assertEqual(config.status_code,200)
             self.assertEqual(config.json()['staff']['expertise'],expert)
 
-            data['role']='Executive Creative Director'
+            data['role']='Senior Creative Specialist'
             data['expertise']=expert+' UPDATED'
             edited=self.client.put(f'/api/staff/{staff_id}',json=data)
             self.assertEqual(edited.status_code,200,edited.text)
