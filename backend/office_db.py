@@ -9,6 +9,7 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 from backend import organization
 from backend import leadership_seed
+from backend import specialist_seed
 from backend import monthly
 from backend import task_schedule
 from backend import meita_autowork
@@ -134,6 +135,7 @@ def bootstrap(legacy_path=None):
         db.execute("""CREATE UNIQUE INDEX IF NOT EXISTS unique_staff_director_per_dept
             ON staff (department) WHERE org_role='Director'""")
         leadership_seed.install(db)
+        specialist_seed.install(db)
         monthly.remove_automatic_region(db)
         monthly.generate_month(db)
         task_schedule.generate_due(db)
