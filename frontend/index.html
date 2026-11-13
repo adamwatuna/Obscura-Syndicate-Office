@@ -370,6 +370,173 @@ renderOfficeTasks(t,s);
 $('deskList').innerHTML=s.length?s.map(x=>{const active=t.filter(y=>y.assignee===x.id&&y.status!=='Completed');return `<div class="desk">${staffPortrait(x)}<strong>${esc(x.name)}</strong><div class="muted">${esc(x.role)}</div><div class="surface"></div><span class="tag">${active.length?active.length+' open task(s)':'No active tasks'}</span></div>`}).join(''):'<div class="notice">Hire AI staff to create workstations.</div>';
 renderOrganization();$('lessonList').innerHTML=l.length?l.map(x=>`<div class="item"><div><strong>${esc(x.title)}</strong><small>${esc(x.kind)} · ${esc(x.assigned||'Not assigned')} · ${esc(x.status)}</small></div></div>`).join(''):'<p>No learning sources registered.</p>';$('auditList').innerHTML=state.audit.slice(0,12).map(x=>`<div class="item"><strong>${esc(x.action)}</strong><small>${esc(x.detail)}</small></div>`).join('')||'<p>No activity recorded.</p>'}
 function addMeita(role,content){const d=document.createElement('div');d.style.cssText='padding:12px;margin:9px 0;border-radius:10px;background:'+(role==='user'?'#eef3f7':'#f8fafb');const b=document.createElement('strong');b.textContent=role==='user'?'CEO':'Meita';d.appendChild(b);const p=document.createElement('div');p.textContent=content;d.appendChild(p);$('meitaChat').appendChild(d);$('meitaChat').scrollTop=$('meitaChat').scrollHeight}
+
+let meitaTeamSettings=null;
+let meitaMeetingIndex=[];
+let selectedMeitaMeeting=null;
+const meitaDom=(tag,value,cls)=>{
+  const node=document.createElement(tag);
+  if(value!==undefined)node.textContent=value;
+  if(cls)node.className=cls;
+  return node;
+};
+function meitaMeetingWhen(value){
+  return value?new Date(value).toLocaleString('en-MY',{
+    timeZone:'Asia/Kuala_Lumpur',dateStyle:'medium',timeStyle:'short'}):'';
+}
+async function loadMeitaConfiguration(){
+  try{
+    const data=await api('meita/configuration');
+    meitaTeamSettings=data.settings;
+    $('meitaDelegationScope').value=data.settings.delegation_scope;
+    $('meitaDiscussionScope').value=data.settings.discussion_scope;
+    $('meitaJobLimit').value=data.settings.max_delegation_jobs;
+    $('meitaParticipantLimit').value=data.settings.max_meeting_participants;
+    const roster=$('meitaTeamRoster');roster.textContent='';
+    roster.append(meitaDom('strong','AI Team Roster · '+data.team.length+' members'));
+    const groups=new Map();
+    for(const person of data.team){
+      const category=person.org_role==='Director'?'Directors':'AI Specialists';
+      if(!groups.has(category))groups.set(category,[]);
+      groups.get(category).push(person);
+    }
+    for(const [group,staff] of groups){
+      const div=meitaDom('div',undefined,'task-entry');
+      div.append(meitaDom('strong',group+' · '+staff.length));
+      div.append(meitaDom('p',staff.map(x=>x.name+' ('+x.department+')').join(' · '),'muted'));
+      roster.append(div);
+    }
+  }catch(e){$('meitaTeamRoster').textContent='Unable to load Meita settings: '+e.message}
+}
+$('meitaSettingsForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const payload={
+    delegation_scope:$('meitaDelegationScope').value,
+    discussion_scope:$('meitaDiscussionScope').value,
+    max_delegation_jobs:Number($('meitaJobLimit').value),
+    max_meeting_participants:Number($('meitaParticipantLimit').value)
+  };
+  const button=$('meitaSettingsSave');button.disabled=true;
+  try{
+    await api('meita/configuration',{method:'PUT',body:JSON.stringify(payload)});
+    await loadMeitaConfiguration();
+    msg('Meita team coordination settings saved');
+  }catch(err){msg(err.message)}finally{button.disabled=false}
+});
+async function loadMeitaMeetings(selected){
+  try{
+    const index=await api('meita/team/meetings');
+    meitaMeetingIndex=index.meetings||[];
+    const selector=$('meitaMeetingSelect');
+    const active=selected||selector.value;
+    selector.textContent='';
+    const first=meitaDom('option','Choose a saved team meeting');first.value='';
+    selector.append(first);
+    for(const m of meitaMeetingIndex){
+      const opt=meitaDom('option',m.topic.slice(0,90)+' · '+m.round_no+' rounds · '+m.participant_count+' AI staff');
+      opt.value=m.id;selector.append(opt);
+    }
+    if(active&&meitaMeetingIndex.some(m=>m.id===active)){
+      selector.value=active;
+      await openMeitaMeeting(active);
+    }else{
+      selectedMeitaMeeting=null;
+      $('meitaMeetingInfo').textContent='No meeting selected';
+      $('meitaMeetingActions').classList.add('hidden');
+      $('meitaMeetingTranscript').textContent='Choose or create a meeting to read the team discussion.';
+    }
+  }catch(err){$('meitaMeetingTranscript').textContent='Unable to load meetings: '+err.message}
+}
+$('meitaMeetingSelect').addEventListener('change',e=>openMeitaMeeting(e.target.value));
+async function openMeitaMeeting(id){
+  if(!id){
+    selectedMeitaMeeting=null;
+    $('meitaMeetingTranscript').textContent='Choose a meeting to view.';
+    $('meitaMeetingActions').classList.add('hidden');return;
+  }
+  try{
+    const data=await api('meita/team/meetings/'+encodeURIComponent(id));
+    selectedMeitaMeeting=data;
+    const m=data.meeting;
+    $('meitaMeetingInfo').textContent=m.round_no+'/3 rounds · '+m.participants.length+' team members · '+m.status;
+    const transcript=$('meitaMeetingTranscript');
+    transcript.textContent='';
+    const intro=meitaDom('div',undefined,'person');
+    intro.append(meitaDom('strong',m.topic));
+    intro.append(meitaDom('p','Participants: '+m.participants.map(x=>x.name).join(', '),'muted'));
+    intro.append(meitaDom('p','Meeting opened '+meitaMeetingWhen(m.created_at),'muted'));
+    transcript.append(intro);
+    if(!data.messages.length){
+      const note=meitaDom('div','Meeting created. Click Run Discussion Round to invite the team to contribute.','notice');
+      note.style.marginTop='12px';transcript.append(note);
+    }
+    for(const msgItem of data.messages){
+      const row=meitaDom('div',undefined,'person');
+      row.style.marginTop='12px';
+      row.style.background=msgItem.speaker_id==='meita'?'#f3f7fa':'#fff';
+      row.append(meitaDom('strong',msgItem.speaker_name+' · '+msgItem.speaker_role));
+      row.append(meitaDom('small',msgItem.department+' · Round '+msgItem.round_no+' · '+meitaMeetingWhen(msgItem.created_at)));
+      const body=meitaDom('p',msgItem.content);body.style.whiteSpace='pre-wrap';
+      body.style.overflowWrap='anywhere';body.style.color='#405064';row.append(body);
+      transcript.append(row);
+    }
+    if(Array.isArray(m.failures)&&m.failures.length){
+      const warning=meitaDom('div','This round was partial: '+m.failures.map(x=>x.name).join(', ')+
+        ' could not respond. Do not treat their views as collected.','notice');
+      warning.style.marginTop='12px';transcript.append(warning);
+    }
+    $('meitaMeetingActions').classList.remove('hidden');
+    const run=$('meitaRunDiscussion');
+    run.disabled=m.status==='Running'||m.round_no>=3;
+    run.textContent=m.status==='Running'?'Discussion running…':
+      m.round_no>=3?'Three rounds completed':
+      'Run Discussion Round '+(m.round_no+1);
+    $('meitaDelegateDiscussion').disabled=m.round_no<1;
+  }catch(err){$('meitaMeetingTranscript').textContent='Unable to open meeting: '+err.message}
+}
+$('meitaMeetingForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const topic=$('meitaMeetingTopic').value.trim();
+  if(topic.length<8)return;
+  const button=$('meitaMeetingStart');button.disabled=true;
+  try{
+    const created=await api('meita/team/meetings',{
+      method:'POST',body:JSON.stringify({topic})});
+    $('meitaMeetingTopic').value='';
+    await loadMeitaMeetings(created.id);
+    msg('Team meeting created. Run a discussion round when ready to use OpenAI.');
+  }catch(err){msg(err.message)}finally{button.disabled=false}
+});
+async function runMeitaDiscussion(){
+  const id=selectedMeitaMeeting?.meeting?.id;
+  if(!id)return;
+  const participants=selectedMeitaMeeting.meeting.participants.length;
+  if(!confirm('Ask '+participants+' separate AI staff plus Meita to discuss this topic? '+
+    'This will make approximately '+(participants+1)+' OpenAI API requests and may incur charges.'))return;
+  const button=$('meitaRunDiscussion');
+  button.disabled=true;button.textContent='Team is discussing…';
+  const instruction=$('meitaMeetingFollowup').value.trim();
+  try{
+    const result=await api('meita/team/meetings/'+encodeURIComponent(id)+'/discuss',{
+      method:'POST',body:JSON.stringify({instruction})});
+    $('meitaMeetingFollowup').value='';
+    await loadMeitaMeetings(id);
+    msg('Team round complete: '+result.contributors+' AI contributors'+
+        (result.unavailable?' · '+result.unavailable+' unavailable':''));
+  }catch(e){msg(e.message);await loadMeitaMeetings(id)}
+  finally{button.disabled=false}
+}
+async function delegateFromMeitaMeeting(){
+  const id=selectedMeitaMeeting?.meeting?.id;
+  if(!id)return;
+  try{
+    const result=await api('meita/team/meetings/'+encodeURIComponent(id)+'/delegation-brief');
+    $('delegationBrief').value=result.brief;
+    $('meitaDelegationDesk').scrollIntoView({behavior:'smooth',block:'start'});
+    msg('Discussion summary copied into Delegation Desk. Review and ask Meita to plan, then approve the assignments.');
+  }catch(err){msg(err.message)}
+}
+
 async function loadMeita(){try{const r=await api('meita/history');$('meitaChat').textContent='';r.messages.forEach(m=>addMeita(m.role,m.content));if(!r.messages.length)addMeita('assistant','Hello CEO. How may I assist?')}catch(e){msg(e.message)}}
 $('meitaForm').addEventListener('submit',async e=>{e.preventDefault();const input=$('meitaInput'),message=input.value.trim();if(!message)return;const btn=$('meitaSend');btn.disabled=true;btn.textContent='Meita is thinking…';addMeita('user',message);input.value='';try{const r=await api('meita/chat',{method:'POST',body:JSON.stringify({message})});addMeita('assistant',r.reply)}catch(err){addMeita('assistant','Request failed: '+err.message)}finally{btn.disabled=false;btn.textContent='Send to Meita'}});
 
@@ -974,7 +1141,7 @@ async function refresh(){state=await api('office');render();renderDirectorSelect
 async function updateTask(id,status){try{await api('tasks/'+id,{method:'PATCH',body:JSON.stringify({status})});await refresh();msg('Task updated')}catch(e){msg(e.message);await refresh()}}
 $('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){show(b.dataset.view);if(b.dataset.view==='hq')loadNewsBriefings();if(b.dataset.view==='integrations')loadSocial()}});
 $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').textContent='';try{await api('login',{method:'POST',body:JSON.stringify({password:$('password').value})});$('password').value='';await enter()}catch(err){$('loginError').textContent=err.message}});
-async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await loadMeita();await loadMemory();await loadRuns();await loadDelegations();await loadDirectorPlans();$('monthlyPeriod').value=malaysiaPeriod();await loadMonthly();await loadNewsBriefings();await loadSocial();const oauthParams=new URLSearchParams(window.location.search);
+async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await loadMeita();await loadMeitaConfiguration();await loadMeitaMeetings();await loadMemory();await loadRuns();await loadDelegations();await loadDirectorPlans();$('monthlyPeriod').value=malaysiaPeriod();await loadMonthly();await loadNewsBriefings();await loadSocial();const oauthParams=new URLSearchParams(window.location.search);
 const integ=oauthParams.get('integration');
 if(integ){
   const reasons={
