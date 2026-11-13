@@ -88,7 +88,7 @@ def save_vision_from_chat(db, message_id):
     db.execute("""INSERT INTO lessons
         (id,title,kind,source,assigned,status,created,source_message_id)
         VALUES (%s,%s,'CEO Vision',%s,'All AI Staff','CEO guidance',%s,%s)
-        ON CONFLICT(source_message_id) DO NOTHING""",
+        ON CONFLICT DO NOTHING""",
         (ident,title[:200],row["content"],int(time.time()),message_id))
     saved=db.execute("""SELECT id FROM lessons
         WHERE source_message_id=%s""",(message_id,)).fetchone()
