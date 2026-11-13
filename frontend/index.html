@@ -10,7 +10,8 @@
  <div id="hqNewsList"><p class="muted">Loading staff news briefings…</p></div>
  <p class="muted" style="font-size:11px">Briefings are generated only when CEO selects Run AI. Drafts require CEO approval and may incur web-search API charges. News may become outdated after the research time.</p>
 </div><div class="notice">Manage departments through Meita and your Directors. Authorized AI staff can generate internal deliverables for CEO review; external application access, publishing and payments are not connected.</div></section>
-<section class="view" id="memory"><div class="toolbar"><div><h2>Meita Memory Centre</h2><p>CEO-controlled long-term memory stored in PostgreSQL. Only memories you save here are used by Meita.</p></div><button class="secondary" onclick="loadMemory()">Refresh</button></div><div class="card"><h3 id="memoryHeading">Save a memory</h3><form id="memoryForm"><label>Title</label><input id="memoryTitle" maxlength="120" required placeholder="CEO's communication style"><label>Category</label><select id="memoryCategory"><option>CEO instruction</option><option>CEO preference</option><option>Company knowledge</option><option>Task decision</option></select><label>Content</label><textarea id="memoryContent" rows="5" maxlength="3000" required placeholder="Approved information for Meita to remember"></textarea><div style="height:12px"></div><button class="primary" id="memorySave">Save memory</button> <button type="button" class="secondary" onclick="resetMemory()">Cancel edit</button></form></div><div class="card" style="margin-top:20px"><h3>Saved memories</h3><div id="memoryList"><p>Loading…</p></div></div><div class="notice">CEO approval is required to create or change memory. Memory access is currently limited to Meita. Do not store passwords or API keys.</div></section><section class="view" id="meita">
+<section class="view" id="memory"><div class="toolbar"><div><h2>Meita Memory Centre</h2><p>CEO-approved instructions and automatically saved AI delivery notes. AI outputs are labelled as unverified until reviewed.</p></div><button class="secondary" onclick="loadMemory()">Refresh</button></div><div class="notice" style="margin-bottom:16px">Meita automatically stores concise, clearly labelled AI delivery excerpts here. For charts and presentation slides, open <button type="button" class="secondary" onclick="show('meita');document.getElementById('meitaDeliverables').scrollIntoView({behavior:'smooth',block:'start'})">Meita Deliverables</button>.</div>
+<div class="card"><h3 id="memoryHeading">Save a memory</h3><form id="memoryForm"><label>Title</label><input id="memoryTitle" maxlength="120" required placeholder="CEO's communication style"><label>Category</label><select id="memoryCategory"><option>CEO instruction</option><option>CEO preference</option><option>Company knowledge</option><option>Task decision</option></select><label>Content</label><textarea id="memoryContent" rows="5" maxlength="3000" required placeholder="Approved information for Meita to remember"></textarea><div style="height:12px"></div><button class="primary" id="memorySave">Save memory</button> <button type="button" class="secondary" onclick="resetMemory()">Cancel edit</button></form></div><div class="card" style="margin-top:20px"><h3>Saved memories</h3><div id="memoryList"><p>Loading…</p></div></div><div class="notice">CEO approval is required to create or change memory. Memory access is currently limited to Meita. Do not store passwords or API keys.</div></section><section class="view" id="meita">
 <div class="toolbar"><div><h2>Meita · Acting COO</h2>
 <p>CEO speaks once. Meita coordinates the AI team, assigns internal work and delivers the results.</p></div>
 <button class="secondary" type="button" onclick="refreshMeitaOffice()">Refresh progress</button></div>
@@ -429,12 +430,14 @@ function addMeita(role,content,proposal=null){
       actions.append(approve,reject);
     }else if(proposal.status==='Approved'){
       const note=document.createElement('span');
-      note.className='muted';note.textContent='Assigned to AI staff · execution not started';
+      note.className='muted';note.textContent=proposal.automatic
+        ?'Assigned & queued for automatic AI execution'
+        :'Assigned · see Task History';
       const view=document.createElement('button');
-      view.className='secondary';view.type='button';view.textContent='View assigned jobs';
+      view.className='secondary';view.type='button';view.textContent='View task progress';
       view.onclick=async()=>{
-        await loadDelegations();
-        $('meitaDelegationDesk').scrollIntoView({behavior:'smooth',block:'start'});
+        await loadMeitaTaskHistory();
+        $('meitaTaskHistory').scrollIntoView({behavior:'smooth',block:'start'});
       };
       actions.append(note,view);
     }else{
@@ -1246,11 +1249,17 @@ async function createSocialFromRun(){
   }catch(err){msg(err.message)}
 }
 
+setInterval(async()=>{
+  if(!$('app').classList.contains('hidden') && $('meita').classList.contains('active')){
+    try{await loadMeitaTaskHistory();if($('meitaDeckSelect').value)await loadMeitaDeck()}
+    catch(e){}
+  }
+},15000);
 async function refresh(){state=await api('office');render();renderDirectorSelect()}
 async function updateTask(id,status){try{await api('tasks/'+id,{method:'PATCH',body:JSON.stringify({status})});await refresh();msg('Task updated')}catch(e){msg(e.message);await refresh()}}
 $('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){show(b.dataset.view);if(b.dataset.view==='hq')loadNewsBriefings();if(b.dataset.view==='integrations')loadSocial()}});
 $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').textContent='';try{await api('login',{method:'POST',body:JSON.stringify({password:$('password').value})});$('password').value='';await enter()}catch(err){$('loginError').textContent=err.message}});
-async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await loadMeita();await loadMeitaConfiguration();await loadMeitaMeetings();await loadMemory();await loadRuns();await loadDelegations();await loadDirectorPlans();$('monthlyPeriod').value=malaysiaPeriod();await loadMonthly();await loadNewsBriefings();await loadSocial();const oauthParams=new URLSearchParams(window.location.search);
+async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await loadMeita();await loadMeitaConfiguration();await loadMeitaTaskHistory();await loadMeitaDeck();await loadMemory();await loadRuns();await loadDirectorPlans();$('monthlyPeriod').value=malaysiaPeriod();await loadMonthly();await loadNewsBriefings();await loadSocial();const oauthParams=new URLSearchParams(window.location.search);
 const integ=oauthParams.get('integration');
 if(integ){
   const reasons={
