@@ -272,16 +272,34 @@ def workforce_runs():
 @app.post('/api/workforce/run/{task_id}',dependencies=[Depends(guard)])
 def workforce_run(task_id:str):
     with connect() as db:
-        task=db.execute('SELECT * FROM tasks WHERE id=%s',(task_id,)).fetchone()
-        if task is None: raise HTTPException(404,'Task not found')
-        if not task['assignee']: raise HTTPException(400,'Assign a staff member before running this task')
-        staff=db.execute('SELECT * FROM staff WHERE id=%s',(task['assignee'],)).fetchone()
-        if staff is None: raise HTTPException(404,'Assigned staff not found')
-        task=dict(task); staff=dict(staff)
-        monthly_brief=monthly.detail_for_task(db,task_id)
-        if monthly_brief:
-            task['brief']=monthly_brief
-    result=office_workforce.execute(task,staff)
+        record=db.execute('SELECT * FROM tasks WHERE id=%s FOR UPDATE',(task_id,)).fetchone()
+        if record is None:raise HTTPException(404,'Task not found')
+        if record['ai_run_started'] or record['status'] in ('For approval','Completed'):
+            raise HTTPException(409,'AI task already started or completed')
+        if not record['assignee']:
+            raise HTTPException(400,'Assign an AI staff member before running this task')
+        if not record['description'].strip():
+            raise HTTPException(400,'Add task description before running AI')
+        staff=db.execute('SELECT * FROM staff WHERE id=%s',(record['assignee'],)).fetchone()
+        if staff is None:raise HTTPException(404,'Assigned staff not found')
+        task=dict(record);staff=dict(staff)
+        old_status=task['status']
+        task['brief']=task['description']
+        monthly_note=monthly.detail_for_task(db,task_id)
+        if monthly_note:
+            task['brief']+='\nMonthly assignment context: '+monthly_note[-160:]
+        if task.get('due_date'):
+            task['brief']+='\nDue date (Malaysia): '+task['due_date'].isoformat()
+        task['brief']+='\nPriority: '+task['priority']
+        db.execute("UPDATE tasks SET ai_run_started=TRUE,status='In progress' WHERE id=%s",(task_id,))
+    try:
+        result=office_workforce.execute(task,staff)
+    except Exception:
+        # API/network failures should not lock an unexecuted task forever.
+        with connect() as db:
+            db.execute("""UPDATE tasks SET ai_run_started=FALSE,status=%s
+                WHERE id=%s AND status='In progress'""",(old_status,task_id))
+        raise
     with connect() as db:
         db.execute("UPDATE tasks SET status='For approval' WHERE id=%s",(task_id,))
         audit(db,'workforce.deliverable',task_id)
