@@ -405,7 +405,7 @@ function renderOfficeTasks(tasks,staff){
       '<span class="'+(due<today?'overdue':'')+'">'+esc(label)+'</span>'+
       '<span>'+esc(t.recurrence&&t.recurrence!=='None'?'Repeats: '+t.recurrence:'One-time')+'</span>'+
       '<span>'+esc(staff.find(x=>x.id===t.assignee)?.name||'Unassigned')+'</span>'+
-      (t.category==='News Update'?'<span>News Update</span>':'')+(activity?'<span>Meita: '+esc(activity)+'</span>':'')+(t.reference_ids?.length?'<span>'+t.reference_ids.length+' references</span>':'')+'</div></div>'+
+      (t.category==='News Update'?'<span>News Update</span>':'')+(activity?'<span>'+esc(liveJob.source||'Meita')+': '+esc(activity)+'</span>':'')+(t.reference_ids?.length?'<span>'+t.reference_ids.length+' references</span>':'')+'</div></div>'+
       '<div class="task-actions">'+
       (canEdit?'<button class="secondary" onclick="editOfficeTask(\''+esc(t.id)+'\')">Edit</button>':'')+
       (canEdit?'<button class="secondary" onclick="removeOfficeTask(\''+esc(t.id)+'\')">Remove</button>':'')+
@@ -1134,7 +1134,7 @@ async function loadDirectorPlans(){
           const button=document.createElement('button');button.className='secondary';button.style.marginRight='8px';
           button.textContent=action==='approve'?'Approve assignments':'Reject plan';
           button.onclick=async()=>{if(!confirm(action+' this Director plan?'))return;button.disabled=true;
-            try{await api('directors/plans/'+encodeURIComponent(plan.id)+'/'+action,{method:'POST'});await loadDirectorPlans();msg('Director decision saved')}
+            try{await api('directors/plans/'+encodeURIComponent(plan.id)+'/'+action,{method:'POST'});await Promise.all([loadDirectorPlans(),refresh(),refreshLiveActivity()]);msg('Director decision saved')}
             catch(err){msg(err.message);button.disabled=false}};
           card.append(button);
         }
@@ -1148,7 +1148,7 @@ async function loadDirectorPlans(){
           if(['Approved','Retry available'].includes(job.status)){
             const button=document.createElement('button');button.className='secondary';button.textContent='Run AI';
             button.onclick=async()=>{if(!confirm('Generate internal AI deliverable using your OpenAI API?'))return;button.disabled=true;button.textContent='Generating…';
-              try{await api('directors/jobs/'+encodeURIComponent(job.id)+'/run',{method:'POST'});await loadDirectorPlans();await loadRuns();msg('Director job ready for CEO review')}
+              try{await api('directors/jobs/'+encodeURIComponent(job.id)+'/run',{method:'POST'});await Promise.all([loadDirectorPlans(),loadRuns(),refresh(),refreshLiveActivity()]);msg('Director job ready for CEO review')}
               catch(err){await loadDirectorPlans();msg(err.message)}};
             row.append(button);
           }else if(job.status==='For approval'){
