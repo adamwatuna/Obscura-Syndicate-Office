@@ -9,6 +9,8 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 from backend import organization
 from backend import leadership_seed
+from backend import specialist_seed
+from backend import finance_planning
 from backend import monthly
 from backend import task_schedule
 from backend import meita_autowork
@@ -70,6 +72,7 @@ def ensure_schema(db):
     meita_autowork.init(db)
     office_references.init(db)
     office_academy.init(db)
+    finance_planning.init(db)
     office_memory.setup(db)
     db.execute("""INSERT INTO meita_memories (id,title,content,category)
         VALUES ('ceo-visual-briefing-style-v1','CEO reporting preferences',
@@ -134,6 +137,7 @@ def bootstrap(legacy_path=None):
         db.execute("""CREATE UNIQUE INDEX IF NOT EXISTS unique_staff_director_per_dept
             ON staff (department) WHERE org_role='Director'""")
         leadership_seed.install(db)
+        specialist_seed.install(db)
         monthly.remove_automatic_region(db)
         monthly.generate_month(db)
         task_schedule.generate_due(db)
