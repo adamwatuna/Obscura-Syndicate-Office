@@ -105,7 +105,7 @@ def _consume_code(db,row,code):
 
 
 def enabled(db):
-    init(db)
+    # Schema is initialized once at office bootstrap, not during each request.
     row=db.execute("""SELECT totp_secret_encrypted IS NOT NULL AS enabled,
         jsonb_array_length(recovery_hashes) AS recovery_remaining,
         session_version FROM ceo_security WHERE id=1""").fetchone()
