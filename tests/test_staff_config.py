@@ -40,7 +40,7 @@ class StaffConfigurationTests(unittest.TestCase):
             edited=self.client.put(f'/api/staff/{staff_id}',json=data)
             self.assertEqual(edited.status_code,200,edited.text)
             self.assertEqual(self.client.get(f'/api/staff/{staff_id}/configuration')
-                             .json()['staff']['role'],'Executive Creative Director')
+                             .json()['staff']['role'],'Senior Creative Specialist')
             self.assertEqual(self.client.get(f'/api/staff/{staff_id}/configuration')
                              .json()['staff']['expertise'],expert+' UPDATED')
 
