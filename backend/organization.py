@@ -173,6 +173,7 @@ def init_plans(db):
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())""")
     db.execute("ALTER TABLE director_jobs ADD COLUMN IF NOT EXISTS task_id TEXT UNIQUE")
+    db.execute("ALTER TABLE director_jobs ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ")
 
 def cancel_director_plans(db,director_id):
     if db.execute("SELECT to_regclass('public.director_plans') AS tbl").fetchone()["tbl"] is not None:
@@ -338,6 +339,10 @@ def claim_job(db,ident):
     if not row:raise HTTPException(404,"Department job not found")
     if row["status"] not in ("Approved","Retry available") or row["plan_status"]!="Approved":
         raise HTTPException(409,"Department job is not approved or is already running")
+    task_row=(db.execute("""SELECT deleted_at,status FROM tasks WHERE id=%s""",
+               (row["task_id"],)).fetchone() if row["task_id"] else None)
+    if task_row and (task_row["deleted_at"] is not None or task_row["status"]=="Abandoned"):
+        raise HTTPException(409,"CEO has abandoned or removed this assignment")
     director,staff=director_roster(db,row["director_id"])
     if director["department"]!=row["department"] or row["staff_id"] not in {s["id"] for s in staff}:
         raise HTTPException(409,"Staff member is no longer an authorized direct report")
@@ -350,17 +355,29 @@ def claim_job(db,ident):
             "brief":row["brief"],"category":"General"},person
 
 def finish_job(db,ident,run_id=None):
-    job=db.execute("SELECT task_id FROM director_jobs WHERE id=%s",(ident,)).fetchone()
+    job=db.execute("""SELECT task_id,status FROM director_jobs
+        WHERE id=%s FOR UPDATE""",(ident,)).fetchone()
+    if not job:
+        raise HTTPException(404,"Director job not found")
+    if job["status"] in ("Cancellation requested","Cancelled"):
+        if run_id:
+            db.execute("""UPDATE workforce_runs SET status='Abandoned'
+                WHERE id=%s AND status='For approval'""",(run_id,))
+        db.execute("""UPDATE director_jobs SET status='Cancelled',updated_at=NOW()
+            WHERE id=%s""",(ident,))
+        return
     if run_id:
         db.execute("""UPDATE director_jobs SET status='For approval',
             workforce_run_id=%s,updated_at=NOW()
             WHERE id=%s AND status='Running'""",(run_id,ident))
-        if job and job["task_id"]:
+        if job["task_id"]:
             db.execute("""UPDATE tasks SET status='For approval'
-                WHERE id=%s AND status='In progress'""",(job["task_id"],))
+                WHERE id=%s AND status='In progress' AND deleted_at IS NULL""",
+                (job["task_id"],))
     else:
         db.execute("""UPDATE director_jobs SET status='Retry available',
             updated_at=NOW() WHERE id=%s AND status='Running'""",(ident,))
-        if job and job["task_id"]:
+        if job["task_id"]:
             db.execute("""UPDATE tasks SET status='To do'
-                WHERE id=%s AND status='In progress'""",(job["task_id"],))
+                WHERE id=%s AND status='In progress' AND deleted_at IS NULL""",
+                (job["task_id"],))
