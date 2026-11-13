@@ -23,6 +23,9 @@ ISSUER="AI Private Office"
 MAX_SETUP_ATTEMPTS=5
 MAX_ACTION_ATTEMPTS=5
 
+from backend import schema_state
+
+@schema_state.bootstrap_only
 def init(db):
     db.execute("""CREATE TABLE IF NOT EXISTS ceo_security (
         id INTEGER PRIMARY KEY CHECK(id=1),
