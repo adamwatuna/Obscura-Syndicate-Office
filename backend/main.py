@@ -15,6 +15,7 @@ from backend import office_db
 from backend import organization as org
 from backend import monthly
 from backend import task_schedule
+from backend import task_control
 from backend import news_briefings
 from backend import meita_team
 from backend import meita_chat_delegate
@@ -282,6 +283,20 @@ def remove_task(ident:str):
         audit(db,'task.removed',f'{ident}: recurrence_stopped={result["recurrence_stopped"]}')
     return result
 
+@app.post('/api/tasks/{ident}/abandon',dependencies=[Depends(guard)])
+def abandon_assigned_task(ident:str):
+    with connect() as db:
+        result=task_control.abandon(db,ident)
+        audit(db,'task.abandoned',f'{ident}: cancellation_pending={result["cancellation_pending"]}')
+    return result
+
+@app.post('/api/tasks/{ident}/remove',dependencies=[Depends(guard)])
+def archive_assigned_task(ident:str):
+    with connect() as db:
+        result=task_control.archive(db,ident)
+        audit(db,'task.archived',f'{ident}: cancellation_pending={result["cancellation_pending"]}')
+    return result
+
 @app.patch('/api/tasks/{ident}',dependencies=[Depends(guard)])
 def update_task(ident:str,body:Status):
     if body.status not in ('To do','In progress','For approval','Completed'):raise HTTPException(400,'Invalid status')
@@ -449,6 +464,7 @@ def meita_live_activity():
             'Meita' AS source
             FROM coo_jobs j JOIN coo_proposals p ON p.id=j.proposal_id
             LEFT JOIN tasks t ON t.id=j.task_id
+            WHERE j.archived_at IS NULL AND (t.id IS NULL OR t.deleted_at IS NULL)
             ORDER BY j.created_at DESC LIMIT 250""").fetchall()
         org.init_plans(db)
         director_rows=db.execute("""SELECT j.id,j.task_id,j.title,j.status,
@@ -458,6 +474,7 @@ def meita_live_activity():
             'Director' AS source
             FROM director_jobs j JOIN director_plans p ON p.id=j.plan_id
             LEFT JOIN tasks t ON t.id=j.task_id
+            WHERE j.archived_at IS NULL AND (t.id IS NULL OR t.deleted_at IS NULL)
             ORDER BY j.created_at DESC LIMIT 250""").fetchall()
     combined=[dict(r) for r in rows]+[dict(r) for r in director_rows]
     combined.sort(key=lambda r:r["updated_at"] or "",reverse=True)
@@ -597,6 +614,20 @@ def download_meita_powerpoint(ident:str):
         media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
         headers={"Content-Disposition":f'attachment; filename="{filename}.pptx"',
                  "Cache-Control":"no-store"})
+
+@app.post('/api/meita/jobs/{ident}/abandon',dependencies=[Depends(guard)])
+def meita_abandon_job(ident:str):
+    with connect() as db:
+        result=task_control.job_action(db,ident,'abandon')
+        audit(db,'meita.job.abandoned',ident)
+    return result
+
+@app.post('/api/meita/jobs/{ident}/remove',dependencies=[Depends(guard)])
+def meita_remove_job(ident:str):
+    with connect() as db:
+        result=task_control.job_action(db,ident,'remove')
+        audit(db,'meita.job.archived',ident)
+    return result
 
 @app.post('/api/meita/jobs/{ident}/retry',dependencies=[Depends(guard)])
 def meita_retry_internal_job(ident:str):
