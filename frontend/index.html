@@ -738,6 +738,7 @@ function renderSocialProviders(){
     const status=socialEl('p',message,provider.configured?'social-status ready':'social-status warning');
     card.append(status);
     if(provider.id==='instagram')card.append(socialEl('p','No Facebook Page or Facebook Login needed.','muted'));
+    if(provider.id==='google')card.append(socialEl('p','OAuth ready does not mean connected. Choose your Obscura YouTube channel (not personal) during Google authorization.','muted'));
     const button=socialEl('button',connected?'Connect another account':'Connect via OAuth','secondary');
     button.type='button';button.disabled=!provider.configured;
     button.onclick=()=>connectSocial(provider.id);
@@ -934,7 +935,24 @@ async function refresh(){state=await api('office');render();renderDirectorSelect
 async function updateTask(id,status){try{await api('tasks/'+id,{method:'PATCH',body:JSON.stringify({status})});await refresh();msg('Task updated')}catch(e){msg(e.message);await refresh()}}
 $('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){show(b.dataset.view);if(b.dataset.view==='hq')loadNewsBriefings();if(b.dataset.view==='integrations')loadSocial()}});
 $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').textContent='';try{await api('login',{method:'POST',body:JSON.stringify({password:$('password').value})});$('password').value='';await enter()}catch(err){$('loginError').textContent=err.message}});
-async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await loadMeita();await loadMemory();await loadRuns();await loadDelegations();await loadDirectorPlans();$('monthlyPeriod').value=malaysiaPeriod();await loadMonthly();await loadNewsBriefings();await loadSocial();const integ=new URLSearchParams(window.location.search).get('integration');if(integ){msg(integ==='connected'?'Social account authorized. Configure staff permissions below.': 'OAuth connection not completed');window.history.replaceState(null,'',window.location.pathname)}}catch(e){msg(e.message)}}
+async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await loadMeita();await loadMemory();await loadRuns();await loadDelegations();await loadDirectorPlans();$('monthlyPeriod').value=malaysiaPeriod();await loadMonthly();await loadNewsBriefings();await loadSocial();const oauthParams=new URLSearchParams(window.location.search);
+const integ=oauthParams.get('integration');
+if(integ){
+  const reasons={
+    google_token_exchange:'Google authorization could not be completed. Check the Google OAuth Client ID/Secret and registered callback URL in Google Cloud and Railway.',
+    youtube_channel_access:'Google authorization returned, but the YouTube Data API could not access the selected channel. Check that YouTube Data API v3 is enabled and sign in as a channel owner (not only a delegated YouTube Studio manager).',
+    youtube_no_channel:'Google authorization returned no accessible YouTube channel. Reconnect and select the Obscura channel rather than the personal account. Confirm channel owner permissions in YouTube Studio.'
+  };
+  const detail=integ==='connected'
+      ?'Social account authorized. Check the exact channel name under Connected Accounts.'
+      :integ==='cancelled'
+      ?'Google or social account authorization was cancelled.'
+      :reasons[oauthParams.get('reason')]||'Social OAuth connection could not be completed. Check authorization, account access, and provider setup.';
+  $('socialOAuthNotice').textContent=detail;
+  show('integrations');
+  msg(detail);
+  window.history.replaceState(null,'',window.location.pathname);
+}}catch(e){msg(e.message)}}
 $('logout').onclick=async()=>{await api('logout',{method:'POST'});location.reload()};
 for(const [form,path] of [['newLessonForm','lessons']])$(form).addEventListener('submit',async e=>{e.preventDefault();const body=Object.fromEntries(new FormData(e.target));try{await api(path,{method:'POST',body:JSON.stringify(body)});e.target.reset();e.target.closest('.card').classList.add('hidden');await refresh();msg('Saved successfully')}catch(err){msg(err.message)}});
 $('today').textContent=new Date().toLocaleDateString('en-MY',{weekday:'long',day:'numeric',month:'long',year:'numeric'});api('me').then(x=>{if(x.authenticated)enter()}).catch(()=>{});

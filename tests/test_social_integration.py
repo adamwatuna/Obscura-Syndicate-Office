@@ -179,6 +179,40 @@ class SocialIntegrationTests(unittest.TestCase):
             f'/api/social/oauth/meta/callback?code=fake&state={state}',
             follow_redirects=False).headers['location'],"/?integration=failed")
 
+    def test_youtube_oauth_prompts_channel_choice_and_explains_no_channel(self):
+        authorization=self.client.post('/api/social/oauth/google/start')
+        self.assertEqual(authorization.status_code,200,authorization.text)
+        params=parse_qs(urlsplit(authorization.json()['authorization_url']).query)
+        self.assertIn('select_account',params['prompt'][0])
+        state=params['state'][0]
+        with patch('backend.social._http_json',side_effect=[
+            {'access_token':'fake-ci-google-access-token'}, {'items':[]}]) as backend:
+            result=self.client.get(
+                '/api/social/oauth/google/callback?state='+state+'&code=fake-ci-code',
+                follow_redirects=False)
+        self.assertEqual(result.status_code,303,result.text)
+        self.assertEqual(result.headers['location'],
+                         '/?integration=failed&reason=youtube_no_channel')
+        self.assertEqual(backend.call_count,2)
+        self.assertIn('youtube/v3/channels',backend.call_args_list[1].args[0])
+        self.assertEqual(self.client.get(
+            '/api/social/oauth/google/callback?state='+state+'&code=fake-ci-code',
+            follow_redirects=False).headers['location'],'/?integration=failed')
+
+    def test_youtube_api_rejection_gives_safe_diagnostic(self):
+        from fastapi import HTTPException
+        authorization=self.client.post('/api/social/oauth/google/start')
+        state=parse_qs(urlsplit(authorization.json()['authorization_url']).query)['state'][0]
+        with patch('backend.social._http_json',side_effect=[
+            {'access_token':'fake-ci-google-access-token'},
+            HTTPException(502,'Provider response contains secret credentials')]):
+            result=self.client.get(
+                '/api/social/oauth/google/callback?state='+state+'&code=fake-ci-code',
+                follow_redirects=False)
+        self.assertEqual(result.headers['location'],
+                         '/?integration=failed&reason=youtube_channel_access')
+        self.assertNotIn('secret',result.headers['location'])
+
     def test_import_only_approved_ai_output_as_unpublished_draft(self):
         self.grant('direct_publish')
         run_id="ci_ai_"+secrets.token_hex(8)

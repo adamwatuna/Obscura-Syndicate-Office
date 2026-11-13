@@ -150,7 +150,7 @@ def oauth_start(db,provider,session):
         return _query("https://accounts.google.com/o/oauth2/v2/auth",{
             "client_id":client,"redirect_uri":redirect,"state":state,
             "response_type":"code","scope":SCOPES["google"],
-            "access_type":"offline","prompt":"consent"})
+            "access_type":"offline","prompt":"select_account consent"})
     return _query("https://www.tiktok.com/v2/auth/authorize/",{
         "client_key":client,"redirect_uri":redirect,"state":state,
         "response_type":"code","scope":SCOPES["tiktok"]})
@@ -259,15 +259,23 @@ def oauth_complete(db,provider,code):
         if not added:raise HTTPException(400,"No authorized Facebook Pages or linked Instagram Professional accounts found")
         return added
     if provider=="google":
-        payload=_http_json("https://oauth2.googleapis.com/token",{
-            "client_id":client,"client_secret":secret,
-            "code":code,"redirect_uri":redirect,"grant_type":"authorization_code"})
+        try:
+            payload=_http_json("https://oauth2.googleapis.com/token",{
+                "client_id":client,"client_secret":secret,
+                "code":code,"redirect_uri":redirect,"grant_type":"authorization_code"})
+        except HTTPException as exc:
+            raise HTTPException(exc.status_code,"google_token_exchange") from exc
         token=payload.get("access_token")
-        if not token:raise HTTPException(502,"Google did not return an access token")
-        channel=_http_json("https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true",headers={
-            "Authorization":"Bearer "+token})
+        if not token:raise HTTPException(502,"google_token_exchange")
+        try:
+            channel=_http_json("https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true",headers={
+                "Authorization":"Bearer "+token})
+        except HTTPException as exc:
+            # Google authorization may succeed but YouTube API rejects Brand
+            # Account / delegated Studio permissions or disabled API service.
+            raise HTTPException(exc.status_code,"youtube_channel_access") from exc
         items=channel.get("items",[])
-        if not items:raise HTTPException(400,"No YouTube channel available on this authorized account")
+        if not items:raise HTTPException(400,"youtube_no_channel")
         for item in items:
             _store_account(db,"youtube",provider,item["id"],
                            item.get("snippet",{}).get("title","YouTube Channel"),
