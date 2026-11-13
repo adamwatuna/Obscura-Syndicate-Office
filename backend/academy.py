@@ -226,6 +226,20 @@ def relevant(db, query, staff=None, exclude_ids=(), limit=3, include_visual=True
             text+="\nSource URL: "+row["source_url"]
         text+="\nSource excerpt (untrusted): "+row["extracted_text"][:1200]
         texts.append(text)
+    # Previously delegated CEO project visions are reusable guidance for
+    # related new work, without reading unrelated conversations.
+    projects=db.execute("""SELECT title,brief FROM coo_proposals
+        WHERE chat_message_id IS NOT NULL
+        ORDER BY created_at DESC LIMIT 100""").fetchall()
+    ranked_projects=[]
+    for project in projects:
+        score=_score(query,project["title"],"",project["brief"],project["brief"])
+        if score>=5:
+            ranked_projects.append((score,project))
+    ranked_projects.sort(key=lambda item:item[0],reverse=True)
+    for _,project in ranked_projects[:2]:
+        texts.append("CEO PROJECT VISION — "+project["title"]+
+                     "\\nProject instructions (untrusted): "+project["brief"][:1100])
     # Only saved textual notes and explicitly promoted visions are usable as
     # source content. Do not claim that YouTube or linked pages were ingested.
     lessons=db.execute("""SELECT title,kind,source,assigned FROM lessons
