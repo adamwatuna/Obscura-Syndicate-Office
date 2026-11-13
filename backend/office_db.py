@@ -29,7 +29,18 @@ def connect():
         raise RuntimeError("DATABASE_URL is required for office persistence")
     return psycopg.connect(url, row_factory=dict_row, connect_timeout=8)
 
+def ensure_login_security(db):
+    db.execute("""CREATE TABLE IF NOT EXISTS ceo_login_attempts (
+        fingerprint TEXT PRIMARY KEY,
+        failures INTEGER NOT NULL DEFAULT 0,
+        last_attempt TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        blocked_until TIMESTAMPTZ)""")
+    db.execute("""CREATE INDEX IF NOT EXISTS ceo_login_attempts_last
+        ON ceo_login_attempts(last_attempt)""")
+
+
 def ensure_schema(db):
+    ensure_login_security(db)
     db.execute("""CREATE TABLE IF NOT EXISTS staff (
         id TEXT PRIMARY KEY, name TEXT NOT NULL, role TEXT NOT NULL,
         department TEXT NOT NULL, expertise TEXT NOT NULL DEFAULT '',
