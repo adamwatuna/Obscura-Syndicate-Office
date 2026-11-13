@@ -587,7 +587,24 @@ function renderWorkforceHierarchy(staff){
 
 function render(){const s=state.staff,t=state.tasks,l=state.lessons;$('kStaff').textContent=s.length;$('kOpen').textContent=t.filter(x=>x.status!=='Completed').length;$('kApproval').textContent=t.filter(x=>x.status==='For approval').length;$('kLessons').textContent=academyTotal===null?l.length:academyTotal;$('hqStaff').innerHTML=s.length?s.slice(0,6).map(x=>person(x,false)).join(''):'<p>No staff hired yet.</p>';renderWorkforceHierarchy(s);
 const taskrow=x=>`<div class="item"><div><strong>${esc(x.title)}</strong><small>${esc(s.find(z=>z.id===x.assignee)?.name||'Unassigned')} · ${esc(x.status)}</small></div></div>`;$('hqTasks').innerHTML=t.length?t.slice(0,5).map(taskrow).join(''):'<p>No tasks yet.</p>';
-$('assignee').innerHTML='<option value="">Unassigned</option>'+s.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('');
+const assigneeSelect=$('assignee'),currentAssignee=assigneeSelect.value;
+assigneeSelect.textContent='';
+const unassigned=document.createElement('option');unassigned.value='';unassigned.textContent='Unassigned';assigneeSelect.append(unassigned);
+for(const department of OFFICE_DEPARTMENTS){
+ const members=s.filter(person=>person.department===department);
+ if(!members.length)continue;
+ const group=document.createElement('optgroup');group.label=department;
+ for(const person of members.sort((a,b)=>{
+  if(a.org_role!==b.org_role)return a.org_role==='Director'?-1:b.org_role==='Director'?1:0;
+  return a.role.localeCompare(b.role);
+ })){
+  const option=document.createElement('option');option.value=person.id;
+  option.textContent=person.role+(person.name!==person.role?' · '+person.name:'')+(person.org_role==='Director'?' (Director)':'');
+  group.append(option);
+ }
+ assigneeSelect.append(group);
+}
+if([...assigneeSelect.options].some(option=>option.value===currentAssignee))assigneeSelect.value=currentAssignee;
 renderOfficeTasks(t,s);renderResearchRoster();
 $('deskList').innerHTML=s.length?s.map(x=>{
  const jobs=liveActivity.filter(j=>j.staff_id===x.id);
