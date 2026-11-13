@@ -57,9 +57,105 @@ function person(s,editable=false){
   const report=s.org_role==='Director'?'Reports to Meita':director?'Reports to '+director.name:'Reporting line unassigned';
   return `<div class="person">${staffPortrait(s)}<strong>${esc(s.name)}</strong><div class="muted">${esc(s.role)}</div><span class="tag">${esc(s.department)}</span><span class="tag" style="margin-left:6px">${esc(s.org_role||'Specialist')}</span><p class="muted">${esc(report)}</p>${actions}</div>`;
 }
+
+let editingTaskId=null;
+function malaysiaDate(offset=0){
+  const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+  const d=new Date(Date.UTC(Number(parts.find(p=>p.type==='year').value),
+    Number(parts.find(p=>p.type==='month').value)-1,
+    Number(parts.find(p=>p.type==='day').value)+offset));
+  return d.toISOString().slice(0,10);
+}
+function setTaskTomorrow(){$('taskDueDate').value=malaysiaDate(1)}
+function toggleDueRequirement(){
+  const frequency=$('taskRecurrence').value;
+  $('taskDueDate').required=frequency!=='None';
+}
+function cancelOfficeTask(){
+  editingTaskId=null;
+  const form=$('newTaskForm');form.reset();
+  $('taskForm').classList.add('hidden');
+  $('taskFormHeading').textContent='New AI assignment';
+  $('taskSave').textContent='Create task';
+  $('taskRecurrence').disabled=false;
+  toggleDueRequirement();
+}
+function newOfficeTask(){
+  cancelOfficeTask();
+  show('tasks');
+  $('taskForm').classList.remove('hidden');
+  $('taskForm').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function editOfficeTask(id){
+  const task=state.tasks.find(t=>t.id===id);
+  if(!task)return;
+  if(task.ai_run_started||['For approval','Completed'].includes(task.status)){
+    msg('This task is locked after AI execution or completion');return;
+  }
+  newOfficeTask();
+  editingTaskId=id;
+  const form=$('newTaskForm');
+  for(const field of ['title','description','assignee','priority','recurrence']){
+    form.elements[field].value=task[field]??(field==='recurrence'?'None':'');
+  }
+  form.elements.due_date.value=(task.due_date||'').slice(0,10);
+  // Monthly Director workplans are recurring via their dedicated templates.
+  form.elements.recurrence.disabled=Boolean(task.is_monthly);
+  $('taskFormHeading').textContent='Edit task before Run AI';
+  $('taskSave').textContent='Save task changes';
+  toggleDueRequirement();
+}
+function renderOfficeTasks(tasks,staff){
+  const box=$('taskList');
+  const urgency={Urgent:0,High:1,Normal:2,Low:3};
+  const sorted=[...tasks].sort((a,b)=>(urgency[a.priority]??2)-(urgency[b.priority]??2)
+      ||(a.due_date||'9999').localeCompare(b.due_date||'9999')
+      ||(b.created||0)-(a.created||0));
+  const today=malaysiaDate(),tomorrow=malaysiaDate(1);
+  box.innerHTML=sorted.map(t=>{
+    const canEdit=!t.ai_run_started&&!['For approval','Completed'].includes(t.status);
+    const due=(t.due_date||'').slice(0,10);
+    const label=due?(due<today?'Overdue · '+due:due===tomorrow?'Due tomorrow':due===today?'Due today':'Due '+due):'No deadline';
+    const statusOptions=['To do','In progress','For approval','Completed'].map(st=>'<option value="'+esc(st)+'" '+(t.status===st?'selected':'')+'>'+esc(st)+'</option>').join('');
+    const description=t.description?'<p>'+esc(t.description.slice(0,400))+(t.description.length>400?'…':'')+'</p>':'<p class="muted">No description yet — edit task before running AI.</p>';
+    return '<div class="task-entry"><div class="toolbar"><div style="flex:1;min-width:180px"><strong>'+esc(t.title)+'</strong>'+description+
+     '<div class="task-meta"><span class="'+(t.priority==='Urgent'?'urgent':'')+'">'+esc(t.priority||'Normal')+'</span>'+
+      '<span class="'+(due<today?'overdue':'')+'">'+esc(label)+'</span>'+
+      '<span>'+esc(t.recurrence&&t.recurrence!=='None'?'Repeats: '+t.recurrence:'One-time')+'</span>'+
+      '<span>'+esc(staff.find(x=>x.id===t.assignee)?.name||'Unassigned')+'</span></div></div>'+
+      '<div class="task-actions">'+
+      (canEdit?'<button class="secondary" onclick="editOfficeTask(\''+esc(t.id)+'\')">Edit</button>':'')+
+      '<select style="max-width:155px" aria-label="Task status" onchange="updateTask(\''+esc(t.id)+'\',this.value)">'+statusOptions+'</select>'+
+      (canEdit&&t.assignee&&t.description?.trim()?'<button class="primary" onclick="runStaffTask(\''+esc(t.id)+'\',this)">Run AI</button>':'')+
+      '</div></div></div>';
+  }).join('')||'<p>No tasks yet. Create your first assignment.</p>';
+}
+$('taskRecurrence').addEventListener('change',toggleDueRequirement);
+$('newTaskForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const form=e.target,button=$('taskSave'),id=editingTaskId;
+  const body=Object.fromEntries(new FormData(form));
+  if(form.elements.recurrence.disabled)body.recurrence='Monthly';
+  body.description=(body.description||'').trim();
+  body.due_date=body.due_date||null;
+  if(!body.description){msg('Please add task description for your AI staff');return}
+  if(body.recurrence!=='None'&&!body.due_date){msg('Recurring tasks need a due date');return}
+  button.disabled=true;
+  try{
+    await api(id?'tasks/'+encodeURIComponent(id):'tasks',
+      {method:id?'PUT':'POST',body:JSON.stringify(body)});
+    cancelOfficeTask();
+    await refresh();
+    if($('monthlyPeriod'))await loadMonthly();
+    msg(id?'Task configuration updated':'AI task created');
+  }catch(err){msg(err.message)}
+  finally{button.disabled=false}
+});
+
 function render(){const s=state.staff,t=state.tasks,l=state.lessons;$('kStaff').textContent=s.length;$('kOpen').textContent=t.filter(x=>x.status!=='Completed').length;$('kApproval').textContent=t.filter(x=>x.status==='For approval').length;$('kLessons').textContent=l.length;$('hqStaff').innerHTML=s.length?s.slice(0,6).map(x=>person(x,false)).join(''):'<p>No staff hired yet.</p>';$('staffList').innerHTML=s.length?s.map(x=>person(x,true)).join(''):'<div class="notice">Your team is empty. Hire your first staff member.</div>';
 const taskrow=x=>`<div class="item"><div><strong>${esc(x.title)}</strong><small>${esc(s.find(z=>z.id===x.assignee)?.name||'Unassigned')} · ${esc(x.status)}</small></div></div>`;$('hqTasks').innerHTML=t.length?t.slice(0,5).map(taskrow).join(''):'<p>No tasks yet.</p>';
-$('assignee').innerHTML='<option value="">Unassigned</option>'+s.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('');$('taskList').innerHTML=t.length?t.map(x=>`<div class="item"><div><strong>${esc(x.title)}</strong><small>${esc(s.find(z=>z.id===x.assignee)?.name||'Unassigned')}</small></div><select style="max-width:180px" onchange="updateTask('${esc(x.id)}',this.value)">${['To do','In progress','For approval','Completed'].map(st=>`<option ${x.status===st?'selected':''}>${st}</option>`).join('')}</select>${x.assignee?'<button class="secondary" style="margin-left:8px" onclick="runStaffTask(\''+esc(x.id)+'\',this)">Run AI</button>':''}</div>`).join(''):'<p>No tasks created yet.</p>';
+$('assignee').innerHTML='<option value="">Unassigned</option>'+s.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('');
+renderOfficeTasks(t,s);
 $('deskList').innerHTML=s.length?s.map(x=>{const active=t.filter(y=>y.assignee===x.id&&y.status!=='Completed');return `<div class="desk">${staffPortrait(x)}<strong>${esc(x.name)}</strong><div class="muted">${esc(x.role)}</div><div class="surface"></div><span class="tag">${active.length?active.length+' open task(s)':'No active tasks'}</span></div>`}).join(''):'<div class="notice">Hire AI staff to create workstations.</div>';
 renderOrganization();$('lessonList').innerHTML=l.length?l.map(x=>`<div class="item"><div><strong>${esc(x.title)}</strong><small>${esc(x.kind)} · ${esc(x.assigned||'Not assigned')} · ${esc(x.status)}</small></div></div>`).join(''):'<p>No learning sources registered.</p>';$('auditList').innerHTML=state.audit.slice(0,12).map(x=>`<div class="item"><strong>${esc(x.action)}</strong><small>${esc(x.detail)}</small></div>`).join('')||'<p>No activity recorded.</p>'}
 function addMeita(role,content){const d=document.createElement('div');d.style.cssText='padding:12px;margin:9px 0;border-radius:10px;background:'+(role==='user'?'#eef3f7':'#f8fafb');const b=document.createElement('strong');b.textContent=role==='user'?'CEO':'Meita';d.appendChild(b);const p=document.createElement('div');p.textContent=content;d.appendChild(p);$('meitaChat').appendChild(d);$('meitaChat').scrollTop=$('meitaChat').scrollHeight}
@@ -312,6 +408,6 @@ $('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if
 $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').textContent='';try{await api('login',{method:'POST',body:JSON.stringify({password:$('password').value})});$('password').value='';await enter()}catch(err){$('loginError').textContent=err.message}});
 async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await loadMeita();await loadMemory();await loadRuns();await loadDelegations();await loadDirectorPlans()}catch(e){msg(e.message)}}
 $('logout').onclick=async()=>{await api('logout',{method:'POST'});location.reload()};
-for(const [form,path] of [['newTaskForm','tasks'],['newLessonForm','lessons']])$(form).addEventListener('submit',async e=>{e.preventDefault();const body=Object.fromEntries(new FormData(e.target));try{await api(path,{method:'POST',body:JSON.stringify(body)});e.target.reset();e.target.closest('.card').classList.add('hidden');await refresh();msg('Saved successfully')}catch(err){msg(err.message)}});
+for(const [form,path] of [['newLessonForm','lessons']])$(form).addEventListener('submit',async e=>{e.preventDefault();const body=Object.fromEntries(new FormData(e.target));try{await api(path,{method:'POST',body:JSON.stringify(body)});e.target.reset();e.target.closest('.card').classList.add('hidden');await refresh();msg('Saved successfully')}catch(err){msg(err.message)}});
 $('integrationList').innerHTML=['Instagram / Facebook','TikTok / YouTube','WhatsApp Business','Gmail / Outlook','Canva / Adobe','CapCut / Video tools','Finance / Banking'].map(n=>`<div class="person"><strong>${esc(n)}</strong><span class="tag">Not connected</span><p class="muted">Requires supported integration and CEO authorization.</p></div>`).join('');$('today').textContent=new Date().toLocaleDateString('en-MY',{weekday:'long',day:'numeric',month:'long',year:'numeric'});api('me').then(x=>{if(x.authenticated)enter()}).catch(()=>{});
 </script></body></html>
