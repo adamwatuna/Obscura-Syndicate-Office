@@ -8,6 +8,7 @@ import urllib.request
 import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
+from backend import ai_provider
 from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
@@ -255,16 +256,7 @@ def _openai_plan(director,staff,brief):
                  {"CEO_requested_department_brief":brief,"direct_reports":roster},
                  ensure_ascii=False)}],
              "max_output_tokens":1800,"store":False}
-    request=urllib.request.Request("https://api.openai.com/v1/responses",
-        data=json.dumps(payload).encode(),headers={
-            "Authorization":"Bearer "+key,"Content-Type":"application/json"},method="POST")
-    try:
-        with urllib.request.urlopen(request,timeout=55) as response:
-            data=json.load(response)
-    except urllib.error.HTTPError as exc:
-        raise HTTPException(502,"Director planning failed (HTTP "+str(exc.code)+")")
-    except Exception:
-        raise HTTPException(502,"Director planning request failed")
+    data=ai_provider.response(payload,operation="director_planning",timeout=78)
     return _extract_plan(data,staff)
 
 def _add_jobs(db,plan_id,director_id,jobs):

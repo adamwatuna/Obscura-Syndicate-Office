@@ -11,6 +11,7 @@ import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from backend import ai_provider
 from fastapi import HTTPException
 from pydantic import BaseModel, Field
 from psycopg.types.json import Jsonb
@@ -188,17 +189,8 @@ def _ask(instructions,input_data,max_tokens=750):
              "instructions":instructions,
              "input":[{"role":"user","content":json.dumps(input_data,ensure_ascii=False)}],
              "max_output_tokens":max_tokens,"store":False}
-    req=urllib.request.Request("https://api.openai.com/v1/responses",
-        data=json.dumps(payload).encode(),headers={
-            "Authorization":"Bearer "+key,"Content-Type":"application/json"},
-        method="POST")
-    try:
-        with urllib.request.urlopen(req,timeout=35) as res:
-            return _ai_text(json.load(res))
-    except urllib.error.HTTPError as exc:
-        raise HTTPException(502,"AI team discussion failed (HTTP "+str(exc.code)+")")
-    except (urllib.error.URLError,TimeoutError,ValueError):
-        raise HTTPException(502,"AI team discussion service unavailable")
+    data=ai_provider.response(payload,operation="roundtable",timeout=78)
+    return _ai_text(data)
 
 def _speak(member,topic,prior,followup):
     prompt=(

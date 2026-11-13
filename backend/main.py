@@ -1,8 +1,9 @@
 import os, json, hmac, hashlib, secrets, time, urllib.request, urllib.error, asyncio, logging
 from contextlib import asynccontextmanager, suppress
+from urllib.parse import urlsplit
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Depends, Request, UploadFile, File
-from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse, Response
+from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse, Response, JSONResponse
 from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 from psycopg.types.json import Jsonb
@@ -22,6 +23,7 @@ from backend import social, social_publish
 from backend import references as office_references
 from backend import academy as office_academy
 from backend import finance_planning
+from backend import ai_provider
 
 ROOT=Path(__file__).resolve().parent.parent
 PASSWORD=os.environ.get('CEO_PASSWORD')
@@ -50,6 +52,42 @@ async def lifespan(app):
 
 app=FastAPI(title='AI Private Office',docs_url=None,redoc_url=None,lifespan=lifespan)
 app.add_middleware(SessionMiddleware,secret_key=SECRET,https_only=os.environ.get('COOKIE_SECURE','true').lower()=='true',same_site='lax',max_age=28800)
+
+
+@app.middleware("http")
+async def browser_security(request:Request,call_next):
+    # Protect same-site CEO cookies from cross-origin browser writes.
+    if request.url.path.startswith("/api/") and request.method in ("POST","PUT","PATCH","DELETE"):
+        if request.headers.get("sec-fetch-site","").lower()=="cross-site":
+            return JSONResponse({"detail":"Cross-site API requests are not permitted"},status_code=403)
+        origin=request.headers.get("origin")
+        if origin:
+            parsed=urlsplit(origin)
+            host=request.headers.get("host","").lower()
+            if parsed.scheme not in ("https","http") or parsed.netloc.lower()!=host:
+                return JSONResponse({"detail":"Request origin is not permitted"},status_code=403)
+    response=await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options","nosniff")
+    response.headers.setdefault("Referrer-Policy","strict-origin-when-cross-origin")
+    response.headers.setdefault("X-Frame-Options","DENY")
+    response.headers.setdefault("Content-Security-Policy","frame-ancestors 'none'")
+    response.headers.setdefault("Permissions-Policy","camera=(),microphone=(),geolocation=()")
+    if request.url.path.startswith("/api/"):
+        response.headers.setdefault("Cache-Control","no-store")
+    return response
+
+@app.get('/api/health/live')
+def health_live():
+    return {"status":"ok"}
+
+@app.get('/api/health/ready')
+def health_ready():
+    try:
+        with connect() as db:
+            db.execute("SELECT 1").fetchone()
+    except Exception:
+        raise HTTPException(503,"Database is not ready")
+    return {"status":"ready","database":"connected"}
 
 class Login(BaseModel):password:str
 class SocialGrant(BaseModel):
@@ -101,8 +139,33 @@ def guard(req:Request):
 def audit(db,action,detail):db.execute('INSERT INTO audit(action,detail,created) VALUES(%s,%s,%s)',(action,detail,int(time.time())))
 @app.post('/api/login')
 def login(body:Login,req:Request):
-    if not hmac.compare_digest(body.password.encode(),PASSWORD.encode()):
-        time.sleep(.35)
+    # Store only an HMAC-derived client fingerprint, never an IP or raw password.
+    client=(req.client.host if req.client else "unknown")
+    fingerprint=hmac.new(SECRET.encode(),client.encode(),hashlib.sha256).hexdigest()
+    with connect() as db:
+        office_db.ensure_login_security(db)
+        record=db.execute("""SELECT failures,blocked_until>NOW() AS blocked
+            FROM ceo_login_attempts WHERE fingerprint=%s FOR UPDATE""",
+            (fingerprint,)).fetchone()
+        if record and record["blocked"]:
+            raise HTTPException(429,"Too many sign-in attempts. Try again in 15 minutes.")
+        if not hmac.compare_digest(body.password.encode(),PASSWORD.encode()):
+            db.execute("""INSERT INTO ceo_login_attempts(fingerprint,failures,last_attempt,blocked_until)
+                VALUES (%s,1,NOW(),NULL)
+                ON CONFLICT(fingerprint) DO UPDATE SET
+                failures=CASE WHEN ceo_login_attempts.last_attempt<NOW()-INTERVAL '15 minutes'
+                              THEN 1 ELSE ceo_login_attempts.failures+1 END,
+                last_attempt=NOW(),
+                blocked_until=CASE
+                    WHEN ceo_login_attempts.failures>=11
+                    AND ceo_login_attempts.last_attempt>=NOW()-INTERVAL '15 minutes'
+                    THEN NOW()+INTERVAL '15 minutes' ELSE NULL END""",(fingerprint,))
+            # Do not return a 401 inside the transaction: it would roll back the attempt.
+            valid=False
+        else:
+            db.execute("DELETE FROM ceo_login_attempts WHERE fingerprint=%s",(fingerprint,))
+            valid=True
+    if not valid:
         raise HTTPException(401,'Invalid credentials')
     req.session.clear();req.session['authorized']=True
     return {'ok':True}
@@ -272,6 +335,48 @@ def create_finance_budget_draft(body:finance_planning.BudgetDraft):
         result=finance_planning.save(db,body)
         audit(db,'finance.budget.draft_created',
               f'{result["id"]}: scenario={body.scenario} period={body.period}')
+    return result
+
+
+@app.get('/api/ai/diagnostics',dependencies=[Depends(guard)])
+def ai_diagnostics():
+    with connect() as db:
+        status=meita_autowork.provider_status(db)
+        queue=db.execute("""SELECT status,COUNT(*) AS total FROM coo_jobs
+            GROUP BY status""").fetchall()
+        failed=db.execute("""SELECT id,title,status,failure_code,failure_message,
+            attempts,last_failed_at FROM coo_jobs
+            WHERE failure_code IS NOT NULL ORDER BY last_failed_at DESC LIMIT 20""").fetchall()
+    return {"model":os.getenv("OPENAI_MODEL","gpt-5.4"),
+            "engine_enabled":os.getenv("AI_ENGINE_ENABLED","false").lower()=="true",
+            "key_present":bool(os.getenv("OPENAI_API_KEY","").strip()),
+            "worker_enabled":os.getenv("MEITA_AUTO_WORKER_ENABLED","true").lower()=="true",
+            "provider":status,"job_counts":{x["status"]:x["total"] for x in queue},
+            "recent_failures":[dict(x) for x in failed]}
+
+@app.get('/api/ai/diagnostics/connection',dependencies=[Depends(guard)])
+def ai_diagnostics_connection():
+    """Provider metadata verification without a billable AI generation."""
+    return ai_provider.check_model()
+
+@app.post('/api/ai/diagnostics/test',dependencies=[Depends(guard)])
+def ai_diagnostics_test():
+    """CEO-initiated minimal generation; uses a small number of OpenAI API tokens."""
+    payload={"model":os.getenv("OPENAI_MODEL","gpt-5.4"),
+             "input":"Reply with the single word READY.",
+             "max_output_tokens":125,"store":False}
+    result=ai_provider.response(payload,operation="ceo_diagnostic_test",timeout=45)
+    result_text=ai_provider.text_output(result)
+    if not result_text:
+        raise HTTPException(502,"Provider responded but no text was generated. Check model output limits.")
+    return {"ok":True,"model":payload["model"],
+            "status":"AI generation succeeded; usage may incur provider charges"}
+
+@app.post('/api/ai/diagnostics/resume',dependencies=[Depends(guard)])
+def ai_diagnostics_resume():
+    with connect() as db:
+        result=meita_autowork.resume_provider(db)
+        audit(db,'ai.queue.resumed','CEO resumed queued internal AI work')
     return result
 
 @app.get('/api/capabilities',dependencies=[Depends(guard)])
@@ -497,6 +602,10 @@ def download_meita_powerpoint(ident:str):
 def meita_retry_internal_job(ident:str):
     with connect() as db:
         meita_autowork.init(db)
+        control=meita_autowork.provider_status(db)
+        if control["manual_resume_required"]:
+            raise HTTPException(409,
+                "AI queue is paused due to provider configuration or quota. Check AI Diagnostics, then resume.")
         job=db.execute("""SELECT j.id,j.status,j.task_id,j.staff
             FROM coo_jobs j WHERE j.id=%s FOR UPDATE""",(ident,)).fetchone()
         if not job:raise HTTPException(404,"Meita task not found")

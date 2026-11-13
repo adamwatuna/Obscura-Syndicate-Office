@@ -8,6 +8,7 @@ import urllib.request
 import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
+from backend import ai_provider
 from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
@@ -122,17 +123,7 @@ def prepare_plan(brief, staff, memories=None, max_jobs=9,
         payload['input'][0]['content'] = [
             {'type':'input_text','text':payload['input'][0]['content']},
             *reference_images[:4]]
-    request = urllib.request.Request("https://api.openai.com/v1/responses",
-        data=json.dumps(payload).encode(), headers={
-            "Authorization": "Bearer " + key, "Content-Type": "application/json"},
-        method="POST")
-    try:
-        with urllib.request.urlopen(request, timeout=55) as response:
-            data = json.load(response)
-    except urllib.error.HTTPError as exc:
-        raise HTTPException(502, "Meita plan generation failed (HTTP " + str(exc.code) + ")")
-    except Exception:
-        raise HTTPException(502, "Unable to reach OpenAI for delegation plan")
+    data=ai_provider.response(payload,operation="meita_delegation",timeout=78)
     return parse_output(data, staff, max_jobs=max_jobs)
 
 

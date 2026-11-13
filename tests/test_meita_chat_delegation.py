@@ -60,11 +60,11 @@ class MeitaChatDelegationTests(unittest.TestCase):
         with patch.dict(os.environ,{
             "AI_ENGINE_ENABLED":"true","OPENAI_API_KEY":"fake-chat-test-key"}):
             with patch("backend.main.office_memory.recall",return_value=[]):
-                with patch("backend.meita_chat_delegate.urllib.request.urlopen",
-                    return_value=simulated_response(mode,reply,brief)) as openai:
+                with patch("backend.meita_chat_delegate.ai_provider.response",
+                    return_value=json.loads(simulated_response(mode,reply,brief).getvalue())) as openai:
                     result=self.client.post("/api/meita/chat",json={"message":text})
         self.assertEqual(openai.call_count,1)
-        request=json.loads(openai.call_args.args[0].data)
+        request=openai.call_args.args[0]
         self.assertEqual(request["text"]["format"]["type"],"json_schema")
         self.assertEqual(request["store"],False)
         return result

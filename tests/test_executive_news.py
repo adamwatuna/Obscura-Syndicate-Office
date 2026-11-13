@@ -87,12 +87,12 @@ class NewsBriefingTests(unittest.TestCase):
     def test_web_search_briefing_appears_in_hq_and_can_be_approved(self):
         ident,_=self.make_task()
         request_payloads=[]
-        def fake_urlopen(request,timeout=None):
-            request_payloads.append(json.loads(request.data.decode()))
-            return io.BytesIO(json.dumps(EXAMPLE_RESULT).encode())
+        def fake_provider(payload,**kwargs):
+            request_payloads.append(payload)
+            return EXAMPLE_RESULT
         with patch.dict(os.environ,{"AI_ENGINE_ENABLED":"true",
                                     "OPENAI_API_KEY":"fake-ci-key"}):
-            with patch("backend.workforce.urllib.request.urlopen",side_effect=fake_urlopen):
+            with patch("backend.workforce.ai_provider.response",side_effect=fake_provider):
                 run=self.client.post("/api/workforce/run/"+ident)
         self.assertEqual(run.status_code,200,run.text)
         self.runs.append(run.json()["id"])
@@ -118,8 +118,8 @@ class NewsBriefingTests(unittest.TestCase):
             "content":[{"type":"output_text","text":"Unverified news claimed here."}]}]}
         with patch.dict(os.environ,{"AI_ENGINE_ENABLED":"true",
                                     "OPENAI_API_KEY":"fake-ci-key"}):
-            with patch("backend.workforce.urllib.request.urlopen",
-                       return_value=io.BytesIO(json.dumps(unavailable).encode())):
+            with patch("backend.workforce.ai_provider.response",
+                       return_value=unavailable):
                 run=self.client.post("/api/workforce/run/"+task_id)
         self.assertEqual(run.status_code,502,run.text)
         with office_db.connect() as db:
