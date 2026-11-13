@@ -62,13 +62,13 @@ def update(db,ident,caption,media_url=None):
     if not post:raise HTTPException(404,"Social draft not found")
     if post["status"] not in ("Pending approval","Ready"):
         raise HTTPException(409,"Only unpublished drafts can be edited")
-    _authorization(db,post["staff_id"],post["account_id"])
+    account=_authorization(db,post["staff_id"],post["account_id"])
     if not isinstance(caption,str) or not 1<=len(caption.strip())<=2200:
         raise HTTPException(400,"Post text must be 1–2200 characters")
     media=_clean_media(media_url)
     if post["platform"]=="instagram" and not media:
         raise HTTPException(400,"Instagram requires a public HTTPS image URL")
-    next_status="Ready" if post["approval_mode"]=="direct_publish" else "Pending approval"
+    next_status="Ready" if account["permission"]=="direct_publish" else "Pending approval"
     db.execute("""UPDATE social_posts SET caption=%s,media_url=%s,
         status=%s,approved_at=NULL,updated_at=NOW() WHERE id=%s""",
         (caption.strip(),media,next_status,ident))
