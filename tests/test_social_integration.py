@@ -120,8 +120,9 @@ class SocialIntegrationTests(unittest.TestCase):
         edited=self.client.put(f"/api/social/posts/{ident}",
             json={"caption":"Edited and pending renewed approval"})
         self.assertEqual(edited.status_code,200,edited.text)
-        self.assertEqual(edited.json()["status"],"Ready") if False else None
+        self.assertEqual(edited.json()["status"],"Pending approval")
         self.assertEqual(self.client.post(f"/api/social/posts/{ident}/publish").status_code,409)
+        self.assertEqual(self.client.post(f"/api/social/posts/{ident}/approve").status_code,200)
         self.assertEqual(self.grant('off').status_code,200)
         self.assertEqual(self.client.post(f"/api/social/posts/{ident}/publish").status_code,403)
 
