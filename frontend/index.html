@@ -118,7 +118,33 @@
 <p class="muted">Add a specific state, city or region to the task description only when needed. Changes to templates apply to future assignments.</p>
 <div class="task-actions"><button class="primary" id="mtSave" type="submit">Save template</button><button class="secondary" type="button" onclick="cancelMonthlyTemplate()">Cancel</button></div>
 </form></div></section>
-<section class="view" id="academy"><div class="toolbar"><div><h2>Learning Academy</h2><p>Register learning material and assign it to staff.</p></div><button class="primary" onclick="toggle('lessonForm')">+ Add learning source</button></div><div class="notice">YouTube and website links are saved as references. Transcription, ingestion, PDF processing and AI learning are not yet implemented. No staff receives automatic knowledge access.</div><div id="lessonForm" class="card hidden"><form id="newLessonForm"><div class="formgrid"><div><label>Title</label><input name="title" required></div><div><label>Source type</label><select name="kind"><option>YouTube link</option><option>Website link</option><option>Note</option></select></div><div class="wide"><label>URL or note</label><textarea name="source" required></textarea></div><div class="wide"><label>Assigned staff / department (reference only)</label><input name="assigned" placeholder="e.g. Creative"></div></div><div style="height:15px"></div><button class="primary">Register source</button></form></div><div class="card" style="margin-top:20px" id="lessonList"></div></section>
+<section class="view" id="academy">
+ <div class="toolbar">
+  <div><h2>Learning Academy · Shared Knowledge Library</h2>
+   <p>Meita references, CEO visions and internal knowledge for the AI team — all connected.</p></div>
+  <div class="task-actions"><button class="secondary" type="button" onclick="loadAcademyLibrary()">Refresh library</button>
+   <button class="primary" onclick="show('meita');$('meitaReferenceInput').click()">＋ Upload new reference</button>
+   <button class="secondary" onclick="toggle('lessonForm')">＋ Add note or link</button></div>
+ </div>
+ <div class="notice">Files and website links shared with Meita automatically appear here. Delegated project briefs are indexed as CEO Vision. Relevant, permitted material is supplied to AI Staff during task execution, not used for permanent model training. YouTube links are only saved unless separately processed.</div>
+ <div class="card" style="margin-top:20px">
+  <div class="toolbar"><div><h3>Reference & Vision Library</h3><p class="muted">Search, annotate, scope and reuse existing CEO knowledge.</p></div><span class="tag" id="academyLibraryCount">Loading library</span></div>
+  <div class="formgrid">
+   <div><label for="academySearch">Search knowledge</label><input id="academySearch" placeholder="e.g. Bollywood, brand direction, film moodboard"></div>
+   <div><label for="academyKind">Knowledge type</label><select id="academyKind"><option value="all">All knowledge</option><option value="reference">Uploaded / linked references</option><option value="project">Meita project visions</option><option value="lesson">Notes and saved sources</option></select></div>
+  </div>
+  <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:500"><input id="academyShowArchived" type="checkbox" style="width:auto;margin:0"> Include archived references</label>
+  <div id="academyLibrary"><p class="muted">Loading knowledge library...</p></div>
+ </div>
+ <div id="lessonForm" class="card hidden" style="margin-top:20px"><form id="newLessonForm">
+  <div class="formgrid"><div><label>Title</label><input name="title" required></div>
+  <div><label>Source type</label><select name="kind"><option>YouTube link</option><option>Website link</option><option>Note</option></select></div>
+  <div class="wide"><label>URL or note</label><textarea name="source" required></textarea></div>
+  <div class="wide"><label>Assigned staff / department (reference only)</label><input name="assigned" placeholder="e.g. Creative (or leave blank for all)"></div></div>
+  <div style="height:15px"></div><button class="primary">Register learning source</button>
+ </form></div>
+ <div class="card" style="margin-top:20px"><h3>Previously registered learning sources</h3><div id="lessonList"></div></div>
+</section>
 <section class="view" id="research"><h2>Research Intelligence</h2><div class="card"><h3>Research workspace</h3><p>Planned: verified-source research, OSINT collection, citations, evidence review and reports.</p><span class="tag">Not connected</span></div></section>
 <section class="view" id="finance"><h2>Finance & Internal Audit</h2><div class="card"><h3>Financial operations</h3><p>Planned: ledgers, reconciliations, expense review, reporting and audit evidence.</p><span class="tag">Not connected</span></div></section>
 <section class="view" id="integrations">
@@ -165,7 +191,7 @@
 <section class="view" id="governance"><h2>Security & Governance</h2><div class="card"><h3>Security status</h3><p>Password-protected session is active. Multi-factor authentication, multi-user roles, account recovery and emergency stop are planned and must be implemented before production use.</p><h3>Recent audit activity</h3><div id="auditList"></div></div></section>
 </main></div><div id="toast"></div><script>
 const EXECUTIVE_ATLAS = "data:image/webp;base64,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";
-const $=id=>document.getElementById(id);let state={staff:[],tasks:[],lessons:[],audit:[]};let liveActivity=[];const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=id=>document.getElementById(id);let state={staff:[],tasks:[],lessons:[],audit:[]};let liveActivity=[];let academyTotal=null;let academyLibraryItems=[];const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function api(path,options={}){const r=await fetch('/api/'+path,{credentials:'same-origin',headers:{'Content-Type':'application/json'},...options});if(r.status===401){$('app').classList.add('hidden');$('login').classList.remove('hidden');throw Error('Session expired. Please sign in.')}if(!r.ok){let j=await r.json().catch(()=>({}));throw Error(j.detail||'Request failed')}return r.json()}
 function msg(s){$('toast').textContent=s;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',3000)}
 function toggle(id){$(id).classList.toggle('hidden')}
@@ -386,7 +412,7 @@ $('newTaskForm').addEventListener('submit',async e=>{
   finally{button.disabled=false}
 });
 
-function render(){const s=state.staff,t=state.tasks,l=state.lessons;$('kStaff').textContent=s.length;$('kOpen').textContent=t.filter(x=>x.status!=='Completed').length;$('kApproval').textContent=t.filter(x=>x.status==='For approval').length;$('kLessons').textContent=l.length;$('hqStaff').innerHTML=s.length?s.slice(0,6).map(x=>person(x,false)).join(''):'<p>No staff hired yet.</p>';$('staffList').innerHTML=s.length?s.map(x=>person(x,true)).join(''):'<div class="notice">Your team is empty. Hire your first staff member.</div>';
+function render(){const s=state.staff,t=state.tasks,l=state.lessons;$('kStaff').textContent=s.length;$('kOpen').textContent=t.filter(x=>x.status!=='Completed').length;$('kApproval').textContent=t.filter(x=>x.status==='For approval').length;$('kLessons').textContent=academyTotal===null?l.length:academyTotal;$('hqStaff').innerHTML=s.length?s.slice(0,6).map(x=>person(x,false)).join(''):'<p>No staff hired yet.</p>';$('staffList').innerHTML=s.length?s.map(x=>person(x,true)).join(''):'<div class="notice">Your team is empty. Hire your first staff member.</div>';
 const taskrow=x=>`<div class="item"><div><strong>${esc(x.title)}</strong><small>${esc(s.find(z=>z.id===x.assignee)?.name||'Unassigned')} · ${esc(x.status)}</small></div></div>`;$('hqTasks').innerHTML=t.length?t.slice(0,5).map(taskrow).join(''):'<p>No tasks yet.</p>';
 $('assignee').innerHTML='<option value="">Unassigned</option>'+s.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('');
 renderOfficeTasks(t,s);
@@ -401,8 +427,8 @@ $('deskList').innerHTML=s.length?s.map(x=>{
  const detail=running?running.title:queued?queued+' queued job(s)':blocked?blocked+' blocked job(s)':review?review+' delivered report(s)':manual.filter(y=>y.status==='To do').length+' assigned task(s)';
  return `<div class="desk">${staffPortrait(x)}<strong>${esc(x.name)}</strong><div class="muted">${esc(x.role)}</div><div class="surface"></div><span class="tag">${esc(status)}</span><p class="muted">${esc(detail)}</p></div>`;
  }).join(''):'<div class="notice">Hire AI staff to create workstations.</div>';
-renderOrganization();$('lessonList').innerHTML=l.length?l.map(x=>`<div class="item"><div><strong>${esc(x.title)}</strong><small>${esc(x.kind)} · ${esc(x.assigned||'Not assigned')} · ${esc(x.status)}</small></div></div>`).join(''):'<p>No learning sources registered.</p>';$('auditList').innerHTML=state.audit.slice(0,12).map(x=>`<div class="item"><strong>${esc(x.action)}</strong><small>${esc(x.detail)}</small></div>`).join('')||'<p>No activity recorded.</p>'}
-function addMeita(role,content,proposal=null){
+renderOrganization();$('lessonList').innerHTML=l.filter(x=>x.kind!=='CEO Vision').length?l.filter(x=>x.kind!=='CEO Vision').map(x=>`<div class="item"><div><strong>${esc(x.title)}</strong><small>${esc(x.kind)} · ${esc(x.assigned||'Not assigned')} · ${esc(x.status)}</small></div></div>`).join(''):'<p>No learning sources registered.</p>';$('auditList').innerHTML=state.audit.slice(0,12).map(x=>`<div class="item"><strong>${esc(x.action)}</strong><small>${esc(x.detail)}</small></div>`).join('')||'<p>No activity recorded.</p>'}
+function addMeita(role,content,proposal=null,messageId=null){
   const container=$('meitaChat');
   const bubble=document.createElement('div');
   bubble.style.cssText='padding:12px;margin:9px 0;border-radius:10px;background:'+
@@ -410,6 +436,22 @@ function addMeita(role,content,proposal=null){
   const heading=document.createElement('strong');
   heading.textContent=role==='user'?'CEO':'Meita';
   bubble.append(heading);
+  if(role==='user'&&messageId){
+   const saveVision=document.createElement('button');
+   saveVision.className='secondary';saveVision.type='button';
+   saveVision.style.cssText='float:right;font-size:11px;padding:5px 9px';
+   saveVision.textContent='Save vision to Learning Academy';
+   saveVision.onclick=async()=>{
+    saveVision.disabled=true;
+    try{
+     const result=await api('academy/visions/message/'+encodeURIComponent(messageId),{method:'POST'});
+     saveVision.textContent='Vision saved to Academy';
+     await loadAcademyLibrary();
+     msg(result.created?'CEO vision saved in staff library':'Vision already saved');
+    }catch(err){saveVision.disabled=false;msg(err.message)}
+   };
+   bubble.append(saveVision);
+  }
   const message=document.createElement('div');message.textContent=content;
   message.style.whiteSpace='pre-wrap';bubble.append(message);
   if(proposal&&proposal.id&&proposal.plan&&Array.isArray(proposal.plan.jobs)){
@@ -710,10 +752,150 @@ async function loadMeita(){
   try{
     const r=await api('meita/history');
     $('meitaChat').textContent='';
-    r.messages.forEach(m=>{addMeita(m.role,m.content,m.proposal||null);if(m.reference_ids?.length)$('meitaChat').lastElementChild.append(meitaNode('p',m.reference_ids.length+' attached reference(s)','muted'));});
+    r.messages.forEach(m=>{addMeita(m.role,m.content,m.proposal||null,m.id);if(m.reference_ids?.length)$('meitaChat').lastElementChild.append(meitaNode('p',m.reference_ids.length+' attached reference(s)','muted'));});
     if(!r.messages.length)addMeita('assistant','Hello CEO. Tell me what work to assign to our AI team.');
   }catch(e){msg(e.message)}
 }
+
+
+function academyNode(tag,value,cls){
+ const node=document.createElement(tag);if(value!==undefined)node.textContent=value;
+ if(cls)node.className=cls;return node;
+}
+function academyScopeOptions(selected){
+ const items=[{label:'All AI Staff',value:'all'}],seen=new Set();
+ for(const staff of state.staff){
+  if(!seen.has(staff.department)){
+   items.push({label:'Department · '+staff.department,value:'department:'+staff.department});
+   seen.add(staff.department);
+  }
+ }
+ for(const staff of state.staff)items.push({label:'Staff · '+staff.name,value:'staff:'+staff.id});
+ if(selected&&!items.some(x=>x.value===selected)){
+  items.push({label:'Previously assigned · '+selected,value:selected});
+ }
+ return items;
+}
+function academyEditReference(item,container){
+ container.textContent='';
+ const form=document.createElement('form');form.className='card';form.style.marginTop='12px';
+ const title=academyNode('input');title.value=item.title;title.maxLength=200;
+ const notes=academyNode('textarea');notes.rows=4;notes.maxLength=3000;
+ notes.placeholder='Describe preferred style, constraints, intended use and what staff must preserve';
+ notes.value=item.notes||'';
+ const tags=academyNode('input');tags.maxLength=240;tags.value=item.tags||'';
+ tags.placeholder='e.g. Bollywood, Safiyya, pastel, cinematography';
+ const scope=academyNode('select');
+ for(const opt of academyScopeOptions(item.scope)){
+  const element=academyNode('option',opt.label);element.value=opt.value;scope.append(element);
+ }
+ scope.value=item.scope||'all';
+ const fields=[['Library title',title],['CEO vision / guidance',notes],['Search keywords / tags',tags],['Available to',scope]];
+ for(const [name,control] of fields){const label=academyNode('label',name);form.append(label,control)}
+ const actions=academyNode('div',undefined,'task-actions');actions.style.marginTop='12px';
+ const save=academyNode('button','Save knowledge','primary');save.type='submit';
+ const cancel=academyNode('button','Cancel','secondary');cancel.type='button';cancel.onclick=()=>loadAcademyLibrary();
+ actions.append(save,cancel);form.append(actions);
+ form.onsubmit=async event=>{
+  event.preventDefault();save.disabled=true;
+  try{
+   await api('academy/references/'+encodeURIComponent(item.id),{method:'PATCH',
+    body:JSON.stringify({title:title.value.trim(),notes:notes.value.trim(),
+     tags:tags.value.trim(),scope:scope.value,archived:item.archived})});
+   msg('Knowledge saved for relevant AI Staff tasks');await loadAcademyLibrary();
+  }catch(err){msg(err.message);save.disabled=false}
+ };
+ container.append(form);
+}
+function academyAddToMeita(item){
+ if(pendingMeitaReferences.some(x=>x.id===item.id)){msg('Reference is already attached to Meita');show('meita');return}
+ if(pendingMeitaReferences.length>=6){msg('Remove a reference in Meita first (maximum six)');return}
+ pendingMeitaReferences.push({id:item.id,filename:item.filename||item.title,kind:item.kind});
+ renderMeitaReferences();show('meita');$('meitaInput').focus();
+ msg('Learning Academy reference attached to Meita');
+}
+function academyRenderItem(item){
+ const card=academyNode('div',undefined,'task-entry');
+ const heading=academyNode('strong',item.title);
+ card.append(heading);
+ const meta=academyNode('div',undefined,'task-meta');
+ for(const label of [item.kind,item.type==='reference'?(item.scope==='all'?'All AI Staff':item.scope):item.scope,
+                      item.linked_tasks?'Linked tasks: '+item.linked_tasks:null,item.archived?'Archived':null]){
+  if(label)meta.append(academyNode('span',label));
+ }
+ card.append(meta);
+ if(item.tags)card.append(academyNode('p','Tags · '+item.tags,'muted'));
+ if(item.notes)card.append(academyNode('p','CEO guidance · '+item.notes));
+ if(item.linked_vision)card.append(academyNode('p','Meita context · '+item.linked_vision,'muted'));
+ if(item.source_preview)card.append(academyNode('p',item.source_preview,'muted'));
+ const actions=academyNode('div',undefined,'task-actions');
+ actions.style.marginTop='10px';
+ if(item.type==='reference'){
+  if(item.kind==='image'||item.kind==='video'){
+   const image=document.createElement('img');
+   image.src='/api/meita/references/'+encodeURIComponent(item.id)+'/content?preview=true';
+   image.alt='Reference preview for '+item.title;image.loading='lazy';
+   image.style.cssText='max-width:220px;max-height:145px;display:block;object-fit:contain;border-radius:9px;margin:10px 0';
+   card.append(image);
+  }
+  const reuse=academyNode('button','Use with Meita','primary');reuse.type='button';
+  reuse.onclick=()=>academyAddToMeita(item);actions.append(reuse);
+  const edit=academyNode('button','Edit guidance / access','secondary');edit.type='button';
+  const editor=academyNode('div');edit.onclick=()=>academyEditReference(item,editor);actions.append(edit);
+  if(item.source_url){
+   const link=academyNode('a','Open original website');link.href=item.source_url;
+   link.target='_blank';link.rel='noopener noreferrer';link.style.marginRight='8px';actions.append(link);
+  }else{
+   const file=academyNode('a','Open original file');file.href='/api/meita/references/'+encodeURIComponent(item.id)+'/content';
+   file.style.marginRight='8px';file.target='_blank';actions.append(file);
+  }
+  const archived=academyNode('button',item.archived?'Restore':'Archive','secondary');
+  archived.type='button';archived.onclick=async()=>{
+   if(!confirm((item.archived?'Restore':'Archive')+' this reference? Existing task links will be preserved.'))return;
+   try{await api('academy/references/'+encodeURIComponent(item.id),{method:'PATCH',
+    body:JSON.stringify({title:item.title===item.filename?'':item.title,notes:item.notes||'',
+     tags:item.tags||'',scope:item.scope||'all',archived:!item.archived})});
+    await loadAcademyLibrary();msg('Library updated');
+   }catch(err){msg(err.message)}
+  };
+  actions.append(archived);card.append(actions,editor);
+ }else if(item.type==='project'){
+  const open=academyNode('button','Open Meita project','secondary');open.type='button';
+  open.onclick=async()=>{show('meita');await loadMeitaTaskHistory();await openMeitaDeck(item.id)};
+  actions.append(open);
+  card.append(actions);
+ }else if(item.type==='lesson'){
+  if(item.kind==='CEO Vision')card.append(academyNode('p','Saved from CEO conversation · available as relevant task guidance.','muted'));
+  else if(item.kind!=='Note')card.append(academyNode('p','Link registered only; no transcription or automatic ingestion claimed.','muted'));
+ }
+ return card;
+}
+async function loadAcademyLibrary(){
+ const root=$('academyLibrary');
+ if(!root)return;
+ try{
+  const search=$('academySearch').value.trim(),kind=$('academyKind').value;
+  const include=$('academyShowArchived').checked;
+  const response=await api('academy/library?search='+encodeURIComponent(search)+
+   '&kind='+encodeURIComponent(kind)+'&include_archived='+include);
+  academyLibraryItems=response.items||[];
+  if(!search&&kind==='all'&&!include){
+   academyTotal=response.total;
+   $('kLessons').textContent=academyTotal;
+  }
+  $('academyLibraryCount').textContent=academyLibraryItems.length+' knowledge items';
+  root.textContent='';
+  if(!academyLibraryItems.length)root.append(academyNode('p','No matching references or visions. Add a reference in Meita or register a source here.','muted'));
+  else for(const item of academyLibraryItems)root.append(academyRenderItem(item));
+ }catch(err){root.textContent='Library could not load: '+err.message}
+}
+let academySearchTimer;
+$('academySearch').oninput=()=>{
+ clearTimeout(academySearchTimer);
+ academySearchTimer=setTimeout(()=>loadAcademyLibrary(),280);
+};
+$('academyKind').onchange=()=>loadAcademyLibrary();
+$('academyShowArchived').onchange=()=>loadAcademyLibrary();
 
 let pendingMeitaReferences=[];
 function renderMeitaReferences(){
@@ -759,7 +941,7 @@ $('meitaForm').addEventListener('submit',async e=>{
     addMeita('assistant',r.reply,r.proposal||null);
     if(r.proposal)await loadDelegations();
     pendingMeitaReferences=[];renderMeitaReferences();
-    await Promise.all([refresh(),refreshLiveActivity(),loadMeitaTaskHistory()]);
+    await Promise.all([refresh(),refreshLiveActivity(),loadMeitaTaskHistory(),loadAcademyLibrary(),loadMeita()]);
   }catch(err){
     input.value=message;
     await loadMeita();
@@ -1309,9 +1491,9 @@ setInterval(async()=>{
 },15000);
 async function refresh(){state=await api('office');render();renderDirectorSelect()}
 async function updateTask(id,status){try{await api('tasks/'+id,{method:'PATCH',body:JSON.stringify({status})});await refresh();msg('Task updated')}catch(e){msg(e.message);await refresh()}}
-$('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){show(b.dataset.view);if(b.dataset.view==='hq')loadNewsBriefings();if(b.dataset.view==='integrations')loadSocial()}});
+$('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){show(b.dataset.view);if(b.dataset.view==='hq')loadNewsBriefings();if(b.dataset.view==='integrations')loadSocial();if(b.dataset.view==='academy')loadAcademyLibrary()}});
 $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').textContent='';try{await api('login',{method:'POST',body:JSON.stringify({password:$('password').value})});$('password').value='';await enter()}catch(err){$('loginError').textContent=err.message}});
-async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await refreshLiveActivity();await loadMeita();await loadMeitaConfiguration();await loadMeitaTaskHistory();await loadMeitaDeck();await loadMemory();await loadRuns();await loadDirectorPlans();$('monthlyPeriod').value=malaysiaPeriod();await loadMonthly();await loadNewsBriefings();await loadSocial();const oauthParams=new URLSearchParams(window.location.search);
+async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await refreshLiveActivity();await loadMeita();await loadMeitaConfiguration();await loadMeitaTaskHistory();await loadMeitaDeck();await loadMemory();await loadAcademyLibrary();await loadRuns();await loadDirectorPlans();$('monthlyPeriod').value=malaysiaPeriod();await loadMonthly();await loadNewsBriefings();await loadSocial();const oauthParams=new URLSearchParams(window.location.search);
 const integ=oauthParams.get('integration');
 if(integ){
   const reasons={
@@ -1330,7 +1512,7 @@ if(integ){
   window.history.replaceState(null,'',window.location.pathname);
 }}catch(e){msg(e.message)}}
 $('logout').onclick=async()=>{await api('logout',{method:'POST'});location.reload()};
-for(const [form,path] of [['newLessonForm','lessons']])$(form).addEventListener('submit',async e=>{e.preventDefault();const body=Object.fromEntries(new FormData(e.target));try{await api(path,{method:'POST',body:JSON.stringify(body)});e.target.reset();e.target.closest('.card').classList.add('hidden');await refresh();msg('Saved successfully')}catch(err){msg(err.message)}});
+for(const [form,path] of [['newLessonForm','lessons']])$(form).addEventListener('submit',async e=>{e.preventDefault();const body=Object.fromEntries(new FormData(e.target));try{await api(path,{method:'POST',body:JSON.stringify(body)});e.target.reset();e.target.closest('.card').classList.add('hidden');await refresh();await loadAcademyLibrary();msg('Saved successfully')}catch(err){msg(err.message)}});
 $('today').textContent=new Date().toLocaleDateString('en-MY',{weekday:'long',day:'numeric',month:'long',year:'numeric'});api('me').then(x=>{if(x.authenticated)enter()}).catch(()=>{});
 setInterval(()=>{if(!$('app').classList.contains('hidden')&&['meita','tasks','desks','hq'].some(x=>$(x).classList.contains('active'))){Promise.all([refresh(),refreshLiveActivity(),loadMeitaTaskHistory()]).catch(()=>{})}},10000);
 setInterval(()=>{if($('hq').classList.contains('active')
