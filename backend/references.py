@@ -87,13 +87,15 @@ def _video_preview(raw, ext):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / ("reference." + ext)
             path.write_bytes(raw)
-            for second in (0, 2, 5, 10):
+            # Fast preview: bound processing to two representative stills.
+            # Larger/longer videos remain stored; no audio/transcription assumed.
+            for second in (0, 3):
                 try:
                     result = subprocess.run(
                         [ffmpeg, "-nostdin", "-v", "error", "-ss", str(second),
                          "-i", str(path), "-frames:v", "1", "-f", "image2pipe",
                          "-vcodec", "mjpeg", "pipe:1"],
-                        capture_output=True, timeout=8, check=False,
+                        capture_output=True, timeout=5, check=False,
                     )
                     if result.returncode != 0 or not result.stdout:
                         continue
@@ -107,9 +109,9 @@ def _video_preview(raw, ext):
         return None
     if not frames:
         return None
-    sheet = Image.new("RGB", (600 * 2, 340 * 2), "#f3f3f3")
+    sheet = Image.new("RGB", (600 * 2, 340), "#f3f3f3")
     for index, frame in enumerate(frames[:4]):
-        sheet.paste(frame, ((index % 2) * 600, (index // 2) * 340))
+        sheet.paste(frame, (index * 600, 0))
     output = io.BytesIO()
     sheet.save(output, "JPEG", quality=75, optimize=True)
     return output.getvalue()
