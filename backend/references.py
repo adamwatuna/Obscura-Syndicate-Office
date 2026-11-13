@@ -5,6 +5,8 @@ Reference context is untrusted source material, never system instructions.
 """
 import base64
 import io
+import http.client
+import ssl
 import ipaddress
 import re
 import secrets
@@ -187,12 +189,7 @@ class _PageText(HTMLParser):
             self.parts.append(data)
 
 
-class _NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        return None
-
-
-def normalize_url(value):
+def _checked_host(value):
     try:
         u = urlsplit(value.strip())
         if u.scheme != "https" or not u.hostname or u.username or u.password:
@@ -203,34 +200,54 @@ def normalize_url(value):
         if host in ("localhost",) or not host or host.endswith((".local", ".internal")):
             raise ValueError("Private URLs are not allowed")
         addresses = socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)
-        if not addresses or any(not ipaddress.ip_address(item[4][0]).is_global
-                                for item in addresses):
-            raise ValueError("Only public internet references are supported")
-        return u.geturl()
+        public = []
+        for item in addresses:
+            address = item[4][0]
+            if not ipaddress.ip_address(address).is_global:
+                raise ValueError("Only public internet references are supported")
+            public.append(address)
+        if not public:
+            raise ValueError("No public addresses resolved")
+        return u, host, public[0]
     except (ValueError, OSError, TypeError):
         raise HTTPException(400, "Enter a valid public HTTPS website URL")
 
 
+def normalize_url(value):
+    return _checked_host(value)[0].geturl()
+
+
 def _website_excerpt(url):
-    """Best-effort, bounded public page excerpt; no redirects or internal addresses."""
+    """Read HTTPS using a previously validated pinned public IP, no DNS re-resolution."""
     try:
-        opener = urllib.request.build_opener(_NoRedirect)
-        req = urllib.request.Request(url, headers={
-            "User-Agent": "MeitaReferenceReader/1.0",
-            "Accept": "text/html,text/plain;q=0.8"})
-        with opener.open(req, timeout=7) as response:
-            typ = response.headers.get("Content-Type", "").lower()
-            if "text/html" not in typ and "text/plain" not in typ:
-                return "Website link saved; this resource is not an HTML/text page."
-            data = response.read(180000)
-        text = data.decode("utf-8", errors="replace")
+        u, host, address = _checked_host(url)
+        target = (u.path or "/") + ("?" + u.query if u.query else "")
+        # Socket target is the verified public IP. TLS verifies the original hostname.
+        raw = socket.create_connection((address, 443), timeout=7)
+        with raw:
+            context = ssl.create_default_context()
+            with context.wrap_socket(raw, server_hostname=host) as secure:
+                request = ("GET " + target + " HTTP/1.1\r\nHost: " + host +
+                           "\r\nUser-Agent: MeitaReferenceReader/1.0\r\n"
+                           "Accept: text/html,text/plain;q=0.8\r\n"
+                           "Accept-Encoding: identity\r\nConnection: close\r\n\r\n")
+                secure.sendall(request.encode("utf-8"))
+                response = http.client.HTTPResponse(secure)
+                response.begin()
+                if response.status != 200:
+                    return "Website link saved; HTTP " + str(response.status) + " returned."
+                typ = response.getheader("Content-Type", "").lower()
+                if "text/html" not in typ and "text/plain" not in typ:
+                    return "Website link saved; the resource is not an HTML/text page."
+                data = response.read(180000)
+        page = data.decode("utf-8", errors="replace")
         if "text/html" in typ:
             parser = _PageText()
-            parser.feed(text)
-            text = " ".join(parser.parts)
-        return " ".join(text.split())[:9000] or "Website link saved; no readable text found."
+            parser.feed(page)
+            page = " ".join(parser.parts)
+        return " ".join(page.split())[:9000] or "Website link saved; no readable text found."
     except Exception:
-        return "Website link saved; content not retrieved. Do not infer page contents from its URL."
+        return "Website link saved; content not retrieved. Do not infer page contents from URL."
 
 
 def save_url(db, url):
