@@ -21,7 +21,13 @@ app=FastAPI(title='AI Private Office',docs_url=None,redoc_url=None)
 app.add_middleware(SessionMiddleware,secret_key=SECRET,https_only=os.environ.get('COOKIE_SECURE','true').lower()=='true',same_site='lax',max_age=28800)
 
 class Login(BaseModel):password:str
-class Staff(BaseModel):name:str=Field(min_length=1,max_length=100);role:str=Field(min_length=1,max_length=120);department:str=Field(min_length=1,max_length=100);expertise:str='';tools:str='';autonomy:str='Approval required'
+class Staff(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    role: str = Field(min_length=1, max_length=120)
+    department: str = Field(min_length=1, max_length=100)
+    expertise: str = Field(default='', max_length=16000)
+    tools: str = Field(default='', max_length=2000)
+    autonomy: str = Field(default='Approval required', max_length=100)
 class Task(BaseModel):title:str=Field(min_length=1,max_length=250);assignee:str=''
 class Lesson(BaseModel):title:str=Field(min_length=1,max_length=200);kind:str;source:str=Field(min_length=1,max_length=3000);assigned:str=''
 class Status(BaseModel):status:str
@@ -44,7 +50,12 @@ def me(req:Request):return {'authenticated':req.session.get('authorized') is Tru
 @app.get('/api/office',dependencies=[Depends(guard)])
 def office():
     with connect() as db:
-        return {k:[dict(x) for x in db.execute('SELECT * FROM '+k+(' ORDER BY created DESC, id DESC' if k in ('tasks','lessons','audit') else ' ORDER BY name'))] for k in ('staff','tasks','lessons','audit')}
+        result = {'staff': [dict(x) for x in db.execute(
+            'SELECT id,name,role,department,status FROM staff ORDER BY name')]}
+        for table in ('tasks', 'lessons', 'audit'):
+            result[table] = [dict(x) for x in db.execute(
+                'SELECT * FROM '+table+' ORDER BY created DESC, id DESC')]
+        return result
 @app.post('/api/staff',dependencies=[Depends(guard)])
 def create_staff(body:Staff):
     ident=secrets.token_hex(12)
@@ -52,6 +63,46 @@ def create_staff(body:Staff):
         db.execute('INSERT INTO staff VALUES(%s,%s,%s,%s,%s,%s,%s,%s)',(ident,body.name,body.role,body.department,body.expertise,body.tools,body.autonomy,'Available'))
         audit(db,'staff.hired',body.name)
     return {'id':ident}
+
+@app.get('/api/staff/{ident}/configuration',dependencies=[Depends(guard)])
+def get_staff_configuration(ident:str):
+    # The regular office listing must never expose private staff configuration.
+    with connect() as db:
+        row = db.execute('SELECT id,name,role,department,expertise,tools,autonomy,status FROM staff WHERE id=%s',(ident,)).fetchone()
+        if row is None: raise HTTPException(404,'Staff not found')
+        return {'staff':dict(row)}
+
+@app.put('/api/staff/{ident}',dependencies=[Depends(guard)])
+def update_staff(ident:str, body:Staff):
+    if not body.name.strip() or not body.role.strip() or not body.department.strip():
+        raise HTTPException(400,'Name, job title and department are required')
+    with connect() as db:
+        existing=db.execute('SELECT name FROM staff WHERE id=%s FOR UPDATE',(ident,)).fetchone()
+        if not existing: raise HTTPException(404,'Staff not found')
+        db.execute("""UPDATE staff SET name=%s, role=%s, department=%s,
+            expertise=%s, tools=%s, autonomy=%s WHERE id=%s""",
+            (body.name.strip(),body.role.strip(),body.department.strip(),
+             body.expertise,body.tools,body.autonomy,ident))
+        audit(db,'staff.updated',f'{ident}: {existing["name"]} -> {body.name.strip()}')
+    return {'ok':True}
+
+@app.delete('/api/staff/{ident}',dependencies=[Depends(guard)])
+def delete_staff(ident:str):
+    # Preserve existing task records; clear their assignee instead of deleting tasks.
+    with connect() as db:
+        existing=db.execute('SELECT name FROM staff WHERE id=%s FOR UPDATE',(ident,)).fetchone()
+        if existing is None: raise HTTPException(404,'Staff not found')
+        unassigned=db.execute("UPDATE tasks SET assignee='' WHERE assignee=%s",(ident,)).rowcount
+        # Keep historical delegation and AI result snapshots for CEO audit.
+        # Unstarted delegation jobs for this staff cannot be executed afterwards.
+        job_count=0
+        if db.execute("SELECT to_regclass('public.coo_jobs') AS tbl").fetchone()['tbl'] is not None:
+            job_count=db.execute("""UPDATE coo_jobs SET status='Cancelled',
+                updated_at=NOW() WHERE staff->>'id'=%s
+                AND status IN ('Approved','Retry available')""",(ident,)).rowcount
+        db.execute('DELETE FROM staff WHERE id=%s',(ident,))
+        audit(db,'staff.deleted',f'{ident}: {existing["name"]}; unassigned_tasks={unassigned}; cancelled_jobs={job_count}')
+    return {'ok':True,'unassigned_tasks':unassigned,'cancelled_jobs':job_count}
 @app.post('/api/tasks',dependencies=[Depends(guard)])
 def create_task(body:Task):
     ident=secrets.token_hex(12)
