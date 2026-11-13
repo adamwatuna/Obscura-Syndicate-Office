@@ -46,7 +46,7 @@
  <div id="meitaChat" style="height:410px;overflow:auto;font-size:14px;line-height:1.6"><p>Start a conversation with Meita.</p></div>
  <form id="meitaForm">
    <label>Your instruction to Meita</label>
-   <textarea id="meitaInput" rows="3" maxlength="6000" required placeholder="Meita, ask Maryam to prepare visual concepts, Aina to draft marketing copy and Faris to research our YouTube launch. Assign and run all internal AI work."></textarea>
+   <textarea id="meitaInput" rows="3" maxlength="6000" placeholder="Meita, ask Maryam to prepare visual concepts, Aina to draft marketing copy and Faris to research our YouTube launch. Assign and run all internal AI work."></textarea>
    <div class="meita-composer-actions">
      <button class="meita-plus" id="meitaAddReference" type="button" aria-label="Attach file or reference" aria-haspopup="true" aria-expanded="false" aria-controls="meitaUploadMenu" title="Attach reference">+</button>
      <input id="meitaReferenceInput" type="file" hidden multiple accept=".png,.jpg,.jpeg,.webp,.pdf,.docx,.pptx,.txt,.md,.csv,.mp4,.mov,.webm">
@@ -1158,8 +1158,10 @@ $('meitaInput').addEventListener('paste',e=>{
 
 $('meitaForm').addEventListener('submit',async e=>{
   e.preventDefault();
-  const input=$('meitaInput'),message=input.value.trim();
-  if(!message||meitaUploadBusy)return;
+  const input=$('meitaInput'),typed=input.value.trim();
+  if(meitaUploadBusy)return;
+  const message=typed||(pendingMeitaReferences.length?'Please review the attached CEO reference materials, describe their relevant creative direction and preserve them in Learning Academy for future team work.':'');
+  if(!message){meitaUploadStatus('Write an instruction or attach at least one reference.',true);return;}
   const refs=[...pendingMeitaReferences];
   const btn=$('meitaSend');btn.disabled=true;btn.textContent='Meita is planning…';
   addMeita('user',message);input.value='';
