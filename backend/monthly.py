@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 
 logger=logging.getLogger("office.monthly")
 MY_TZ=ZoneInfo("Asia/Kuala_Lumpur")
-REGIONS=(
+LEGACY_REGIONS=(
     "Klang Valley (Kuala Lumpur, Selangor & Putrajaya)",
     "Northern Malaysia (Penang, Kedah, Perlis & Perak)",
     "East Coast (Kelantan, Terengganu & Pahang)",
@@ -26,15 +26,15 @@ REGIONS=(
     "Sarawak",
     "Labuan",
 )
-# One regional focus shared by the Directors each month for coordinated analysis.
+# Historic values used only to identify untouched automatically generated tasks.
 def period_now(now=None):
     day=(now or datetime.now(MY_TZ)).astimezone(MY_TZ)
     return f"{day.year:04d}-{day.month:02d}"
 
-def region_for(period):
+def _legacy_region_for(period):
     year,month=parse_period(period)
     base=2026*12+11
-    return REGIONS[((year*12+month)-base) % len(REGIONS)]
+    return LEGACY_REGIONS[((year*12+month)-base) % len(LEGACY_REGIONS)]
 
 def parse_period(period):
     if not isinstance(period,str) or len(period)!=7 or period[4]!="-":
@@ -55,7 +55,7 @@ class TemplateUpdate(BaseModel):
 
 # Each Director receives a core reporting duty and a second action-oriented duty.
 # Source-dependent work must clearly identify missing/unavailable evidence.
-DEFAULTS=(
+LEGACY_DEFAULTS=(
     ("intelligence-brief","Research & Intelligence","Regional Intelligence Bulletin — {region}",
      "Prepare a concise evidence-based intelligence briefing for {region}: regional economic indicators, "
      "market changes, sector developments, emerging opportunities and risks. State publication dates, "
@@ -143,6 +143,124 @@ DEFAULTS=(
      "changes. Clearly label unverified legal claims, cite current official sources when actually "
      "accessible and recommend professional confirmation for legal conclusions.",27),
 )
+# Region is no longer assigned automatically. CEO can specify any area in an
+# individual Task Description when location matters to the assignment.
+NEUTRAL_TEMPLATES = {
+    "intelligence-brief": (
+        "Monthly Intelligence Bulletin",
+        "Prepare an evidence-based business intelligence briefing covering relevant "
+        "economic indicators, market changes, sector developments, emerging opportunities "
+        "and risks within the CEO's approved scope. If a specific Malaysian region or "
+        "state is given in this task description, focus the analysis accordingly. "
+        "State publication dates, separate verified facts from estimates, and identify "
+        "unavailable live data. Never invent fieldwork, interviews or current news."),
+    "intelligence-watch": (
+        "Competitor & Risk Watchlist",
+        "Develop a competitor and sector risk watchlist for the approved business scope. "
+        "Identify developments, research gaps, recommended verification sources and "
+        "confidence levels. Address a specific region only when the CEO requests it "
+        "in the task description. Do not claim live monitoring or private data access."),
+    "marketing-calendar": (
+        "Monthly Marketing Campaign Calendar",
+        "Propose a 30-day marketing and content calendar with audience segments, "
+        "channels, key messages, KPIs and creative briefs for Maryam. Follow any "
+        "market or regional requirements explicitly given by the CEO in the task description. "
+        "Prepare internal drafts only; no publishing or ad spending."),
+    "creative-direction": (
+        "Creative Direction & Brand Consistency Review",
+        "Review accessible approved creative assets for brand consistency and propose "
+        "a practical monthly art-direction brief, covering storytelling, typography, "
+        "visual choices and tone. Include regional or cultural considerations only "
+        "when the CEO identifies that scope. If no assets are available, deliver a "
+        "review checklist and concepts, not claims of completed inspections."),
+    "finance-controls": (
+        "Expense Controls & Financial Risk Memo",
+        "Assess documented financial control risks, approval thresholds, relevant "
+        "operating cost drivers and compliance questions. Apply region-specific "
+        "cost or regulatory comparisons only if specified in the task description. "
+        "Distinguish generic guidance from verified current rules and request "
+        "qualified professional review where necessary."),
+    "operations-sop": (
+        "Operations Execution Plan & SOP Improvement",
+        "Propose a monthly workflow optimization and internal operating checklist "
+        "covering communication, handoffs, logistics, supplier dependencies and "
+        "delivery risks. Include state holidays or regional logistics only if the "
+        "CEO's task description requests a geographic scope. Do not initiate procurement."),
+    "strategy-regional": (
+        "Business Growth Opportunities Review",
+        "Prepare an evidence-led commercial opportunity map for the CEO's business "
+        "priorities, including markets, customers, competitive factors, entry constraints, "
+        "risks, and data needed for financial assessment. Investigate specific states "
+        "or regions only when requested by the CEO. Distinguish sourced facts from hypotheses."),
+    "knowledge-review": (
+        "Source & Knowledge Quality Review",
+        "Review relevant authoritative sources and internal SOPs actually accessible "
+        "to the Knowledge Academy, recording publication dates, evidence gaps, "
+        "contradictions and updates needed. Include a Malaysian regional scope only "
+        "when the CEO sets one in the task description. Do not claim document or "
+        "video ingestion that has not occurred."),
+    "risk-compliance": (
+        "Corporate Compliance & Policy Change Watch",
+        "Prepare a compliance review identifying relevant requirements needing "
+        "verification, including applicable privacy, corporate, tax and cybersecurity "
+        "frameworks. Add state-specific jurisdiction questions only when directed "
+        "by the CEO in the task description. Identify unverified claims and seek "
+        "professional confirmation for legal conclusions."),
+}
+DEFAULTS = tuple(
+    (key, dept, *(NEUTRAL_TEMPLATES.get(key, (title, brief))), due)
+    for key,dept,title,brief,due in LEGACY_DEFAULTS
+)
+
+def remove_automatic_region(db):
+    """One-time, non-destructive update of untouched system-generated records.
+
+    Preserve CEO-edited templates, tasks, AI-run outputs and historical months.
+    Only original descriptions/titles are changed, and only for unrun tasks
+    in the current or future reporting months.
+    """
+    key="optional_regional_scope_v1"
+    if db.execute("SELECT 1 FROM office_schema_migrations WHERE name=%s",
+                  (key,)).fetchone():
+        return {"templates":0,"assignments":0,"applied":False}
+    changed_templates=0
+    changed_tasks=0
+    this_period=period_now()
+    runs_exist=bool(db.execute("SELECT to_regclass('public.workforce_runs') AS t").fetchone()["t"])
+    no_runs_clause=("AND NOT EXISTS (SELECT 1 FROM workforce_runs w WHERE w.task_id=tasks.id)"
+                    if runs_exist else "")
+    updated={row[0]:row for row in DEFAULTS}
+    for old_key,dept,old_title,old_brief,due in LEGACY_DEFAULTS:
+        new=updated[old_key]
+        if new[2:4]==(old_title,old_brief):
+            continue
+        # Preserve customized templates; change only exact auto-seeded defaults.
+        result=db.execute("""UPDATE monthly_templates SET title=%s,brief=%s
+            WHERE key=%s AND title=%s AND brief=%s""",
+            (new[2],new[3],old_key,old_title,old_brief))
+        changed_templates+=result.rowcount
+        records=db.execute("""SELECT a.period,a.task_id
+            FROM monthly_assignments a
+            WHERE a.template_key=%s AND a.period >= %s""",
+            (old_key,this_period)).fetchall()
+        for row in records:
+            period=row["period"]
+            old_focus=_legacy_region_for(period)
+            prior_title=f"{period} · {old_title.replace('{region}',old_focus)}"
+            prior_brief=old_brief.replace("{region}",old_focus)
+            revised_title=f"{period} · {new[2]}"
+            updated_task=db.execute("""UPDATE tasks SET title=%s,description=%s
+                WHERE id=%s AND title=%s AND description=%s
+                  AND status='To do' AND ai_run_started=FALSE AND deleted_at IS NULL
+                  """+no_runs_clause,
+                (revised_title,new[3],row["task_id"],prior_title,prior_brief))
+            if updated_task.rowcount:
+                db.execute("""UPDATE monthly_assignments SET brief=%s
+                    WHERE task_id=%s AND brief=%s""",
+                    (new[3],row["task_id"],prior_brief))
+                changed_tasks+=updated_task.rowcount
+    db.execute("INSERT INTO office_schema_migrations(name) VALUES (%s)",(key,))
+    return {"templates":changed_templates,"assignments":changed_tasks,"applied":True}
 
 def setup(db):
     db.execute("""CREATE TABLE IF NOT EXISTS monthly_templates (
@@ -175,7 +293,6 @@ def setup(db):
 def generate_month(db,period=None):
     period=period or period_now()
     year,month=parse_period(period)
-    focus=region_for(period)
     # Idempotent under restarts and concurrent workers.
     db.execute("SELECT pg_advisory_xact_lock(815024,202611)")
     rows=db.execute("""SELECT mt.key,mt.department,mt.title,mt.brief,mt.due_day,
@@ -188,8 +305,8 @@ def generate_month(db,period=None):
         ORDER BY mt.department,mt.due_day""",(period,)).fetchall()
     new=[]
     for row in rows:
-        title=row["title"].replace("{region}",focus)
-        brief=row["brief"].replace("{region}",focus)
+        title=row["title"]
+        brief=row["brief"]
         due=date(year,month,min(int(row["due_day"]),calendar.monthrange(year,month)[1]))
         task_id=secrets.token_hex(12)
         db.execute("""INSERT INTO tasks
@@ -204,7 +321,7 @@ def generate_month(db,period=None):
     if new:
         db.execute("""INSERT INTO audit(action,detail,created)
             VALUES('monthly.generated',%s,%s)""",(f"{period}: {len(new)} director assignments",int(time.time())))
-    return {"period":period,"region_focus":focus,"created":len(new)}
+    return {"period":period,"created":len(new)}
 
 def detail_for_task(db,task_id):
     row=db.execute(
@@ -228,7 +345,7 @@ def summary(db,period=None):
     templates=db.execute("""SELECT key,department,title,brief,due_day,enabled
         FROM monthly_templates ORDER BY department,due_day""").fetchall()
     records=[dict(r) for r in plans]
-    return {"period":period,"region_focus":region_for(period),
+    return {"period":period,
             "completed":sum(1 for r in records if r["status"]=="Completed"),
             "total":len(records),
             "assignments":records,"templates":[dict(t) for t in templates]}

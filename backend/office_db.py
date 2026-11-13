@@ -120,6 +120,7 @@ def bootstrap(legacy_path=None):
         db.execute("""CREATE UNIQUE INDEX IF NOT EXISTS unique_staff_director_per_dept
             ON staff (department) WHERE org_role='Director'""")
         leadership_seed.install(db)
+        monthly.remove_automatic_region(db)
         monthly.generate_month(db)
         task_schedule.generate_due(db)
         db.execute("""INSERT INTO office_import_log
