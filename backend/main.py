@@ -507,6 +507,13 @@ def social_grant(body:SocialGrant):
               f'{body.staff_id} => {body.account_id}: {body.mode}')
     return result
 
+@app.post('/api/social/accounts/{account_id}/refresh-instagram',dependencies=[Depends(guard)])
+def refresh_instagram_account(account_id:str):
+    with connect() as db:
+        result=social.refresh_instagram(db,account_id)
+        audit(db,'social.instagram.token_refreshed',account_id)
+    return result
+
 @app.delete('/api/social/accounts/{account_id}',dependencies=[Depends(guard)])
 def social_disconnect(account_id:str):
     with connect() as db:

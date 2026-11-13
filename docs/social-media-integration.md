@@ -7,7 +7,8 @@ This app offers real OAuth connections and granular CEO-controlled publishing pe
 | Platform | Official connection | Publishing in this version |
 |---|---|---|
 | Facebook Pages | Meta OAuth | Text posts via Pages API |
-| Instagram Professional linked to a Facebook Page | Meta OAuth | Single image feed posts from public HTTPS image URLs |
+| Instagram Professional (Business or Creator), no Facebook Page | Instagram Direct Login | Single image feed posts from public HTTPS image URLs |
+| Instagram Professional linked to Facebook Page | Legacy Meta OAuth | Single image feed posts from public HTTPS image URLs |
 | YouTube | Google OAuth | Connect only; video upload not implemented |
 | TikTok | TikTok Login Kit | Connect only; video/photo publishing not implemented |
 
@@ -17,7 +18,8 @@ Instagram personal accounts, Reels, Stories, carousels and video uploads are not
 
 SOCIAL_PUBLIC_BASE_URL — the public HTTPS origin, without a trailing path.
 SOCIAL_TOKEN_ENCRYPTION_KEY — a persistent Fernet key.
-SOCIAL_META_APP_ID / SOCIAL_META_APP_SECRET — Meta developer app.
+SOCIAL_INSTAGRAM_APP_ID / SOCIAL_INSTAGRAM_APP_SECRET — Instagram app ID and app secret from Meta Developer dashboard > Instagram > API setup with Instagram login. These differ from the general Facebook app ID/secret.
+SOCIAL_META_APP_ID / SOCIAL_META_APP_SECRET — only needed if connecting Facebook Pages through Facebook Login.
 SOCIAL_GOOGLE_CLIENT_ID / SOCIAL_GOOGLE_CLIENT_SECRET — Google Cloud OAuth Web Client.
 SOCIAL_TIKTOK_CLIENT_KEY / SOCIAL_TIKTOK_CLIENT_SECRET — TikTok developer app.
 
@@ -26,6 +28,8 @@ Generate Fernet key locally: python -c "from cryptography.fernet import Fernet; 
 Store all these as private Railway environment variables, never in GitHub or AI staff configuration. Do not share secrets through a chat. Replacing the Fernet key without re-encrypting accounts requires reconnection. Keep COOKIE_SECURE=true in production.
 
 ## Exact callback URLs for the current Railway domain
+
+Instagram Direct Login: https://obscura-syndicate-office-production.up.railway.app/api/social/oauth/instagram/callback
 
 Meta: https://obscura-syndicate-office-production.up.railway.app/api/social/oauth/meta/callback
 
@@ -37,13 +41,17 @@ The public origin above should be the value of SOCIAL_PUBLIC_BASE_URL. Change al
 
 ## Provider setup
 
-**Meta:** Register a Meta developer app and web Login flow. Request pages_show_list, pages_read_engagement, pages_manage_posts, instagram_basic and instagram_content_publish. The connected CEO must have CREATE_CONTENT capability on the relevant Facebook Page. Link any Instagram Professional account to that Page. Complete app review or advanced access if required for your account.
+**Instagram Direct Login — recommended if you want to skip Facebook Page:** On https://developers.facebook.com/apps/ create a Meta developer app with the Instagram use case (Manage messaging & content on Instagram). In the app dashboard open Instagram > API setup with Instagram login > Business login settings. Register the exact Instagram Direct Login callback URL shown above, then take the **Instagram App ID / Instagram App Secret** shown under Instagram API setup (not App Settings > Basic). Grant the Instagram professional account the developer/tester role as needed. Request instagram_business_basic and instagram_business_content_publish scopes. Add the corresponding 4 variables in Railway: SOCIAL_PUBLIC_BASE_URL, SOCIAL_TOKEN_ENCRYPTION_KEY, SOCIAL_INSTAGRAM_APP_ID, SOCIAL_INSTAGRAM_APP_SECRET. Redeploy. In Obscura Integration Centre choose **Instagram · Direct Login (no Facebook Page)** and authorize with your Instagram Business/Creator account. No Facebook Page or Facebook Login is needed. Meta App Review/Advanced Access may be required for other account owners. Refresh the long-lived Instagram token before it expires (typically about 60 days) using the account's Refresh Instagram access control; an expired token requires reconnect.
+
+**Meta legacy Facebook Login:** Register a Meta developer app and web Login flow. Request pages_show_list, pages_read_engagement, pages_manage_posts, instagram_basic and instagram_content_publish. The connected CEO must have CREATE_CONTENT capability on the relevant Facebook Page. Link any Instagram Professional account to that Page. Complete app review or advanced access if required for your account.
 
 **Google:** Create Google Cloud OAuth Web Client and enable YouTube Data API v3. Configure consent screen and allow scopes youtube.readonly and youtube.upload. The app connects YouTube channels but has no implemented media upload. Tokens may expire and require reconnect.
 
 **TikTok:** Register developer app, enable Login Kit, register HTTPS redirect, request user.info.basic and video.publish scopes. Publishing requires Content Posting API integration and provider app audit; not available in this release.
 
 Official docs:
+- https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/business-login
+- https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/content-publishing
 - https://developers.facebook.com/docs/graph-api/reference/page/feed/
 - https://www.postman.com/meta/instagram/documentation/6yqw8pt/instagram-api
 - https://developers.google.com/youtube/data/guides/authentication

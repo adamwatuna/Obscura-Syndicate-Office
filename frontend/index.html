@@ -67,7 +67,7 @@
 <div class="card" style="margin-top:20px">
 <div class="toolbar"><div><h3>Connect Social Media Accounts</h3><p>Official OAuth only. Your passwords, API tokens and app secrets are never entered into this page.</p></div></div>
 <div class="staffgrid" id="integrationList"></div>
-<p class="muted" style="margin-top:16px">Meta connects Facebook Pages and any linked Instagram Professional accounts. YouTube and TikTok account connection is supported, but direct media publishing for those platforms is not yet implemented. Provider app review and required scopes may apply.</p>
+<p class="muted" style="margin-top:16px">To connect Instagram without Facebook, choose Instagram · Direct Login and sign in to an Instagram Professional (Business or Creator) account. Facebook Pages are optional. YouTube and TikTok connection works, but media publishing for those platforms is not implemented. Provider approval may apply.</p>
 </div>
 <div class="card" style="margin-top:20px"><div class="toolbar"><div><h3>Connected Accounts</h3><p>These are accounts authorized by the CEO, not general access for all AI staff.</p></div></div>
 <div id="socialAccountList"><p class="muted">No accounts connected.</p></div></div>
@@ -737,6 +737,7 @@ function renderSocialProviders(){
       'Requires provider app credentials and encryption key on Railway';
     const status=socialEl('p',message,provider.configured?'social-status ready':'social-status warning');
     card.append(status);
+    if(provider.id==='instagram')card.append(socialEl('p','No Facebook Page or Facebook Login needed.','muted'));
     const button=socialEl('button',connected?'Connect another account':'Connect via OAuth','secondary');
     button.type='button';button.disabled=!provider.configured;
     button.onclick=()=>connectSocial(provider.id);
@@ -762,8 +763,22 @@ function renderSocialAccounts(){
     const disconnect=socialEl('button','Disconnect','secondary');
     disconnect.type='button';
     disconnect.onclick=()=>disconnectSocial(a.id,a.display_name);
-    card.append(details,disconnect);root.append(card);
+    card.append(details);
+    if(a.provider==='instagram'){
+      const refresh=socialEl('button','Refresh Instagram access','secondary');
+      refresh.type='button';
+      refresh.onclick=()=>refreshInstagramAccess(a.id);
+      card.append(refresh);
+    }
+    card.append(disconnect);root.append(card);
   }
+}
+async function refreshInstagramAccess(id){
+  try{
+    await api('social/accounts/'+encodeURIComponent(id)+'/refresh-instagram',{method:'POST'});
+    await loadSocial();
+    msg('Instagram authorization refreshed');
+  }catch(err){msg(err.message)}
 }
 function renderSocialGrants(){
   const root=$('socialGrantList');root.textContent='';
