@@ -262,6 +262,9 @@ def remove_automatic_region(db):
     db.execute("INSERT INTO office_schema_migrations(name) VALUES (%s)",(key,))
     return {"templates":changed_templates,"assignments":changed_tasks,"applied":True}
 
+from backend import schema_state
+
+@schema_state.bootstrap_only
 def setup(db):
     db.execute("""CREATE TABLE IF NOT EXISTS monthly_templates (
         key TEXT PRIMARY KEY,
