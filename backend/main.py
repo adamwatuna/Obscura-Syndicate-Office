@@ -13,6 +13,7 @@ from backend import organization as org
 from backend import monthly
 from backend import task_schedule
 from backend import news_briefings
+from backend import meita_team
 from backend import social, social_publish
 
 ROOT=Path(__file__).resolve().parent.parent
@@ -242,13 +243,22 @@ def meita_chat(body:MeitaMessage):
         history=list(reversed(db.execute('SELECT role,content FROM meita_messages ORDER BY created DESC, id DESC LIMIT 12').fetchall()))
         leadership=[dict(x) for x in db.execute("""SELECT name,role,department FROM staff
             WHERE org_role='Director' ORDER BY department LIMIT 15""")]
+        team_context=meita_team.latest_summary(db)
+        coord_settings=meita_team.settings(db)
     system=('You are Meita, the CEO\'s Acting COO in AI Private Office. '
             'Be professional, organized, concise, and helpful. Reply in Malay-English rojak when the CEO does. '
-            'You can advise and draft and guide CEO to your Delegation Desk for task assignment and internal AI execution. You cannot directly execute actions in chat, contact third parties, '
+            'You can coordinate all configured AI staff through the CEO-approved Delegation Desk and team roundtable. '            'You can discuss cross-department work, request specialist input and synthesize priorities. '            'You cannot directly execute actions in chat, contact third parties, '
             'access files or connected services, or approve actions. Never claim actions were performed. '
             'For consequential actions, ask for CEO approval. Do not fabricate office data.')
     if leadership:
         system += '\nDepartment directors reporting to Meita: '+json.dumps(leadership,ensure_ascii=False)
+    system += '\nCurrent internal coordination configuration: '+json.dumps({
+        'delegation_scope':coord_settings['delegation_scope'],
+        'discussion_scope':coord_settings['discussion_scope'],
+        'max_delegation_jobs':coord_settings['max_delegation_jobs']})
+    if team_context:
+        system += ('\nLatest recorded AI team roundtable (read-only, not an action): '+
+                   json.dumps(team_context,ensure_ascii=False))
     memories=office_memory.recall(body.message)
     if memories:
         memory_text='\n'.join('- ['+m['category']+'] '+m['title']+': '+m['content'] for m in memories)
@@ -346,6 +356,48 @@ def workforce_review(ident:str,body:Status):
     return result
 
 
+@app.get('/api/meita/configuration',dependencies=[Depends(guard)])
+def meita_configuration():
+    with connect() as db:
+        return {'settings':meita_team.settings(db),
+                'team':[ {k:p[k] for k in ("id","name","role","department","org_role","status")}
+                    for p in meita_team.available_staff(db,"all_staff")]}
+
+@app.put('/api/meita/configuration',dependencies=[Depends(guard)])
+def update_meita_configuration(body:meita_team.MeitaSettings):
+    with connect() as db:
+        result=meita_team.save_settings(db,body)
+        audit(db,'meita.configuration.updated',
+              f'delegation_scope={body.delegation_scope} discussion_scope={body.discussion_scope}')
+    return result
+
+@app.get('/api/meita/team/meetings',dependencies=[Depends(guard)])
+def meita_team_meetings():
+    with connect() as db:
+        return meita_team.meeting_index(db)
+
+@app.post('/api/meita/team/meetings',dependencies=[Depends(guard)])
+def meita_create_meeting(body:meita_team.MeetingBrief):
+    with connect() as db:
+        outcome=meita_team.create_meeting(db,body.topic)
+        audit(db,'meita.team.meeting_created',outcome['id'])
+    return outcome
+
+@app.get('/api/meita/team/meetings/{ident}',dependencies=[Depends(guard)])
+def meita_meeting_details(ident:str):
+    with connect() as db:
+        return meita_team.meeting_details(db,ident)
+
+@app.post('/api/meita/team/meetings/{ident}/discuss',dependencies=[Depends(guard)])
+def meita_discuss_with_team(ident:str,body:meita_team.MeetingFollowup):
+    return meita_team.run_round(connect,ident,body.instruction)
+
+@app.get('/api/meita/team/meetings/{ident}/delegation-brief',
+         dependencies=[Depends(guard)])
+def meita_meeting_to_delegation(ident:str):
+    with connect() as db:
+        return {'brief':meita_team.proposal_brief_from_meeting(db,ident)}
+
 @app.get('/api/delegation/proposals',dependencies=[Depends(guard)])
 def delegation_proposals():
     return office_delegation.list_all()
@@ -353,12 +405,16 @@ def delegation_proposals():
 @app.post('/api/delegation/proposals',dependencies=[Depends(guard)])
 def delegation_propose(body:office_delegation.DelegationBrief):
     with connect() as db:
-        staff=[dict(x) for x in db.execute("""SELECT * FROM staff
-            WHERE org_role='Director' ORDER BY name""")]
+        config=meita_team.settings(db)
+        selected=meita_team.available_staff(db,config['delegation_scope'])
+        staff=[dict(x) for x in db.execute("""SELECT * FROM staff ORDER BY department,name""")]
+        allowed={person['id'] for person in selected}
+        staff=[person for person in staff if person['id'] in allowed]
     if not staff:
-        raise HTTPException(400,'Configure a Department Director before requesting Meita delegation')
+        raise HTTPException(400,'No eligible AI staff in Meita delegation configuration')
     memories=office_memory.recall(body.brief)
-    result=office_delegation.propose(body.brief,staff,memories)
+    result=office_delegation.propose(
+        body.brief,staff,memories,max_jobs=config['max_delegation_jobs'])
     with connect() as db:
         audit(db,'delegation.proposed',result['id'])
     return result

@@ -11,6 +11,7 @@ from backend import organization
 from backend import leadership_seed
 from backend import monthly
 from backend import task_schedule
+from backend import meita_team
 
 logger = logging.getLogger("office.storage")
 ROOT = Path(__file__).resolve().parent.parent
@@ -61,6 +62,7 @@ def ensure_schema(db):
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())""")
     task_schedule.setup(db)
     monthly.setup(db)
+    meita_team.init(db)
 
 def _copy_table(db, old, name):
     source_count = copied_count = 0
