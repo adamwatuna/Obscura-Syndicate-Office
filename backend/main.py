@@ -80,9 +80,12 @@ def office():
         task_schedule.generate_due(db)
         result = {'staff': [dict(x) for x in db.execute(
             'SELECT id,name,role,department,status,org_role,manager_id,delegation_permission,portrait_slot FROM staff ORDER BY department,name')]}
-        for table in ('tasks', 'lessons', 'audit'):
-            result[table] = [dict(x) for x in db.execute(
-                'SELECT * FROM '+table+' ORDER BY created DESC, id DESC')]
+        result['tasks']=[dict(x) for x in db.execute("""SELECT t.*,
+            EXISTS(SELECT 1 FROM monthly_assignments m WHERE m.task_id=t.id) AS is_monthly
+            FROM tasks t ORDER BY created DESC,id DESC LIMIT 1000""")]
+        for table in ('lessons','audit'):
+            result[table]=[dict(x) for x in db.execute(
+                'SELECT * FROM '+table+' ORDER BY created DESC,id DESC')]
         return result
 @app.get('/api/organization',dependencies=[Depends(guard)])
 def get_organization():
