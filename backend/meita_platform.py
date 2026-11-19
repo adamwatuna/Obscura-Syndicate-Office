@@ -81,7 +81,7 @@ def respond(message, context, client_factory=None, images=()):
 
 
 def run_session(key, config, messages, *, agent_id="", client_factory=None,
-                timeout=75, label="OpenAI staff agent"):
+                timeout=75, label="OpenAI staff agent", include_search_items=False):
     if client_factory is None:
         from openai import OpenAI
         client_factory = OpenAI
@@ -106,7 +106,14 @@ def run_session(key, config, messages, *, agent_id="", client_factory=None,
             ).with_result_collection() as stream:
                 for event in stream:
                     if event.type == "agent.session.turn.completed":
-                        return stream.get_final_result()
+                        result = stream.get_final_result()
+                        if not include_search_items:
+                            return result
+                        items = client.beta.agents.sessions.turns.items.list(
+                            session_id=result.session_id, turn_id=result.turn_id,
+                        )
+                        return result, [item.model_dump(mode="json") for item in items
+                                        if item.type == "web_search_call"]
                     if event.type in (
                         "agent.session.turn.failed", "agent.session.turn.cancelled",
                     ):

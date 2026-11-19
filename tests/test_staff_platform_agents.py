@@ -43,13 +43,21 @@ class StaffPlatformAgentTests(unittest.TestCase):
         run.return_value = SimpleNamespace(messages=[Mock(
             model_dump=Mock(return_value=message),
         )])
+        model_result = run.return_value
+        opened = {"type": "web_search_call", "status": "completed",
+                  "action": {"type": "open_page", "url": "https://science.nasa.gov/moon/"}}
         self.payload["tools"] = [{"type": "web_search"}]
-        self.assertEqual(self.run_staff()["output"], [message])
+        run.return_value = (model_result, [opened])
+        output = self.run_staff()["output"]
+        self.assertEqual(output[0], message)
+        self.assertEqual(output[1]["action"]["sources"], [{"url": opened["action"]["url"]}])
+        self.assertTrue(run.call_args.kwargs["include_search_items"])
         self.assertEqual(run.call_args.kwargs["agent_id"], "agent_research")
         self.assertEqual(run.call_args.args[1]["tools"], [
             {"type": "web_search", "mode": "live"},
         ])
         del self.payload["tools"]
+        run.return_value = model_result
         self.staff = {"id": "staff-b"}
         self.run_staff()
         self.assertEqual(run.call_args.kwargs["agent_id"], "agent_design")
