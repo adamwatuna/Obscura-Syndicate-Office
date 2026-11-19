@@ -65,7 +65,7 @@ def bind(db, staff_id, agent_id):
 
 def provision_roster(connect):
     """Create saved agents for unlinked Directors and Specialists on rollout."""
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger("uvicorn.error")
     key = os.getenv("STAFF_PLATFORM_API_KEY", "").strip()
     if os.getenv("STAFF_PLATFORM_ENABLED", "false").lower() != "true" or not key:
         logger.warning("Staff agent provisioning skipped: Agents connection is disabled or missing")
@@ -84,6 +84,12 @@ def provision_roster(connect):
                 AND platform_agent_id IS NULL ORDER BY id
             """).fetchall()]
             if not staff_ids:
+                linked = lock_db.execute("""
+                    SELECT COUNT(*) AS count FROM staff
+                    WHERE org_role IN ('Director', 'Specialist')
+                    AND platform_agent_id IS NOT NULL
+                """).fetchone()["count"]
+                logger.info("Staff saved agents verified: %s linked, 0 pending", linked)
                 return
 
             with OpenAI(api_key=key, timeout=15, max_retries=0) as client:
@@ -115,7 +121,13 @@ def provision_roster(connect):
                                 multi_agent={"enabled": False},
                             ).id
                         bind(db, staff_id, agent_id)
-                logger.info("Staff saved-agent provisioning completed for %s profiles", len(staff_ids))
+                counts = lock_db.execute("""
+                    SELECT COUNT(platform_agent_id) AS linked,
+                           COUNT(*) - COUNT(platform_agent_id) AS pending
+                    FROM staff WHERE org_role IN ('Director', 'Specialist')
+                """).fetchone()
+                logger.info("Staff saved agents verified: %s linked, %s pending",
+                            counts["linked"], counts["pending"])
     except Exception as error:
         # Report safe error metadata without leaking a key or a staffing brief.
         logger.warning("Staff saved-agent provisioning stopped: %s (HTTP %s)",
