@@ -54,6 +54,9 @@ class StaffPlatformAgentTests(unittest.TestCase):
         self.run_staff()
         self.assertEqual(run.call_args.kwargs["agent_id"], "agent_design")
         self.assertEqual(run.call_args.args[1]["tools"], [])
+        self.staff = {"id": "staff-b", "platform_agent_id": "agent_bound"}
+        self.run_staff()
+        self.assertEqual(run.call_args.kwargs["agent_id"], "agent_bound")
         self.staff = {"id": "staff-c"}
         self.run_staff()
         self.assertEqual(run.call_args.kwargs["agent_id"], "")
