@@ -657,6 +657,7 @@ def platform_meita_chat(body:MeitaMessage):
           for item in meita_live_activity()["jobs"][:20]]
     routed=meita_platform.respond(body.message,{
         "staff":roster,"max_jobs":config["max_delegation_jobs"],
+        "auto_execute_internal":config["auto_execute_internal"],
         "recent_tasks":tasks,"recent_chat":history,
         "selected_reference_summaries":references,
         "learning_academy_excerpts":academy["context"][:2500],
@@ -689,7 +690,18 @@ def platform_meita_chat(body:MeitaMessage):
                 db,body.message,plan,chat_message_id=message["id"],
                 reference_ids=body.reference_ids+academy["reference_ids"],
                 platform_request_hash=request_hash)
-            audit(db,"meita.chat.platform_proposed",proposal["id"])
+            if config["auto_execute_internal"]:
+                if os.getenv("MEITA_AUTO_WORKER_ENABLED","true").lower()!="true":
+                    raise HTTPException(503,"Meita's AI worker is disabled")
+                assigned=meita_autowork.auto_assign_chat(db,proposal["id"],current_staff)
+                proposal.update(status="Approved",automatic=True,assigned_tasks=assigned["jobs"])
+                reply=(f"Baik CEO. Saya dah masukkan {len(assigned['jobs'])} tugasan ke queue. "
+                       "Semak Task History untuk status dan Submitted Work untuk hasil.")
+                db.execute("UPDATE meita_messages SET content=%s WHERE id=%s",
+                           (reply,message["id"]))
+                audit(db,"meita.chat.platform_queued",proposal["id"])
+            else:
+                audit(db,"meita.chat.platform_proposed",proposal["id"])
         else:
             audit(db,"meita.chat.platform","Saved Platform agent replied")
     return {"reply":reply,"model":"OpenAI Platform Agent","proposal":proposal}
@@ -825,6 +837,17 @@ def meita_remove_job(ident:str):
 
 @app.post('/api/meita/jobs/{ident}/retry',dependencies=[Depends(guard)])
 def meita_retry_internal_job(ident:str):
+    return queue_meita_job(ident, "Retry available")
+
+
+@app.post('/api/meita/jobs/{ident}/run',dependencies=[Depends(guard)])
+def meita_run_approved_job(ident:str):
+    if os.getenv("MEITA_AUTO_WORKER_ENABLED","true").lower()!="true":
+        raise HTTPException(503,"Meita's AI worker is disabled")
+    return queue_meita_job(ident, "Approved")
+
+
+def queue_meita_job(ident:str, expected_status:str):
     with connect() as db:
         meita_autowork.init(db)
         control=meita_autowork.provider_status(db)
@@ -832,16 +855,18 @@ def meita_retry_internal_job(ident:str):
             raise HTTPException(409,
                 "AI queue is paused due to provider configuration or quota. Check AI Diagnostics, then resume.")
         job=db.execute("""SELECT j.id,j.status,j.task_id,j.staff
-            FROM coo_jobs j WHERE j.id=%s FOR UPDATE""",(ident,)).fetchone()
+            FROM coo_jobs j WHERE j.id=%s AND j.archived_at IS NULL
+            FOR UPDATE""",(ident,)).fetchone()
         if not job:raise HTTPException(404,"Meita task not found")
-        if job["status"]!="Retry available":
-            raise HTTPException(409,"Only confirmed failed AI jobs can be retried")
+        if job["status"]!=expected_status:
+            raise HTTPException(409,"This Meita task is not ready for this action")
         current=db.execute("""SELECT 1 FROM staff WHERE id=%s
             AND status='Available'""",(job["staff"]["id"],)).fetchone()
         if not current:raise HTTPException(409,"Assigned AI staff is unavailable")
         db.execute("""UPDATE coo_jobs SET status='Queued',updated_at=NOW()
             WHERE id=%s""",(ident,))
-        audit(db,'meita.autorun.retry_requested',ident)
+        action = 'meita.autorun.retry_requested' if expected_status == 'Retry available' else 'meita.run_requested'
+        audit(db,action,ident)
     return {"ok":True,"status":"Queued"}
 
 @app.get('/api/memory',dependencies=[Depends(guard)])

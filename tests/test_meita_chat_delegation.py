@@ -141,6 +141,39 @@ class MeitaChatDelegationTests(unittest.TestCase):
                 self.assertEqual(replay.status_code,200,replay.text)
                 self.assertEqual(replay.json()["proposal"]["status"],"Approved")
                 platform.assert_called_once()
+                with office_db.connect() as db:
+                    job=db.execute("SELECT id,status FROM coo_jobs WHERE proposal_id=%s",
+                                   (proposal["id"],)).fetchone()
+                self.assertEqual(job["status"],"Approved")
+                path="/api/meita/jobs/"+job["id"]+"/run"
+                queued=self.client.post(path)
+                self.assertEqual(queued.status_code,200,queued.text)
+                self.assertEqual(queued.json()["status"],"Queued")
+                self.assertEqual(self.client.post(path).status_code,409)
+
+
+    def test_platform_instruction_queues_once_when_auto_execute_is_enabled(self):
+        with office_db.connect() as db:
+            meita_team.save_settings(db,meita_team.MeitaSettings(
+                **{**self.config,"auto_execute_internal":True}))
+        payload={"message":"Meita, run the internal launch plan now"}
+        routed={"intent":"delegate","reply":"Planning the launch.",**self._staff_plan()}
+        with patch.dict(os.environ,{"MEITA_PLATFORM_ENABLED":"true",
+                                    "MEITA_AUTO_WORKER_ENABLED":"true"}), patch(
+            "backend.meita_platform.respond",return_value=routed,
+        ) as platform:
+            response=self.client.post("/api/meita/chat",json=payload)
+            self.assertEqual(response.status_code,200,response.text)
+            proposal=response.json()["proposal"]
+            self.assertTrue(proposal["automatic"])
+            self.assertEqual(proposal["assigned_tasks"][0]["status"],"Queued")
+            repeated=self.client.post("/api/meita/chat",json=payload)
+            self.assertEqual(repeated.json()["proposal"]["id"],proposal["id"])
+            platform.assert_called_once()
+        with office_db.connect() as db:
+            jobs=db.execute("SELECT status FROM coo_jobs WHERE proposal_id=%s",
+                            (proposal["id"],)).fetchall()
+        self.assertEqual([job["status"] for job in jobs],["Queued"])
 
     def test_reject_from_chat_never_assigns_job(self):
         with patch("backend.main.office_delegation.prepare_plan",
