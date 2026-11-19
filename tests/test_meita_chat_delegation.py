@@ -113,6 +113,35 @@ class MeitaChatDelegationTests(unittest.TestCase):
         self.assertEqual(self.client.post(
             "/api/delegation/proposals/"+proposal["id"]+"/approve").status_code,409)
 
+    def test_platform_replayed_delegation_reuses_one_proposal_and_task(self):
+        payload={"message":"Meita, assign the launch plan to our Director"}
+        routed={"intent":"delegate","reply":"Ready for CEO approval.",**self._staff_plan()}
+        routed["jobs"][0].update(priority="High",due_date="2027-01-15")
+        with patch.dict(os.environ,{"MEITA_PLATFORM_ENABLED":"true"}):
+            with patch("backend.meita_platform.respond",return_value=routed) as platform:
+                first=self.client.post("/api/meita/chat",json=payload)
+                self.assertEqual(first.status_code,200,first.text)
+                proposal=first.json()["proposal"]
+                second=self.client.post("/api/meita/chat",json=payload)
+                self.assertEqual(second.status_code,200,second.text)
+                self.assertEqual(second.json()["proposal"]["id"],proposal["id"])
+                with office_db.connect() as db:
+                    count=db.execute("SELECT count(*) AS n FROM coo_jobs WHERE proposal_id=%s",
+                                     (proposal["id"],)).fetchone()["n"]
+                self.assertEqual(count,0)
+                approved=self.client.post("/api/delegation/proposals/"+proposal["id"]+"/approve")
+                self.assertEqual(approved.status_code,200,approved.text)
+                self.assertEqual(len(approved.json()["created_tasks"]),1)
+                with office_db.connect() as db:
+                    task=db.execute("SELECT priority,due_date FROM tasks WHERE id=%s",
+                                    (approved.json()["created_tasks"][0],)).fetchone()
+                self.assertEqual(task["priority"],"High")
+                self.assertEqual(task["due_date"].isoformat(),"2027-01-15")
+                replay=self.client.post("/api/meita/chat",json=payload)
+                self.assertEqual(replay.status_code,200,replay.text)
+                self.assertEqual(replay.json()["proposal"]["status"],"Approved")
+                platform.assert_called_once()
+
     def test_reject_from_chat_never_assigns_job(self):
         with patch("backend.main.office_delegation.prepare_plan",
                    return_value=self._staff_plan()):
