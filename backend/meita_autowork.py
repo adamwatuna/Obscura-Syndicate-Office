@@ -15,7 +15,7 @@ from fastapi import HTTPException
 from psycopg.types.json import Jsonb
 
 from backend import ai_provider
-from backend import workforce
+from backend import workforce, task_schedule
 from backend import references as office_references
 from backend import memory as office_memory
 
@@ -122,10 +122,11 @@ def assign(db,proposal_id,staff,automatic=False):
         # Run AI. Execution is driven only by the corresponding COO job.
         task_status="To do"  # Queued is not executing: Live Desk must not show false activity.
         db.execute("""INSERT INTO tasks
-            (id,title,description,category,assignee,priority,
+            (id,title,description,category,assignee,priority,due_date,
              status,recurrence,created,ai_run_started,reference_ids)
-            VALUES (%s,%s,%s,'General',%s,'Normal',%s,'None',%s,TRUE,%s)""",
-            (task_id,title,brief,person["id"],task_status,int(time.time()),
+            VALUES (%s,%s,%s,'General',%s,%s,%s,%s,'None',%s,TRUE,%s)""",
+            (task_id,title,brief,person["id"],item.get("priority","Normal"),
+             task_schedule.parse_due(item.get("due_date")),task_status,int(time.time()),
              Jsonb(proposal.get('reference_ids') or [])))
         snapshot={key:person.get(key) or "" for key in
                   ("id","name","role","department","expertise")}

@@ -1,3 +1,4 @@
+import json
 import os
 import unittest
 from contextlib import nullcontext
@@ -36,14 +37,19 @@ class MeitaPlatformTests(unittest.TestCase):
 
     def test_disabled_default_and_no_billable_retry_or_tools(self):
         self.assertFalse(meita_platform.enabled())
-        self.mock_turn("completed", "  A draft for CEO review.  ")
+        self.mock_turn("completed", json.dumps({
+            "reply": "  A draft for CEO review.  ", "intent": "chat",
+            "title": "", "jobs": [],
+        }))
         reply = meita_platform.respond("Review tasks", {"recent_tasks": []}, self.factory)
-        self.assertEqual(reply, "A draft for CEO review.")
+        self.assertEqual(reply["reply"], "A draft for CEO review.")
         self.assertEqual(self.factory.call_args.kwargs["max_retries"], 0)
         self.create_session.assert_called_once()
         config = self.create_session.call_args.kwargs
         self.assertEqual(config["environment"], {"type": "none"})
-        self.assertEqual(config["agent"], {"tools": [], "multi_agent": {"enabled": False}})
+        self.assertEqual(config["agent"]["tools"], [])
+        self.assertEqual(config["agent"]["multi_agent"], {"enabled": False})
+        self.assertEqual(config["agent"]["text"]["format"]["type"], "json_schema")
         self.assertEqual(config["agent_id"], "agent_test")
 
     def test_failed_turn_rejects_partial_text(self):
@@ -59,3 +65,12 @@ class MeitaPlatformTests(unittest.TestCase):
             meita_platform.respond("Review tasks", {}, self.factory)
         self.assertEqual(error.exception.status_code, 503)
         self.factory.assert_not_called()
+
+    def test_chat_cannot_carry_jobs(self):
+        self.mock_turn("completed", json.dumps({
+            "reply": "Routed", "intent": "chat", "title": "",
+            "jobs": [{"staff_id": "unauthorized"}],
+        }))
+        with self.assertRaises(HTTPException) as error:
+            meita_platform.respond("Discuss an idea", {}, self.factory)
+        self.assertEqual(error.exception.status_code, 502)

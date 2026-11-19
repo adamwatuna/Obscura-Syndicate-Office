@@ -573,10 +573,28 @@ def meita_history():
         messages.append(message)
     return {"messages":messages}
 
+def existing_platform_proposal(db,request_hash):
+    row=db.execute("""SELECT p.id,p.status,p.title,p.plan,m.content
+        FROM coo_proposals p JOIN meita_messages m ON m.id=p.chat_message_id
+        WHERE p.platform_request_hash=%s AND p.status IN ('Pending approval','Approved')""",
+        (request_hash,)).fetchone()
+    if row is None:
+        return None
+    reply=(row["content"] if row["status"]=="Pending approval" else
+           "This delegation plan was already approved. Check Task Centre for its assignments.")
+    return {"reply":reply,"model":"OpenAI Platform Agent",
+            "proposal":{key:row[key] for key in ("id","status","title","plan")}}
+
+
 def platform_meita_chat(body:MeitaMessage):
+    request_hash=hashlib.sha256(json.dumps(
+        [body.message.strip(),sorted(set(body.reference_ids))]).encode()).hexdigest()
     with connect() as db:
+        existing=existing_platform_proposal(db,request_hash)
+        if existing:
+            return existing
         config=meita_team.settings(db)
-        roster=[{key: person[key] for key in ("id","name","role","department")}
+        roster=[{key: person[key] for key in ("id","name","role","department","expertise")}
                 for person in meita_team.available_staff(db,config["delegation_scope"])
                 if person["status"]=="Available"]
         tasks=[dict(row) for row in db.execute("""SELECT id,LEFT(title,180) AS title,
@@ -597,20 +615,44 @@ def platform_meita_chat(body:MeitaMessage):
                    if not item["archived_task"]]
     live=[{key: item[key] for key in ("id","task_id","title","status","source")}
           for item in meita_live_activity()["jobs"][:20]]
-    reply=meita_platform.respond(body.message,{
-        "staff":roster,"recent_tasks":tasks,"recent_chat":history,
+    routed=meita_platform.respond(body.message,{
+        "staff":roster,"max_jobs":config["max_delegation_jobs"],
+        "recent_tasks":tasks,"recent_chat":history,
         "selected_reference_summaries":references,
         "learning_academy_excerpts":academy["context"][:2500],
         "recent_live_desk_jobs":live,"recent_submitted_work":submitted,
     },images=images)
+    reply=routed["reply"]
     with connect() as db:
+        proposal=None
+        if routed["intent"]=="delegate":
+            db.execute("SELECT pg_advisory_xact_lock(%s)",
+                       (int.from_bytes(bytes.fromhex(request_hash[:16]),"big",signed=True),))
+            existing=existing_platform_proposal(db,request_hash)
+            if existing:
+                return existing
+            config=meita_team.settings(db)
+            current_staff=[person for person in meita_team.available_staff(
+                db,config["delegation_scope"]) if person["status"]=="Available"]
+            plan=office_delegation.validate_plan(routed,current_staff,
+                                               config["max_delegation_jobs"])
+            assignment_keys={(job["staff_id"],job["title"].casefold()) for job in plan["jobs"]}
+            if len(assignment_keys)!=len(plan["jobs"]):
+                raise HTTPException(502,"MEITA proposed duplicate assignments.")
         now=int(time.time())
         db.execute("""INSERT INTO meita_messages(role,content,created,reference_ids)
             VALUES ('user',%s,%s,%s)""",(body.message,now,Jsonb(body.reference_ids)))
-        db.execute("""INSERT INTO meita_messages(role,content,created)
-            VALUES ('assistant',%s,%s)""",(reply,now))
-        audit(db,"meita.chat.platform","Saved Platform agent replied")
-    return {"reply":reply,"model":"OpenAI Platform Agent","proposal":None}
+        message=db.execute("""INSERT INTO meita_messages(role,content,created)
+            VALUES ('assistant',%s,%s) RETURNING id""",(reply,now)).fetchone()
+        if routed["intent"]=="delegate":
+            proposal=office_delegation.save_proposal(
+                db,body.message,plan,chat_message_id=message["id"],
+                reference_ids=body.reference_ids+academy["reference_ids"],
+                platform_request_hash=request_hash)
+            audit(db,"meita.chat.platform_proposed",proposal["id"])
+        else:
+            audit(db,"meita.chat.platform","Saved Platform agent replied")
+    return {"reply":reply,"model":"OpenAI Platform Agent","proposal":proposal}
 
 
 @app.post('/api/meita/chat',dependencies=[Depends(guard)])

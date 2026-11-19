@@ -1224,7 +1224,7 @@ async function decideMeitaChatProposal(id,action,button){
   button.disabled=true;
   try{
     await api('delegation/proposals/'+encodeURIComponent(id)+'/'+action,{method:'POST'});
-    await Promise.all([loadMeita(),loadDelegations()]);
+    await Promise.all([loadMeita(),loadDelegations(),refresh(),refreshLiveActivity()]);
     msg(action==='approve'
       ?'Approved & assigned. AI staff jobs are ready; execution requires a separate Run AI.'
       :'Delegation proposal rejected');

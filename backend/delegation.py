@@ -12,7 +12,7 @@ from backend import ai_provider
 from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
-from backend import workforce
+from backend import workforce, task_schedule
 from backend import references as office_references
 from backend import department_playbooks
 
@@ -38,6 +38,10 @@ def init(db):
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         reviewed_at TIMESTAMPTZ)""")
     db.execute("ALTER TABLE coo_proposals ADD COLUMN IF NOT EXISTS chat_message_id BIGINT UNIQUE")
+    db.execute("ALTER TABLE coo_proposals ADD COLUMN IF NOT EXISTS platform_request_hash TEXT")
+    db.execute("""CREATE UNIQUE INDEX IF NOT EXISTS coo_open_platform_request
+        ON coo_proposals(platform_request_hash)
+        WHERE platform_request_hash IS NOT NULL AND status IN ('Pending approval','Approved')""")
     db.execute("""CREATE TABLE IF NOT EXISTS coo_jobs (
         id TEXT PRIMARY KEY, proposal_id TEXT NOT NULL REFERENCES coo_proposals(id),
         title TEXT NOT NULL, brief TEXT NOT NULL, staff JSONB NOT NULL,
@@ -53,6 +57,10 @@ def parse_output(data, staff, max_jobs=9):
         plan = json.loads(answer)
     except (ValueError, TypeError):
         raise HTTPException(502, "Meita did not return a valid task plan")
+    return validate_plan(plan, staff, max_jobs)
+
+
+def validate_plan(plan, staff, max_jobs):
     if not isinstance(plan, dict) or not isinstance(plan.get("jobs"), list):
         raise HTTPException(502, "Meita returned an invalid plan")
     raw = plan["jobs"]
@@ -71,8 +79,19 @@ def parse_output(data, staff, max_jobs=9):
             raise HTTPException(502, "Invalid job title")
         if not isinstance(detail, str) or not 8 <= len(detail.strip()) <= 2000:
             raise HTTPException(502, "Invalid job brief")
-        clean.append({"staff_id": sid, "staff_name": crew[sid]["name"],
-            "title": title.strip(), "brief": detail.strip()})
+        entry = {"staff_id": sid, "staff_name": crew[sid]["name"],
+                 "title": title.strip(), "brief": detail.strip()}
+        if "priority" in task:
+            if task["priority"] not in task_schedule.PRIORITIES:
+                raise HTTPException(502, "Invalid proposed task priority")
+            entry["priority"] = task["priority"]
+        if task.get("due_date") is not None:
+            try:
+                due = task_schedule.parse_due(task["due_date"], required=True)
+            except HTTPException:
+                raise HTTPException(502, "Invalid proposed task deadline") from None
+            entry["due_date"] = due.isoformat()
+        clean.append(entry)
     title = plan.get("title", "Meita delegation plan")
     if not isinstance(title, str) or not 1 <= len(title.strip()) <= 140:
         title = "Meita delegation plan"
@@ -130,7 +149,7 @@ def prepare_plan(brief, staff, memories=None, max_jobs=9,
     return parse_output(data, staff, max_jobs=max_jobs)
 
 
-def save_proposal(db, brief, plan, chat_message_id=None,reference_ids=None):
+def save_proposal(db, brief, plan, chat_message_id=None,reference_ids=None,platform_request_hash=None):
     """Save a validated plan, optionally linked to Meita's chat response.
 
     Chat can call this in the same transaction as its messages; failed chat
@@ -142,8 +161,9 @@ def save_proposal(db, brief, plan, chat_message_id=None,reference_ids=None):
         office_references.validate_ids(db,reference_ids)
     ident=secrets.token_hex(12)
     db.execute("""INSERT INTO coo_proposals
-        (id,title,brief,plan,chat_message_id,reference_ids) VALUES (%s,%s,%s,%s,%s,%s)""",
-        (ident,plan["title"],brief,Jsonb(plan),chat_message_id,Jsonb(reference_ids or [])))
+        (id,title,brief,plan,chat_message_id,reference_ids,platform_request_hash)
+        VALUES (%s,%s,%s,%s,%s,%s,%s)""",
+        (ident,plan["title"],brief,Jsonb(plan),chat_message_id,Jsonb(reference_ids or []),platform_request_hash))
     return {"id":ident,"status":"Pending approval","plan":plan,"title":plan["title"]}
 
 

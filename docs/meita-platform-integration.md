@@ -1,9 +1,11 @@
 # MEITA Platform integration
 
 The optional Platform route uses the saved MEITA agent for Meita Chat. It saves
-the CEO message and confirmed reply to the existing chat history. It has no
-path into the task creation, staffing, assignment, submission or approval code.
-Directors and Specialists continue to use the existing Obscura workflows.
+the CEO message and confirmed reply to the existing chat history. Explicit
+internal assignment requests can produce a pending proposal using current
+eligible staff. CEO approval creates real assignments via Obscura's existing
+transactional approval flow. Run AI remains a separate action. Directors and
+Specialists continue to use the existing Obscura workflows.
 
 | Surface | Context given to MEITA |
 | --- | --- |
@@ -13,8 +15,9 @@ Directors and Specialists continue to use the existing Obscura workflows.
 | Learning Academy | Relevant text excerpts using the existing retrieval rules |
 | Submitted Work | Recent delivery IDs, task IDs, titles and statuses |
 
-The samples are bounded. The agent can discuss existing records and suggest work
-for review. Task execution and approval remain in their existing app screens.
+The samples are bounded. Exact replays of an assignment request with the same
+reference IDs reuse its pending or approved proposal. The application validates
+the plan and creates assignments only in the existing CEO approval screen.
 Original attachment binaries and submitted report bodies stay in Obscura.
 
 ## Activation after approval
@@ -39,6 +42,8 @@ handling before enabling on private records.
 
 Run the offline suite first. With approval for a paid test, use one synthetic
 staging chat message and compare staff, tasks, queue and delivery counts before
-and after. Verify chat history records a reply only after a completed turn.
+and after. Verify approval creates one task per proposed job, repeated requests
+reuse one proposal, and pending proposals do not add jobs. Verify chat history
+records a reply only after a completed turn.
 Treat a timeout as an uncertain upstream outcome before retrying. To roll back
 the route, set `MEITA_PLATFORM_ENABLED` to false in the approved environment.
