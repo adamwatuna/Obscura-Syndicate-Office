@@ -173,6 +173,28 @@ class MeitaChatDelegationTests(unittest.TestCase):
         self.assertNotIn("proposal",
             self.client.get("/api/meita/history").json()["messages"][-1])
 
+    def test_chat_threads_keep_messages_and_model_context_separate(self):
+        first, second = "a" * 32, "b" * 32
+        with patch("backend.main.meita_platform.enabled", return_value=True), patch(
+            "backend.main.meita_platform.respond",
+            return_value={"intent": "chat", "reply": "Thread reply"},
+        ) as respond:
+            for thread, message in ((first, "First topic"), (second, "Second topic"),
+                                    (first, "First follow-up")):
+                response = self.client.post("/api/meita/chat", json={
+                    "message": message, "thread_id": thread,
+                })
+                self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual(respond.call_args_list[1].args[1]["recent_chat"], [])
+            self.assertEqual(respond.call_args.args[1]["recent_chat"][0]["content"],
+                             "First topic")
+        messages = self.client.get("/api/meita/history", params={"thread_id": first}).json()["messages"]
+        self.assertEqual([m["content"] for m in messages if m["role"] == "user"],
+                         ["First topic", "First follow-up"])
+        threads = self.client.get("/api/meita/threads").json()["threads"]
+        self.assertEqual([thread["title"] for thread in threads[:2]],
+                         ["First topic", "Second topic"])
+
     def test_plan_failure_does_not_persist_false_claim_or_chat_proposal(self):
         from fastapi import HTTPException
         with patch("backend.main.office_delegation.prepare_plan",
