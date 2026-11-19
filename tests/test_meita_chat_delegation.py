@@ -141,6 +141,16 @@ class MeitaChatDelegationTests(unittest.TestCase):
                 self.assertEqual(replay.status_code,200,replay.text)
                 self.assertEqual(replay.json()["proposal"]["status"],"Approved")
                 platform.assert_called_once()
+                with office_db.connect() as db:
+                    job=db.execute("SELECT id,status FROM coo_jobs WHERE proposal_id=%s",
+                                   (proposal["id"],)).fetchone()
+                self.assertEqual(job["status"],"Approved")
+                path="/api/meita/jobs/"+job["id"]+"/run"
+                queued=self.client.post(path)
+                self.assertEqual(queued.status_code,200,queued.text)
+                self.assertEqual(queued.json()["status"],"Queued")
+                self.assertEqual(self.client.post(path).status_code,409)
+
 
     def test_reject_from_chat_never_assigns_job(self):
         with patch("backend.main.office_delegation.prepare_plan",
