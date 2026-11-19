@@ -37,13 +37,27 @@ def response(staff, payload, *, operation, timeout):
         "multi_agent": {"enabled": False},
         "text": {"format": {"type": "text"}},
     }
+    if search:
+        config["instructions"] += (
+            " Open the source pages you cite using web_search. "
+            "Use only sources whose pages were successfully opened."
+        )
     messages = [{"type": "message", **message} for message in payload["input"]]
     result = meita_platform.run_session(
         key, config, messages, agent_id=agent_id, timeout=timeout,
+        include_search_items=search,
     )
+    search_items = []
+    if search:
+        result, search_items = result
     output = [message.model_dump(mode="json") for message in result.messages]
-    # Final message annotations are provider citation metadata. The workforce
-    # rejects research deliverables without verifiable citations.
+    for item in search_items:
+        action = item.get("action") or {}
+        url = action.get("url")
+        if item.get("status") == "completed" and action.get("type") == "open_page" and url:
+            # Agents reports opened pages as turn items. Adapt that evidence
+            # to the existing Responses-style source extraction.
+            output.append({**item, "action": {**action, "sources": [{"url": url}]}})
     return {"output": output, "status": "completed", "agent_session": True}
 
 
