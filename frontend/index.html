@@ -224,7 +224,11 @@
 .delivery-detail .file-input{font-size:12px;max-width:100%;margin-top:7px}
 @media(max-width:980px){.delivery-layout{grid-template-columns:1fr}.delivery-list{max-height:320px}.delivery-controls{grid-template-columns:1fr 1fr}.delivery-controls label{grid-column:span 1}}
 @media(max-width:600px){.delivery-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.delivery-controls{display:flex;flex-direction:column;align-items:stretch;gap:8px}.delivery-main{padding:12px!important}}
-</style></head><body><div id="login" class="login"><div class="panel"><div class="eyebrow">PRIVATE EXECUTIVE WORKSPACE</div><h1>AI Private Office</h1><p>Welcome back. Sign in to access your executive workspace.</p><form id="loginForm"><label for="password">CEO password</label><input id="password" type="password" autocomplete="current-password" required>
+</style><style>
+.meita-thread-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+@media(min-width:850px){.meita-thread-layout{grid-template-columns:minmax(160px,220px) minmax(0,1fr)}}
+</style>
+</head><body><div id="login" class="login"><div class="panel"><div class="eyebrow">PRIVATE EXECUTIVE WORKSPACE</div><h1>AI Private Office</h1><p>Welcome back. Sign in to access your executive workspace.</p><form id="loginForm"><label for="password">CEO password</label><input id="password" type="password" autocomplete="current-password" required>
  <div id="loginMfaWrap" class="hidden" style="margin-top:14px"><label for="loginMfaCode">Authenticator or recovery code</label><input id="loginMfaCode" type="text" autocomplete="one-time-code" inputmode="text" maxlength="32" placeholder="6-digit code or saved recovery code"><p class="muted">Enter the code from your authenticator app. Recovery codes work once.</p></div>
  <div style="height:18px"></div><button class="primary" style="width:100%">Sign in securely</button><p id="loginError" class="err"></p></form><p style="font-size:11px">Authorized access only.</p></div></div>
 <div id="app" class="shell hidden"><aside><div class="brand">AI Private Office<small>EXECUTIVE WORKSPACE</small></div><div class="nav" id="nav"><button data-view="hq" class="active">◫ &nbsp; Executive HQ</button><button data-view="meita">✦ &nbsp; Meita AI</button><button data-view="memory">◈ &nbsp; Memory Centre</button><button data-view="workforce">♙ &nbsp; AI Workforce</button><button data-view="desks">▦ &nbsp; Live Desks</button><button data-view="tasks">☑ &nbsp; Task Centre</button><button data-view="deliverables">▧ &nbsp; Submitted Work</button><button data-view="monthly">▣ &nbsp; Monthly Workplan</button><button data-view="academy">▤ &nbsp; Learning Academy</button><button data-view="research">⌕ &nbsp; Research Intelligence</button><button data-view="finance">◈ &nbsp; Finance & Audit</button><button data-view="integrations">⌘ &nbsp; Integration Centre</button><button data-view="governance">◇ &nbsp; Governance</button></div><div class="bottom"><button class="secondary" id="logout">Sign out</button><p>Private office environment</p></div></aside><main><header class="top"><div><div class="eyebrow">YOUR EXECUTIVE WORKSPACE</div><h1 id="pageTitle">Executive HQ</h1><div class="muted" id="today"></div></div><span class="pill">● Private workspace</span></header>
@@ -282,6 +286,12 @@
 <div class="toolbar"><div>
 <p>CEO speaks once. Meita coordinates the AI team, assigns internal work and delivers the results.</p></div>
 <button class="secondary" type="button" onclick="refreshMeitaOffice()">Refresh progress</button></div>
+<div class="meita-thread-layout">
+<aside class="card" aria-label="Meita chat history">
+ <button class="secondary" type="button" id="meitaNewChat" onclick="openMeitaThread()">+ New chat</button>
+ <h3 style="margin-top:14px">Recent chats</h3>
+ <div id="meitaThreadList" style="max-height:440px;overflow:auto;display:grid;gap:6px"></div>
+</aside>
 <div class="card" id="meitaChatCard">
  <div class="toolbar"><div><h3>Chat with Meita</h3><p>Give Meita your instructions directly. Internal tasks are assigned and queued automatically when authorized.</p></div><span class="tag">CEO chat</span></div>
  <div id="meitaChat" style="height:410px;overflow:auto;font-size:14px;line-height:1.6"><p>Start a conversation with Meita.</p></div>
@@ -315,6 +325,7 @@
    <div id="meitaAttachedReferences" class="meita-reference-chips" aria-live="polite"></div>
    <p class="muted">Attach up to 6 references per instruction · 20 MB per file. Video analysis uses sampled frames only (no audio transcription). Drag files here or paste an image into the chat.</p>
  </form>
+</div>
 </div>
 <div class="card" style="margin-top:20px" id="meitaAiHealth">
  <div class="toolbar"><div><h3>AI Engine Health &amp; Queue</h3>
@@ -1538,9 +1549,35 @@ function downloadMeitaPptx(){
     encodeURIComponent(meitaDeckData.proposal_id)+'/powerpoint');
 }
 
+let activeMeitaThread=crypto.randomUUID().replaceAll('-','');
+let meitaThreadLoad=0;
+let meitaSending=false;
+
+function openMeitaThread(id){
+  if(meitaSending||meitaUploadBusy)return;
+  activeMeitaThread=id||crypto.randomUUID().replaceAll('-','');
+  pendingMeitaReferences=[];renderMeitaReferences();
+  $('meitaInput').value='';
+  loadMeita();
+}
+
 async function loadMeita(){
   try{
-    const r=await api('meita/history');
+    const request=++meitaThreadLoad,thread=activeMeitaThread;
+    const [r,history]=await Promise.all([
+      api('meita/history?thread_id='+encodeURIComponent(thread)),api('meita/threads')
+    ]);
+    if(request!==meitaThreadLoad||thread!==activeMeitaThread)return;
+    $('meitaThreadList').replaceChildren();
+    for(const saved of history.threads){
+      const button=meitaNode('button',saved.title,'secondary');
+      button.type='button';
+      button.style.textAlign='left';
+      button.style.overflowWrap='anywhere';
+      if(saved.id===thread)button.setAttribute('aria-current','true');
+      button.onclick=()=>openMeitaThread(saved.id);
+      $('meitaThreadList').append(button);
+    }
     $('meitaChat').textContent='';
     r.messages.forEach(m=>{addMeita(m.role,m.content,m.proposal||null,m.id);if(m.reference_ids?.length)$('meitaChat').lastElementChild.append(meitaNode('p',m.reference_ids.length+' attached reference(s)','muted'));});
     if(!r.messages.length)addMeita('assistant','Hello CEO. Tell me what work to assign to our AI team.');
@@ -1866,23 +1903,27 @@ $('meitaInput').addEventListener('paste',e=>{
 $('meitaForm').addEventListener('submit',async e=>{
   e.preventDefault();
   const input=$('meitaInput'),typed=input.value.trim();
-  if(meitaUploadBusy)return;
+  if(meitaUploadBusy||meitaSending)return;
   const message=typed||(pendingMeitaReferences.length?'Please review the attached CEO reference materials, describe their relevant creative direction and preserve them in Learning Academy for future team work.':'');
   if(!message){meitaUploadStatus('Write an instruction or attach at least one reference.',true);return;}
   const refs=[...pendingMeitaReferences];
+  meitaSending=true;
   const btn=$('meitaSend');btn.disabled=true;btn.textContent='Meita is planning…';
   addMeita('user',message);input.value='';
   try{
-    const r=await api('meita/chat',{method:'POST',body:JSON.stringify({message,reference_ids:refs.map(r=>r.id)})});
+    const r=await api('meita/chat',{method:'POST',body:JSON.stringify({message,thread_id:activeMeitaThread,reference_ids:refs.map(r=>r.id)})});
     addMeita('assistant',r.reply,r.proposal||null);
-    if(r.proposal)await loadDelegations();
+    if(r.proposal){
+      activeMeitaThread=crypto.randomUUID().replaceAll('-','');
+      await loadDelegations();
+    }
     pendingMeitaReferences=[];renderMeitaReferences();
     await Promise.all([refresh(),refreshLiveActivity(),loadMeitaTaskHistory(),loadAcademyLibrary(),loadMeita()]);
   }catch(err){
     input.value=message;
     await loadMeita();
     msg('Meita request did not finish: '+err.message);
-  }finally{btn.disabled=false;btn.textContent='Send to Meita'}
+  }finally{meitaSending=false;btn.disabled=false;btn.textContent='Send to Meita'}
 });
 
 let memoryItems=[],editingMemory=null;

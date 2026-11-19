@@ -150,6 +150,7 @@ class Task(BaseModel):
 class Lesson(BaseModel):title:str=Field(min_length=1,max_length=200);kind:str;source:str=Field(min_length=1,max_length=3000);assigned:str=''
 class Status(BaseModel):status:str
 class MeitaMessage(BaseModel):
+    thread_id: str = Field(default="legacy", pattern=r"^(legacy|[a-f0-9]{32})$")
     message: str = Field(min_length=1,max_length=6000)
     reference_ids: list[str] = Field(default_factory=list,max_length=6)
 
@@ -569,8 +570,28 @@ def meita_live_activity():
     combined.sort(key=lambda r:r["updated_at"] or "",reverse=True)
     return {'jobs':combined[:400]}
 
+@app.get('/api/meita/threads', dependencies=[Depends(guard)])
+def meita_threads():
+    with connect() as db:
+        rows = db.execute("""
+            SELECT thread_id, MAX(id) AS last_id
+            FROM meita_messages GROUP BY thread_id ORDER BY last_id DESC
+        """).fetchall()
+        titles = db.execute("""
+            SELECT DISTINCT ON (thread_id) thread_id, LEFT(content, 100) AS title
+            FROM meita_messages WHERE role='user'
+            ORDER BY thread_id, id
+        """).fetchall()
+    by_thread = {row["thread_id"]: row["title"] for row in titles}
+    return {"threads": [
+        {"id": row["thread_id"], "title": "Previous conversations" if row["thread_id"] == "legacy"
+         else by_thread.get(row["thread_id"], "Meita conversation")}
+        for row in rows
+    ]}
+
+
 @app.get('/api/meita/history',dependencies=[Depends(guard)])
-def meita_history():
+def meita_history(thread_id: str = "legacy"):
     with connect() as db:
         office_delegation.init(db)
         rows=db.execute("""SELECT m.id,m.role,m.content,m.created,
@@ -579,9 +600,9 @@ def meita_history():
             p.auto_execute AS proposal_automatic,m.reference_ids AS reference_ids
             FROM meita_messages m
             LEFT JOIN coo_proposals p ON p.chat_message_id=m.id
-            ORDER BY m.created DESC,m.id DESC LIMIT 30""").fetchall()
+            WHERE m.thread_id=%s ORDER BY m.created,m.id""", (thread_id,)).fetchall()
     messages=[]
-    for r in reversed(rows):
+    for r in rows:
         message={k:r[k] for k in ("id","role","content","created","reference_ids")}
         if r["proposal_id"]:
             message["proposal"]={"id":r["proposal_id"],
@@ -620,8 +641,8 @@ def platform_meita_chat(body:MeitaMessage):
             assignee,status FROM tasks WHERE deleted_at IS NULL
             ORDER BY created DESC,id DESC LIMIT 40""").fetchall()]
         history=[dict(row) for row in reversed(db.execute("""SELECT role,
-            LEFT(content,1200) AS content FROM meita_messages
-            ORDER BY created DESC,id DESC LIMIT 8""").fetchall())]
+            LEFT(content,1200) AS content FROM meita_messages WHERE thread_id=%s
+            ORDER BY created DESC,id DESC LIMIT 8""", (body.thread_id,)).fetchall())]
         references=office_references.summaries(db,body.reference_ids,max_chars=3000)
         images=office_references.images(db,body.reference_ids)
         if sum(len(image["image_url"]) for image in images)>2_000_000:
@@ -659,10 +680,10 @@ def platform_meita_chat(body:MeitaMessage):
             if len(assignment_keys)!=len(plan["jobs"]):
                 raise HTTPException(502,"MEITA proposed duplicate assignments.")
         now=int(time.time())
-        db.execute("""INSERT INTO meita_messages(role,content,created,reference_ids)
-            VALUES ('user',%s,%s,%s)""",(body.message,now,Jsonb(body.reference_ids)))
-        message=db.execute("""INSERT INTO meita_messages(role,content,created)
-            VALUES ('assistant',%s,%s) RETURNING id""",(reply,now)).fetchone()
+        db.execute("""INSERT INTO meita_messages(role,content,created,reference_ids,thread_id)
+            VALUES ('user',%s,%s,%s,%s)""",(body.message,now,Jsonb(body.reference_ids),body.thread_id))
+        message=db.execute("""INSERT INTO meita_messages(role,content,created,thread_id)
+            VALUES ('assistant',%s,%s,%s) RETURNING id""",(reply,now,body.thread_id)).fetchone()
         if routed["intent"]=="delegate":
             proposal=office_delegation.save_proposal(
                 db,body.message,plan,chat_message_id=message["id"],
@@ -692,8 +713,8 @@ def meita_chat(body:MeitaMessage):
                                 related['context'][:3500])
         reference_images=(office_references.images(db,body.reference_ids)+
                           related['images'])[:4]
-        history=list(reversed(db.execute("""SELECT role,content FROM meita_messages
-            ORDER BY created DESC,id DESC LIMIT 12""").fetchall()))
+        history=list(reversed(db.execute("""SELECT role,content FROM meita_messages WHERE thread_id=%s
+            ORDER BY created DESC,id DESC LIMIT 12""", (body.thread_id,)).fetchall()))
         leadership=[dict(x) for x in db.execute("""SELECT name,role,department
             FROM staff WHERE org_role='Director' ORDER BY department LIMIT 15""")]
         team_context=meita_team.latest_summary(db)
@@ -724,11 +745,11 @@ def meita_chat(body:MeitaMessage):
             reference_context=reference_context,reference_images=reference_images)
     with connect() as db:
         now=int(time.time())
-        db.execute("""INSERT INTO meita_messages(role,content,created,reference_ids)
-            VALUES ('user',%s,%s,%s)""",(body.message,now,Jsonb(body.reference_ids)))
-        message=db.execute("""INSERT INTO meita_messages(role,content,created)
-            VALUES ('assistant',%s,%s) RETURNING id""",
-            (routed["reply"],now)).fetchone()
+        db.execute("""INSERT INTO meita_messages(role,content,created,reference_ids,thread_id)
+            VALUES ('user',%s,%s,%s,%s)""",(body.message,now,Jsonb(body.reference_ids),body.thread_id))
+        message=db.execute("""INSERT INTO meita_messages(role,content,created,thread_id)
+            VALUES ('assistant',%s,%s,%s) RETURNING id""",
+            (routed["reply"],now,body.thread_id)).fetchone()
         proposal=None
         if proposal_plan:
             config=meita_team.settings(db)
