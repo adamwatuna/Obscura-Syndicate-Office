@@ -657,6 +657,7 @@ def platform_meita_chat(body:MeitaMessage):
           for item in meita_live_activity()["jobs"][:20]]
     routed=meita_platform.respond(body.message,{
         "staff":roster,"max_jobs":config["max_delegation_jobs"],
+        "auto_execute_internal":config["auto_execute_internal"],
         "recent_tasks":tasks,"recent_chat":history,
         "selected_reference_summaries":references,
         "learning_academy_excerpts":academy["context"][:2500],
@@ -689,7 +690,18 @@ def platform_meita_chat(body:MeitaMessage):
                 db,body.message,plan,chat_message_id=message["id"],
                 reference_ids=body.reference_ids+academy["reference_ids"],
                 platform_request_hash=request_hash)
-            audit(db,"meita.chat.platform_proposed",proposal["id"])
+            if config["auto_execute_internal"]:
+                if os.getenv("MEITA_AUTO_WORKER_ENABLED","true").lower()!="true":
+                    raise HTTPException(503,"Meita's AI worker is disabled")
+                assigned=meita_autowork.auto_assign_chat(db,proposal["id"],current_staff)
+                proposal.update(status="Approved",automatic=True,assigned_tasks=assigned["jobs"])
+                reply=(f"Baik CEO. Saya dah masukkan {len(assigned['jobs'])} tugasan ke queue. "
+                       "Semak Task History untuk status dan Submitted Work untuk hasil.")
+                db.execute("UPDATE meita_messages SET content=%s WHERE id=%s",
+                           (reply,message["id"]))
+                audit(db,"meita.chat.platform_queued",proposal["id"])
+            else:
+                audit(db,"meita.chat.platform_proposed",proposal["id"])
         else:
             audit(db,"meita.chat.platform","Saved Platform agent replied")
     return {"reply":reply,"model":"OpenAI Platform Agent","proposal":proposal}
