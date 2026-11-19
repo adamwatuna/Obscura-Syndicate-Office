@@ -88,13 +88,20 @@ def run_session(key, config, messages, *, agent_id="", client_factory=None,
 
     saved_agent = {"agent_id": agent_id} if agent_id else {}
     logger = logging.getLogger("uvicorn.error")
+    # Agents accepts a plain string for the whole input, but structured
+    # messages must contain an array of input text or image blocks.
+    agent_input = [
+        {**message, "content": [{"type": "input_text", "text": message["content"]}]}
+        if isinstance(message["content"], str) else message
+        for message in messages
+    ]
     try:
         with client_factory(api_key=key, max_retries=0, timeout=timeout) as client:
             with client.beta.agents.sessions.create(
                 **saved_agent,
                 agent=config,
                 environment={"type": "none"},
-                input=messages,
+                input=agent_input,
                 stream=True,
             ).with_result_collection() as stream:
                 for event in stream:
