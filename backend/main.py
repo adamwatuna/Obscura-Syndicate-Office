@@ -18,7 +18,7 @@ from backend import task_schedule
 from backend import task_control
 from backend import news_briefings
 from backend import meita_team
-from backend import meita_chat_delegate, meita_platform
+from backend import meita_chat_delegate, meita_platform, staff_agents
 from backend import meita_autowork, meita_decks
 from backend import social, social_publish
 from backend import references as office_references
@@ -43,9 +43,16 @@ async def lifespan(app):
     # This clock keeps assignments recurring even if the CEO does not open the UI.
     ticker=asyncio.create_task(monthly.monthly_clock(connect))
     assistant_worker=asyncio.create_task(meita_autowork.autonomous_worker(connect))
+    staff_setup = None
+    if os.getenv("STAFF_PLATFORM_PROVISION", "false").lower() == "true":
+        staff_setup = asyncio.create_task(asyncio.to_thread(staff_agents.provision_roster, connect))
     try:
         yield
     finally:
+        if staff_setup:
+            staff_setup.cancel()
+            with suppress(asyncio.CancelledError):
+                await staff_setup
         ticker.cancel()
         assistant_worker.cancel()
         with suppress(asyncio.CancelledError):
@@ -292,6 +299,18 @@ def get_staff_configuration(ident:str):
                        (ident,)).fetchone()
         if row is None:raise HTTPException(404,'Staff not found')
         return {'staff':dict(row)}
+
+class StaffAgentBinding(BaseModel):
+    agent_id: str = Field(max_length=64, pattern=r"^agent_[A-Za-z0-9_-]{1,58}$")
+
+
+@app.put('/api/staff/{ident}/agent', dependencies=[Depends(guard)])
+def bind_staff_agent(ident: str, body: StaffAgentBinding):
+    with connect() as db:
+        staff_agents.bind(db, ident, body.agent_id)
+        audit(db, 'staff.agent.linked', ident)
+    return {'agent_id': body.agent_id}
+
 
 @app.put('/api/staff/{ident}',dependencies=[Depends(guard)])
 def update_staff(ident:str,body:Staff):

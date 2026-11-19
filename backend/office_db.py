@@ -74,6 +74,9 @@ def ensure_schema(db):
     db.execute("ALTER TABLE staff ADD COLUMN IF NOT EXISTS org_role TEXT NOT NULL DEFAULT 'Specialist'")
     db.execute("ALTER TABLE staff ADD COLUMN IF NOT EXISTS manager_id TEXT")
     db.execute("ALTER TABLE staff ADD COLUMN IF NOT EXISTS delegation_permission TEXT NOT NULL DEFAULT 'none'")
+    db.execute("ALTER TABLE staff ADD COLUMN IF NOT EXISTS platform_agent_id TEXT")
+    db.execute("""CREATE UNIQUE INDEX IF NOT EXISTS staff_platform_agent_unique
+        ON staff(platform_agent_id) WHERE platform_agent_id IS NOT NULL""")
     db.execute("ALTER TABLE staff ADD COLUMN IF NOT EXISTS portrait_slot SMALLINT")
     db.execute("""CREATE TABLE IF NOT EXISTS office_schema_migrations (
         name TEXT PRIMARY KEY, done_at TIMESTAMPTZ NOT NULL DEFAULT NOW())""")

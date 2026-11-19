@@ -44,7 +44,7 @@ AUDIT_ROLE="Independent Auditor"
 APPROVAL="approval_required"
 INTERNAL="department_internal"
 NONE="none"
-STAFF_COLUMNS="id,name,role,department,expertise,tools,autonomy,status,org_role,manager_id,delegation_permission"
+STAFF_COLUMNS="id,name,role,department,expertise,tools,autonomy,status,org_role,manager_id,delegation_permission,platform_agent_id"
 
 class DirectorBrief(BaseModel):
     brief: str = Field(min_length=5,max_length=2500)
