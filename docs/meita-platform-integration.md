@@ -47,3 +47,20 @@ reuse one proposal, and pending proposals do not add jobs. Verify chat history
 records a reply only after a completed turn.
 Treat a timeout as an uncertain upstream outcome before retrying. To roll back
 the route, set `MEITA_PLATFORM_ENABLED` to false in the approved environment.
+
+## Director and Specialist agents
+
+Set `STAFF_PLATFORM_ENABLED=true` and `STAFF_PLATFORM_API_KEY` on the
+server to opt the staff workforce into OpenAI Agents sessions. This applies to
+Director delegation planning and the shared workforce execution path. Set
+`STAFF_PLATFORM_AGENT_IDS` to an optional JSON object mapping Obscura staff
+IDs to unique saved Agent IDs in that project. Profiles without a saved ID
+run an inline agent in their own session. Obscura supplies the assigned
+profile's role, scope, configured model and task input on every run.
+
+Only source-backed research and news runs get live web search. Research
+deliverables require provider citation annotations. The app keeps task
+ownership, output persistence, and approvals in the existing workflows.
+Verify the connection with synthetic planning and workforce briefs before
+enabling it for real records. Set `STAFF_PLATFORM_ENABLED=false` to return
+staff runs to the existing Responses provider.

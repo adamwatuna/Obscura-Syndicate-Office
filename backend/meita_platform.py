@@ -38,10 +38,6 @@ def respond(message, context, client_factory=None, images=()):
     if not key or not re.fullmatch(r"agent_[A-Za-z0-9_-]{1,58}", agent_id):
         raise HTTPException(503, "The MEITA Platform connection is not configured.")
 
-    if client_factory is None:
-        from openai import OpenAI
-        client_factory = OpenAI
-
     content = [
         {"type": "input_text", "text": message},
         {"type": "input_text", "text": (
@@ -62,32 +58,11 @@ def respond(message, context, client_factory=None, images=()):
         *images,
     ]
     agent_input = [{"type": "message", "role": "user", "content": content}]
-    try:
-        with client_factory(api_key=key, max_retries=0, timeout=75) as client:
-            with client.beta.agents.sessions.create(
-                agent_id=agent_id,
-                agent={"tools": [], "multi_agent": {"enabled": False}, "text": _TEXT},
-                environment={"type": "none"},
-                input=agent_input,
-                stream=True,
-            ).with_result_collection() as stream:
-                terminal_event = None
-                for event in stream:
-                    if event.type in (
-                        "agent.session.turn.completed",
-                        "agent.session.turn.failed",
-                        "agent.session.turn.cancelled",
-                    ):
-                        terminal_event = event.type
-                        break
-                if terminal_event != "agent.session.turn.completed":
-                    raise RuntimeError("Agent turn did not complete")
-                reply = stream.get_final_result().output_text
-    except Exception:
-        raise HTTPException(
-            502, "MEITA Platform did not return a confirmed reply. "
-            "Check the upstream outcome before retrying."
-        ) from None
+    result = run_session(
+        key, {"tools": [], "multi_agent": {"enabled": False}, "text": _TEXT},
+        agent_input, agent_id=agent_id, client_factory=client_factory, label="MEITA Platform",
+    )
+    reply = result.output_text
     try:
         result = json.loads(reply)
         if not isinstance(result, dict) or result.get("intent") not in ("chat", "delegate"):
@@ -102,3 +77,34 @@ def respond(message, context, client_factory=None, images=()):
         raise HTTPException(502, "MEITA Platform returned an invalid office reply.") from None
     result["reply"] = result["reply"].strip()
     return result
+
+
+def run_session(key, config, messages, *, agent_id="", client_factory=None,
+                timeout=75, label="OpenAI staff agent"):
+    if client_factory is None:
+        from openai import OpenAI
+        client_factory = OpenAI
+
+    saved_agent = {"agent_id": agent_id} if agent_id else {}
+    try:
+        with client_factory(api_key=key, max_retries=0, timeout=timeout) as client:
+            with client.beta.agents.sessions.create(
+                **saved_agent,
+                agent=config,
+                environment={"type": "none"},
+                input=messages,
+                stream=True,
+            ).with_result_collection() as stream:
+                for event in stream:
+                    if event.type == "agent.session.turn.completed":
+                        return stream.get_final_result()
+                    if event.type in (
+                        "agent.session.turn.failed", "agent.session.turn.cancelled",
+                    ):
+                        break
+    except Exception:
+        pass
+    raise HTTPException(
+        502, f"{label} did not return a confirmed reply. "
+        "Check the upstream outcome before retrying.",
+    )

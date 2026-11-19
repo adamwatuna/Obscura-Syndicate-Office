@@ -8,7 +8,7 @@ from backend import ai_provider
 from fastapi import HTTPException
 from backend import references as office_references
 from backend import academy as office_academy
-from backend import department_playbooks
+from backend import department_playbooks, staff_agents
 
 def dbconn():
     url=os.getenv("DATABASE_URL","").strip()
@@ -94,8 +94,6 @@ def _news_sources(data):
 
 def execute(task,staff):
     if os.getenv("AI_ENGINE_ENABLED","false").lower()!="true": raise HTTPException(503,"AI engine is disabled")
-    key=os.getenv("OPENAI_API_KEY","").strip()
-    if not key: raise HTTPException(503,"OPENAI_API_KEY is missing")
     if len(task["title"])>250: raise HTTPException(400,"Task is too long")
     model=os.getenv("OPENAI_MODEL","gpt-5.4")
     is_news=task.get("category")=="News Update"
@@ -169,7 +167,7 @@ def execute(task,staff):
                                             "timezone":"Asia/Kuala_Lumpur"}}]
         payload["tool_choice"]="required"
         payload["include"]=["web_search_call.action.sources"]
-    data=ai_provider.response(payload,operation="workforce",timeout=185 if source_required else 165)
+    data=staff_agents.response(staff,payload,operation="workforce",timeout=185 if source_required else 165)
     answer=ai_provider.text_output(data)
     if not answer:
         reason=(data.get("incomplete_details") or {}).get("reason") if data.get("status")=="incomplete" else None
@@ -182,7 +180,7 @@ def execute(task,staff):
         searched=any(item.get("type")=="web_search_call"
                      for item in data.get("output",[]))
         sources=_news_sources(data)
-        if not searched or not sources:
+        if not sources or not (searched or data.get("agent_session")):
             raise HTTPException(502,
                 "No verifiable web-search sources returned; source-backed research was not saved")
     ident=secrets.token_hex(12)
