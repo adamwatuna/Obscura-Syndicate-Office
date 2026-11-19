@@ -111,7 +111,15 @@ def execute(task,staff):
                  "substantive analysis or production work needed for the task. "
                  "Prefer clearly labelled visual tables or real data charts when possible; "
                  "never invent measurements, images or citations. "
-                 "Produce useful, clearly labeled work product. Cite uncertainty when necessary.")
+                 "Produce useful, clearly labeled work product. Cite uncertainty when necessary. "
+                 "FORMAT FOR THE CEO REVIEW INTERFACE: Write polished, readable Markdown, "
+                 "not raw HTML or escaped Markdown. Use a clear # report title, ## section "
+                 "headings, concise paragraphs, **bold** for key findings, standard - bullets "
+                 "or numbered steps, and GitHub-style Markdown tables only when comparisons "
+                 "or structured real evidence justify them. Use fenced code blocks only "
+                 "for genuine code or data. Include a short executive summary and concrete "
+                 "recommended next actions. Avoid decorative symbols, filler headings, "
+                 "excessive nesting, and invented graphics or visuals.")
     instruction+=" DEPARTMENT-SPECIFIC OPERATING POLICY: "+department_playbooks.job_policy(
         staff.get("department",""),staff.get("role",""))
     if is_research:
