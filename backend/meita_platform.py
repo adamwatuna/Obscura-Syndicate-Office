@@ -1,6 +1,7 @@
 """Opt-in, proposal-only transport for the saved OpenAI Platform agent."""
 
 import json
+import logging
 import os
 import re
 
@@ -86,6 +87,7 @@ def run_session(key, config, messages, *, agent_id="", client_factory=None,
         client_factory = OpenAI
 
     saved_agent = {"agent_id": agent_id} if agent_id else {}
+    logger = logging.getLogger("uvicorn.error")
     try:
         with client_factory(api_key=key, max_retries=0, timeout=timeout) as client:
             with client.beta.agents.sessions.create(
@@ -101,10 +103,20 @@ def run_session(key, config, messages, *, agent_id="", client_factory=None,
                     if event.type in (
                         "agent.session.turn.failed", "agent.session.turn.cancelled",
                     ):
+                        turn_error = getattr(getattr(event, "turn", None), "error", None)
+                        logger.warning("%s failed: event=%s code=%s",
+                                       label, event.type, _safe_error_code(turn_error))
                         break
-    except Exception:
-        pass
+    except Exception as error:
+        logger.warning("%s failed: exception=%s status=%s code=%s",
+                       label, type(error).__name__, getattr(error, "status_code", None),
+                       _safe_error_code(error))
     raise HTTPException(
         502, f"{label} did not return a confirmed reply. "
         "Check the upstream outcome before retrying.",
     )
+
+
+def _safe_error_code(error):
+    code = getattr(error, "code", None)
+    return code if isinstance(code, str) and re.fullmatch(r"[a-zA-Z0-9_]{1,64}", code) else None
