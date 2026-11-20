@@ -152,7 +152,7 @@ def operating_standard(department):
 SOURCE_PATHS = {
     "Research & Intelligence": "Start with the brief and approved Academy references. Then obtain current public sources through web search. Prefer original records and corroborate material claims.",
     "Marketing & Growth": "Start with the brand brief, audience data and approved campaigns. Use public competitor evidence only when the task supplies it or Research provides it.",
-    "Creative": "Start with the CEO brief, attached examples and the relevant brand or style guide in Learning Academy.",
+    "Creative": "Start with the CEO brief and relevant Academy brand or style guides. For Canva production, compare public visual references from Pinterest (if accessible) and independent sources, when the brief allows public research.",
     "Finance & Treasury": "Use the period, currency and source from recorded Finance & Audit data supplied to the run, or clearly identified planning assumptions.",
     "Operations & Project Management": "Start with assigned tasks, supplied milestones, dependencies and confirmed owners.",
     "Technology & AI Systems": "Start with the supplied repository excerpts, logs and requirements. Verify platform behavior against available official documentation.",

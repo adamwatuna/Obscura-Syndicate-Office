@@ -127,9 +127,11 @@ def _execute(task,staff):
     model=os.getenv("OPENAI_MODEL","gpt-5.4")
     is_news=task.get("category")=="News Update"
     is_research=staff.get("department")=="Research & Intelligence"
-    source_required=is_news or is_research
     image_requested = task.get("category") == "Creative Image" and staff.get("department") == "Creative"
     canva_mode = {"Canva Production": "produce", "Canva Review": "review", "Canva Video": "video"}.get(task.get("category"))
+    design_research = canva_mode == "produce"
+    source_required = is_news or is_research
+    search_enabled = source_required or design_research
     if canva_mode and not canva.allowed(staff, canva_mode):
         raise HTTPException(403, "Staff role is not approved for this Canva operation")
     instruction=("You are an AI staff member producing an INTERNAL draft deliverable for CEO review only. "
@@ -221,7 +223,14 @@ def _execute(task,staff):
                         "Describe the review as text-based. Do not claim to have assessed visual layout.")
     if canva_mode == "produce":
         instruction += (
-            " DESIGN PRODUCTION: Return only the structured design plan. Write the actual reader-facing "
+            " DESIGN PRODUCTION: Use web_search for public visual references. Search Pinterest if requested "
+            "or appropriate, then open an independent public design or publisher source. Compare typography, "
+            "layout and image treatment. Keep searches generic and omit internal names, confidential copy "
+            "and private attachments. Skip web search if the CEO restricts the task to supplied references. "
+            "If Pinterest is inaccessible, use accessible independent sources and state the limitation. "
+            "Summarize your comparison and how it informed the layout in reference_comparison, outside "
+            "the document pages. Do not copy images from reference sites into the output. "
+            "Return only the structured design plan. Write the actual reader-facing "
             "headlines and copy. Never put design notes, limitations, setup instructions or a report inside pages. "
             "Create one design per requested option (up to three). Keep the same menu and example text across "
             "comparison variants. Map food magazine to editorial, production shot list to storyboard, "
@@ -264,11 +273,11 @@ def _execute(task,staff):
     if reference_images:
         original=payload['input'][0]['content']
         payload['input'][0]['content']=[{'type':'input_text','text':original},*reference_images]
-    if source_required:
+    if search_enabled:
         payload["tools"]=[{"type":"web_search","search_context_size":"medium",
                            "user_location":{"type":"approximate","country":"MY",
                                             "timezone":"Asia/Kuala_Lumpur"}}]
-        payload["tool_choice"]="required"
+        payload["tool_choice"]="required" if source_required else "auto"
         payload["include"]=["web_search_call.action.sources"]
     video = None
     if canva_mode == "video":
@@ -283,7 +292,7 @@ def _execute(task,staff):
         data = {}
         answer = f"# {task['title']}\n\nThe Canva MP4 export is attached for review."
     else:
-        data=staff_agents.response(staff,payload,operation="workforce",timeout=185 if source_required else 165)
+        data=staff_agents.response(staff,payload,operation="workforce",timeout=185 if search_enabled else 165)
         answer=ai_provider.text_output(data)
     if not answer:
         reason=(data.get("incomplete_details") or {}).get("reason") if data.get("status")=="incomplete" else None
@@ -292,11 +301,12 @@ def _execute(task,staff):
             ". Try a shorter brief or adjust output token allowance.",
             "empty_response")
     sources=[]
-    if source_required:
+    searched=False
+    if search_enabled:
         searched=any(item.get("type")=="web_search_call"
                      for item in data.get("output",[]))
         sources=_news_sources(data)
-        if not sources or not (searched or data.get("agent_session")):
+        if source_required and (not sources or not (searched or data.get("agent_session"))):
             raise HTTPException(502,
                 "No verifiable web-search sources returned; source-backed research was not saved")
     image = None
@@ -340,6 +350,10 @@ def _execute(task,staff):
             links.append(f"- [{label} · Edit in Canva]({link})")
             canva_files.append((f"{index}-{deliverables.safe_filename(design.name)[:65]}.pdf", exported))
         answer = f"# {task['title']}\n\n" + "\n".join(links) + "\n\nPDF previews are attached."
+        if sources and plan.reference_comparison.strip():
+            answer += "\n\n## Rujukan reka bentuk\n\n" + plan.reference_comparison.strip()
+            for source in sources[:4]:
+                answer += f"\n- [Sumber rujukan]({source['url']})"
     ident=secrets.token_hex(12)
     try:
         with dbconn() as db:
@@ -357,7 +371,7 @@ def _execute(task,staff):
                 VALUES (%s,%s,%s,%s,%s,%s,%s,'For approval',%s,
                         CASE WHEN %s THEN NOW() ELSE NULL END,%s)""",
                 (ident,task["id"],task["title"],staff["id"],staff["name"],model,answer,
-                 source_required,source_required,Jsonb(sources)))
+                 bool(sources),bool(sources),Jsonb(sources)))
             if image is not None:
                 deliverables.save_asset(db, ident, "creative-image.png", image)
             if video is not None:
