@@ -8,7 +8,7 @@ from backend import ai_provider
 from fastapi import HTTPException
 from backend import references as office_references
 from backend import academy as office_academy
-from backend import canva, canva_layout, creative, deliverables, finance_actuals, department_playbooks, staff_agents, staff_browser
+from backend import canva, canva_layout, creative, deliverables, finance_actuals, department_playbooks, staff_agents, staff_browser, social
 from pydantic import BaseModel, Field, ValidationError
 from datetime import date
 from typing import Literal
@@ -62,6 +62,32 @@ def init(db):
     db.execute("ALTER TABLE workforce_runs ADD COLUMN IF NOT EXISTS sources JSONB NOT NULL DEFAULT '[]'::jsonb")
 
     db.execute("ALTER TABLE workforce_runs ADD COLUMN IF NOT EXISTS operations_changes JSONB NOT NULL DEFAULT '[]'::jsonb")
+
+def _governance_access_inventory(db):
+    snapshot = social.account_summary(db)
+    accounts = {
+        row["id"]: {"label": f"Connection {index}", **{key: row[key] for key in (
+            "platform", "provider", "granted_scopes", "token_status", "token_expires_at")}}
+        for index, row in enumerate(snapshot["accounts"], 1)
+    }
+    grants = [
+        {"connection": accounts[row["account_id"]]["label"],
+         "staff": row["staff_name"], "recorded_mode": row["mode"]}
+        for row in snapshot["grants"] if row["account_id"] in accounts
+    ]
+    tools = {
+        "OpenAI": ("OPENAI_API_KEY",),
+        "Staff Platform agents": ("STAFF_PLATFORM_API_KEY",),
+        "Cloud browser": ("CLOUDFLARE_BROWSER_ACCOUNT_ID", "CLOUDFLARE_BROWSER_API_TOKEN"),
+        "GitHub draft PR": ("IT_GITHUB_WRITE_TOKEN",),
+        "Railway API": ("IT_RAILWAY_PROJECT_TOKEN",),
+        "OpenAI cost import": ("OPENAI_BILLING_ADMIN_KEY",),
+    }
+    return {"connections": list(accounts.values()), "recorded_publishing_grants": grants,
+            "oauth_provider_configured": {row["id"]: row["configured"] for row in snapshot["providers"]},
+            "tool_credentials_present": {name: all(os.getenv(key, "").strip() for key in keys)
+                                         for name, keys in tools.items()}}
+
 
 def get_runs():
     try:
@@ -242,7 +268,8 @@ def _execute(task,staff):
     operations_research = is_operations and department_playbooks.operations_ai_research_requested(task["title"], brief)
     operations = is_operations and task.get("category") == "General" and not operations_research
     source_required = source_required or operations_research
-    search_enabled = canva_mode != "video" and not finance_ledger_requested and not operations
+    access_review = department_playbooks.governance_access_requested(staff, task["title"], brief)
+    search_enabled = canva_mode != "video" and not (finance_ledger_requested or operations or access_review)
     if canva_mode and not canva.allowed(staff, canva_mode):
         raise HTTPException(403, "Staff role is not approved for this Canva operation")
     instruction=("You are an AI staff member producing an INTERNAL draft deliverable for CEO review only. "
@@ -304,6 +331,13 @@ def _execute(task,staff):
     image_reference = None
     operations_snapshot = {}
     with dbconn() as db:
+        if access_review:
+            inventory = _governance_access_inventory(db)
+            reference_context += (
+                "\nInternal access inventory for CEO review; connection labels are local to this "
+                "snapshot. Credential presence is configuration evidence only.\n"
+                + json.dumps(inventory, default=str)[:12000]
+            )
         if staff.get("department") == "Strategy & Business Development":
             capacity = db.execute("""SELECT s.department,s.role,s.status,COUNT(DISTINCT s.id) AS staff_count,
                 COUNT(t.id) AS open_tasks FROM staff s LEFT JOIN tasks t
@@ -468,7 +502,7 @@ def _execute(task,staff):
                        "required": ["prompt", "size"]},
         }}
     # All roles can inspect a public page explicitly supplied in the CEO brief.
-    browser_url = None if operations or finance_ledger_requested or autofill or canva_mode in {"video", "review"} else staff_browser.public_url_from_brief(brief)
+    browser_url = None if access_review or operations or finance_ledger_requested or autofill or canva_mode in {"video", "review"} else staff_browser.public_url_from_brief(brief)
     if browser_url and urlsplit(browser_url).hostname in {"canva.com", "www.canva.com"}:
         browser_url = None
     browser_image = staff_browser.screenshot(browser_url) if browser_url and canva_mode != "video" else None
