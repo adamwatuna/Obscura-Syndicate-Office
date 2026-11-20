@@ -1240,13 +1240,16 @@ def social_oauth_callback(provider:str,req:Request,
         # If token/channel discovery fails later, state must not roll back and
         # be reusable with the same authorization code.
         with connect() as db:
-            social.consume_state(db,provider,state,req.session)
+            verified=social.consume_state(db,provider,state,req.session)
         if error:
             with connect() as db:
                 audit(db,'social.oauth.denied',provider)
             return RedirectResponse('/?integration=cancelled',status_code=303)
         with connect() as db:
-            added=social.oauth_complete(db,provider,code)
+            if provider == "canva":
+                added=social.oauth_complete(db,provider,code,verifier=verified)
+            else:
+                added=social.oauth_complete(db,provider,code)
             audit(db,'social.oauth.connected',f'{provider}: {added} account(s)')
         return RedirectResponse('/?integration=connected',status_code=303)
     except HTTPException as exc:

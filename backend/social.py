@@ -3,6 +3,7 @@
 Social tokens NEVER leave the backend. CEO credentials alone do not confer
 publishing rights: a connected account and explicit per-staff grant are required.
 """
+import base64
 import hashlib
 import hmac
 import json
@@ -16,19 +17,21 @@ from datetime import datetime, timezone
 from cryptography.fernet import Fernet, InvalidToken
 from fastapi import HTTPException
 
-PROVIDERS = ("instagram", "meta", "google", "tiktok")
-PLATFORMS = ("facebook", "instagram", "youtube", "tiktok")
+PROVIDERS = ("instagram", "meta", "google", "tiktok", "canva")
+PLATFORMS = ("facebook", "instagram", "youtube", "tiktok", "canva")
 SUPPORTED_PUBLISH = ("facebook", "instagram")
 PERMISSION_MODES = ("off", "approval_required", "direct_publish")
 GRAPH = "https://graph.facebook.com/v27.0"
 INSTAGRAM_GRAPH = "https://graph.instagram.com/v27.0"
 CLIENT_VARS = {
+    "canva": ("CANVA_CLIENT_ID", "CANVA_CLIENT_SECRET"),
     "instagram": ("SOCIAL_INSTAGRAM_APP_ID", "SOCIAL_INSTAGRAM_APP_SECRET"),
     "meta": ("SOCIAL_META_APP_ID", "SOCIAL_META_APP_SECRET"),
     "google": ("SOCIAL_GOOGLE_CLIENT_ID", "SOCIAL_GOOGLE_CLIENT_SECRET"),
     "tiktok": ("SOCIAL_TIKTOK_CLIENT_KEY", "SOCIAL_TIKTOK_CLIENT_SECRET"),
 }
 SCOPES = {
+    "canva": "design:content:read design:content:write",
     "instagram": "instagram_business_basic,instagram_business_content_publish",
     "meta": "pages_show_list,pages_read_engagement,pages_manage_posts,instagram_basic,instagram_content_publish",
     "google": "https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/youtube.upload",
@@ -121,6 +124,11 @@ def _query(url, params):
     return url+"?"+urllib.parse.urlencode(params)
 
 
+def _canva_verifier(key, state, nonce):
+    return hmac.new(key.encode(), f"canva:{state}:{nonce}".encode(),
+                    hashlib.sha256).hexdigest()
+
+
 def oauth_start(db,provider,session):
     client,secret,base,key=_configuration(provider)
     schema(db)
@@ -136,6 +144,14 @@ def oauth_start(db,provider,session):
     db.execute("""INSERT INTO social_oauth_states(state_hash,session_hash,provider)
         VALUES (%s,%s,%s)""",(state_hash,nonce_hash,provider))
     redirect=f"{base}/api/social/oauth/{provider}/callback"
+    if provider == "canva":
+        verifier = _canva_verifier(key, state, nonce)
+        challenge = base64.urlsafe_b64encode(
+            hashlib.sha256(verifier.encode()).digest()).decode().rstrip("=")
+        return _query("https://www.canva.com/api/oauth/authorize", {
+            "client_id": client, "redirect_uri": redirect, "state": state,
+            "response_type": "code", "scope": SCOPES[provider],
+            "code_challenge": challenge, "code_challenge_method": "S256"})
     if provider=="instagram":
         # Business Login for Instagram works WITHOUT Facebook login or linked Page.
         return _query("https://www.instagram.com/oauth/authorize",{
@@ -167,6 +183,8 @@ def consume_state(db,provider,state,session):
         AND created_at > NOW() - INTERVAL '10 minutes'
         RETURNING state_hash""",(hashed,provider,hashlib.sha256(nonce.encode()).hexdigest())).fetchone()
     if not row:raise HTTPException(403,"OAuth state mismatch or already used")
+    if provider == "canva":
+        return _canva_verifier(_configuration(provider)[3], state, nonce)
     return True
 
 
@@ -197,10 +215,31 @@ def _expiry(seconds):
     except (ValueError,TypeError,OverflowError):return None
 
 
-def oauth_complete(db,provider,code):
+def oauth_complete(db,provider,code,*,verifier=None):
     client,secret,base,_=_configuration(provider)
     redirect=f"{base}/api/social/oauth/{provider}/callback"
     if not code or len(code)>3000:raise HTTPException(400,"Missing OAuth authorization code")
+    if provider == "canva":
+        if not verifier:
+            raise HTTPException(403, "Canva verification missing")
+        basic = base64.b64encode(f"{client}:{secret}".encode()).decode()
+        payload = _http_json("https://api.canva.com/rest/v1/oauth/token", {
+            "grant_type": "authorization_code", "code": code,
+            "redirect_uri": redirect, "code_verifier": verifier,
+        }, headers={"Authorization": f"Basic {basic}"})
+        token = payload.get("access_token")
+        refresh = payload.get("refresh_token")
+        if not token or not refresh:
+            raise HTTPException(502, "Canva did not return usable credentials")
+        identity = _http_json("https://api.canva.com/rest/v1/users/me",
+                              headers={"Authorization": f"Bearer {token}"}).get("team_user") or {}
+        if not identity.get("user_id") or not identity.get("team_id"):
+            raise HTTPException(502, "Canva did not return a user and team")
+        _store_account(db, "canva", "canva",
+                       f"{identity['team_id']}:{identity['user_id']}", "Canva workspace",
+                       token, refresh, _expiry(payload.get("expires_in")),
+                       payload.get("scope", SCOPES[provider]))
+        return 1
     if provider=="instagram":
         # The ID/secret here are from Instagram -> API setup with Instagram login,
         # NOT Meta's Facebook App Settings -> Basic.
@@ -322,7 +361,7 @@ def account_summary(db):
             "id":provider,
             "name":{"instagram":"Instagram · Direct Login (no Facebook Page)",
                     "meta":"Facebook Pages & Page-linked Instagram",
-                    "google":"YouTube (Google)","tiktok":"TikTok"}[provider],
+                    "google":"YouTube (Google)","tiktok":"TikTok","canva":"Canva"}[provider],
             "configured":ok,
             "publishing_available":provider in ("instagram","meta"),
             "callback":base.rstrip("/")+f"/api/social/oauth/{provider}/callback" if base else "",
