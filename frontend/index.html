@@ -497,7 +497,9 @@
  <div class="toolbar"><div><h3>Spending, overhead & income</h3><p class="muted">Recorded totals by currency · last 12 months</p></div>
    <label>Currency <select id="actualCurrency"></select></label></div>
  <div id="financeActualsStatus" class="muted" role="status"></div>
+ <p id="financeFxStatus" class="muted"></p>
  <div class="staffgrid" id="financeActualsCharts"></div>
+ <details id="financeFxRates" hidden><summary>USD → MYR rates applied</summary><ul id="financeFxRateList"></ul></details>
  <div class="card" style="margin:20px 0"><h3>Record a bill or income</h3>
   <form id="financeActualsForm"><div class="formgrid">
    <label>Date <input name="day" type="date" required></label>
@@ -2801,8 +2803,14 @@ function financeAmount(value,currency){
   return new Intl.NumberFormat('en-MY',{style:'currency',currency,maximumFractionDigits:2}).format(value);
 }
 function renderFinanceActuals(){
-  const currency=$('actualCurrency').value||'MYR', root=$('financeActualsCharts');
-  const rows=financeActuals.monthly.filter(r=>r.currency===currency);
+  const selection=$('actualCurrency').value||'MYR', root=$('financeActualsCharts');
+  const converted=selection==='MYR_TOTAL', currency=converted?'MYR':selection;
+  const fx=financeActuals.myr;
+  const rows=converted?(fx?.monthly||[]):financeActuals.monthly.filter(r=>r.currency===currency);
+  $('financeFxStatus').textContent=converted?'MYR totals include USD converted at BNM noon midpoint rates by transaction date. '+(fx?.omitted_days?fx.omitted_days+' currency-date entries have no supported rate and stay in their original currency view.':''):'';
+  $('financeFxRates').hidden=!converted||!fx?.rates?.length;
+  $('financeFxRateList').replaceChildren(...(converted?(fx?.rates||[]):[]).map(r=>
+    socialEl('li',r.day+' · '+r.rate+' MYR per USD'+(r.rate_day!==r.day?' · rate from '+r.rate_day:''))));
   const spent=rows.filter(r=>r.kind!=='income');
   const card=(title)=>{const box=socialEl('div',undefined,'card');box.append(socialEl('h3',title));root.append(box);return box};
   const sum=items=>items.reduce((n,r)=>n+Number(r.amount),0);
@@ -2851,8 +2859,8 @@ function renderFinanceActuals(){
     box.append(vals.length?list:socialEl('p','No records yet.','muted'));
   }
   const recent=$('financeActualsRecent');recent.replaceChildren();
-  const entries=financeActuals.recent.filter(r=>r.currency===currency);
-  entries.forEach(r=>recent.append(socialEl('p',r.day+' · '+r.source+' · '+r.kind+' · '+financeAmount(Number(r.amount),currency)+(r.reference?' · '+r.reference:''))));
+  const entries=converted?financeActuals.recent:financeActuals.recent.filter(r=>r.currency===currency);
+  entries.forEach(r=>recent.append(socialEl('p',r.day+' · '+r.source+' · '+r.kind+' · '+financeAmount(Number(r.amount),r.currency)+(r.reference?' · '+r.reference:''))));
   if(!entries.length)recent.append(socialEl('p','No recent records for this currency.','muted'));
 }
 async function loadFinanceActuals(){
@@ -2860,9 +2868,10 @@ async function loadFinanceActuals(){
     financeActuals=await api('finance/actuals');
     const select=$('actualCurrency'), preferred=select.value;
     const currencies=new Set(['MYR',...financeActuals.monthly.map(r=>r.currency),...financeActuals.recent.map(r=>r.currency)]);
-    select.replaceChildren(...[...currencies].sort().map(c=>new Option(c,c)));
+    if(financeActuals.myr)currencies.add('MYR_TOTAL');
+    select.replaceChildren(...[...currencies].sort().map(c=>new Option(c==='MYR_TOTAL'?'MYR · Converted totals':c,c)));
     const withRecords=[...new Set(financeActuals.monthly.map(r=>r.currency))];
-    const populated=withRecords.includes('MYR')?'MYR':(withRecords[0]||'MYR');
+    const populated=financeActuals.myr?.monthly?.length?'MYR_TOTAL':(withRecords[0]||'MYR');
     select.value=select.dataset.chosen==='true'&&currencies.has(preferred)?preferred:populated;
     $('syncOpenAICosts').disabled=!financeActuals.openai_configured;
     $('financeBillingStatus').textContent='Canva and other bills use invoice entries. '+(financeActuals.openai_configured?'OpenAI sync imports the last 90 complete UTC days.':'OpenAI API sync requires OPENAI_BILLING_ADMIN_KEY on Railway.');
