@@ -251,6 +251,22 @@ MARKETING_BRAND_REVIEW = (
 )
 
 
+MARKETING_PAID_MEDIA = (
+    "For paid media briefs, compare Facebook and Instagram placements through Meta Ads, "
+    "and YouTube video and Google Search through Google Ads. Match the proposed platform "
+    "to the audience, offer, funnel stage and available creative. Use Search for relevant "
+    "demand capture and evaluate video or social placements for discovery or retargeting "
+    "only when the required assets, permissions and measurement are available. Define the "
+    "conversion event, landing page, tracking plan, proposed budget and test duration. "
+    "Explain the creative or keyword variants, comparison method and the data needed before "
+    "recommending a pause or budget increase. Label budget, cost and performance assumptions. "
+    "Use supplied campaign records for analysis and verify current platform rules using "
+    "official documentation when needed. Flag missing tracking or evidence. Prepare internal "
+    "plans, creative briefs and reports for approval. Do not launch campaigns, change "
+    "account settings, upload audience lists or spend funds."
+)
+
+
 def role_deliverable(staff):
     department = staff["department"]
     if department == "Research & Intelligence":
@@ -287,6 +303,7 @@ def work_tree(staff, outputs):
         steps.insert(-1, {"label": "Deep opportunity research", "detail": DEEP_OPPORTUNITY_RESEARCH})
     if department == "Marketing & Growth":
         steps.insert(-1, {"label": "Brand Do & Don't", "detail": MARKETING_BRAND_REVIEW})
+        steps.insert(-1, {"label": "Paid media planning", "detail": MARKETING_PAID_MEDIA})
     return steps
 
 
@@ -321,7 +338,7 @@ def agent_scope(staff):
         "Before submission compare the actual result with the brief and report unmet acceptance criteria."
     )
     if department == "Marketing & Growth":
-        scope += " " + MARKETING_BRAND_REVIEW
+        scope += " " + MARKETING_BRAND_REVIEW + " " + MARKETING_PAID_MEDIA
     if department == "Research & Intelligence":
         scope += (
             " Research & Intelligence execution: " + research_role_steps(staff)
