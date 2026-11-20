@@ -216,6 +216,8 @@
 @media(max-width:700px){.delivery-report{padding:16px}.report-rich h1{font-size:1.42em}.report-rich h2{font-size:1.25em}}
 .delivery-file-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px;margin:11px 0}
 .delivery-file-card{border:1px solid #e3eaf0;border-radius:10px;background:#f9fbfd;padding:11px;min-width:150px;max-width:100%}
+.delivery-pdf-preview{grid-column:1/-1}
+.delivery-file-card.delivery-pdf-preview img{max-height:none;width:min(100%,850px);margin:12px auto;background:#fff}
 .delivery-file-card strong{display:block;font-size:12px;overflow-wrap:anywhere}
 .delivery-file-card a{font-size:12px;display:inline-block;margin-top:7px;color:#3d78ac}
 .delivery-file-card img,.delivery-file-card video{width:100%;max-height:min(65vh,620px);object-fit:contain;display:block;border-radius:8px;margin:7px 0}
@@ -2194,7 +2196,7 @@ async function renderSelectedSubmission(){
   detail.remove();
   const heading=deliveryText('h4','Full staff submission');root.append(heading);
   const full=deliveryText('div',undefined,'delivery-report');full.append(staffReportRender(report.result));root.append(full);
-  const fileHeader=deliveryText('h4','Review images & videos');root.insertBefore(fileHeader,heading);
+  const fileHeader=deliveryText('h4','Review submitted files');root.insertBefore(fileHeader,heading);
   const grid=deliveryText('div',undefined,'delivery-file-grid');
   for(const file of report.assets||[]){
    const card=deliveryText('div',undefined,'delivery-file-card');
@@ -2204,6 +2206,35 @@ async function renderSelectedSubmission(){
     const image=document.createElement('img');image.alt='Submitted staff image: '+file.filename;
     image.onerror=()=>card.append(deliveryText('p','Image preview unavailable. Download the original below.','muted'));
     image.src=fileUrl+'?preview=true';card.append(image);
+   }else if(file.media_type==='application/pdf'){
+    card.classList.add('delivery-pdf-preview');
+    const image=document.createElement('img');image.hidden=true;
+    const pager=deliveryText('div',undefined,'delivery-actions');
+    const prev=deliveryText('button','Previous page','secondary');
+    const next=deliveryText('button','Next page','secondary');
+    prev.type=next.type='button';
+    const status=deliveryText('span',undefined,'muted');status.setAttribute('role','status');
+    pager.append(prev,status,next);card.append(pager,image);
+    let page=1,total=0;
+    const showPage=async target=>{
+     prev.disabled=next.disabled=true;
+     status.textContent='Loading page '+target+'…';
+     try{
+      const response=await fetch(fileUrl+'/pages/'+target,{credentials:'same-origin'});
+      if(!response.ok)throw Error('PDF preview unavailable.');
+      const count=Number(response.headers.get('X-PDF-Page-Count'));
+      const blob=await response.blob();
+      if(!card.isConnected)return;
+      const url=URL.createObjectURL(blob);
+      image.onload=image.onerror=()=>URL.revokeObjectURL(url);
+      image.alt=file.filename+' · page '+target;
+      image.src=url;image.hidden=false;page=target;total=count;
+      status.textContent='Page '+page+' of '+total;
+     }catch(error){status.textContent=error.message}
+     finally{prev.disabled=page<=1;next.disabled=page>=total}
+    };
+    prev.onclick=()=>showPage(page-1);next.onclick=()=>showPage(page+1);
+    showPage(1);
    }else if(file.kind==='video'){
     const video=document.createElement('video');video.controls=true;video.playsInline=true;video.preload='metadata';
     video.onerror=()=>card.append(deliveryText('p','This browser cannot play the submitted video. Download the original below.','muted'));
