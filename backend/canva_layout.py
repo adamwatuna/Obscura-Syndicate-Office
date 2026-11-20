@@ -36,6 +36,7 @@ class Design(BaseModel):
 class DesignPlan(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    reference_comparison: str = Field(max_length=550)
     artwork_prompt: str = Field(max_length=1400)
     designs: list[Design] = Field(min_length=1, max_length=3)
 
