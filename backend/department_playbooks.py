@@ -224,6 +224,33 @@ DEEP_OPPORTUNITY_RESEARCH = (
 )
 
 
+ACADEMY_APPLICATION = {
+    "Research & Intelligence": "Use relevant department or staff references for portfolio fit, decision criteria and report format. Verify public claims independently.",
+    "Marketing & Growth": "Apply the approved brand voice, audience notes and campaign examples. Map each recommendation to an audience, channel, offer and measurable outcome.",
+    "Creative": "Use relevant portfolio examples for style, visual hierarchy, pacing and production standards. State which elements informed the work and verify the requested file or preview exists.",
+    "Finance & Treasury": "Use approved budget layouts, cost categories and scenario conventions. Use supplied recorded figures or clearly marked assumptions for amounts, periods and currency.",
+    "Operations & Project Management": "Use approved SOPs, delivery checklists and schedule formats. Match each dependency with an owner, milestone and evidence of completion.",
+    "Technology & AI Systems": "Follow relevant architecture decisions, repository conventions and QA cases. Check against the actual code and distinguish verification performed from planned tests.",
+    "Strategy & Business Development": "Use approved positioning, service capabilities and portfolio examples to judge fit. Compare alternatives using the same decision criteria.",
+    "Knowledge & Learning Academy": "Follow approved catalog, tagging and access conventions. Record provenance, version, intended staff and what to apply.",
+    "Governance, Risk & Compliance": "Use approved policies, risk examples and escalation rules. Connect findings to evidence and identify the accountable owner.",
+    "Independent Audit": "Use approved audit criteria and prior guidance as context. Assess evidence independently and report exceptions and scope limitations to the CEO.",
+}
+
+
+def role_deliverable(staff):
+    department = staff["department"]
+    if department == "Research & Intelligence":
+        return research_role_steps(staff)
+    if department == "Independent Audit":
+        return AUDITOR["expertise"]
+    definition = DEPARTMENTS.get(department, {})
+    if staff.get("org_role") == "Director" and definition:
+        return director_playbook(department)
+    role = staff.get("role", "").casefold()
+    return next((detail for title, detail in definition.get("roles", []) if title.casefold() == role), "")
+
+
 def work_tree(staff, outputs):
     department = staff["department"]
     steps = [
@@ -235,12 +262,12 @@ def work_tree(staff, outputs):
          + " When multiple options are useful, compare them against the same criteria and explain the trade-offs."},
         {"label": "Verify and submit", "detail": "Check the result against the brief. Attach any requested files, link the evidence, and flag unresolved requirements."},
     ]
+    steps.insert(1, {"label": "Apply Academy guidance",
+                     "detail": ACADEMY_APPLICATION.get(department, "Apply relevant Academy examples within the assigned scope.")})
+    role_steps = role_deliverable(staff)
+    if role_steps:
+        steps.insert(-1, {"label": "Complete role deliverable", "detail": role_steps})
     if department == "Research & Intelligence":
-        steps.insert(1, {"label": "Apply Academy guidance",
-                         "detail": "Use relevant department or staff references for portfolio fit, decision criteria and report format."})
-        role_steps = research_role_steps(staff)
-        if role_steps:
-            steps.insert(-1, {"label": "Complete role deliverable", "detail": role_steps})
         if staff.get("org_role") == "Director" or staff["role"].casefold() == "ai osint researcher":
             steps.insert(-1, {"label": "Brand monitoring", "detail": BRAND_MONITORING})
         steps.insert(-1, {"label": "Malaysia film industry", "detail": MALAYSIAN_FILM_RESEARCH})
@@ -270,6 +297,13 @@ def agent_scope(staff):
         f"Sources: {SOURCE_PATHS.get(department, 'Start with the assignment and attached evidence.')} "
         "If comparing sources or options, apply the same criteria and explain meaningful trade-offs. "
         f"Quality check: {operating_standard(department)}"
+    )
+    scope += (
+        " Academy application: " + ACADEMY_APPLICATION.get(
+            department, "Apply relevant Academy examples within the assigned scope.")
+        + " Use only relevant Academy material provided for the current assignment. "
+        "If no relevant material is available, work from the brief and state any material gaps. "
+        "Before submission compare the actual result with the brief and report unmet acceptance criteria."
     )
     if department == "Research & Intelligence":
         scope += (
