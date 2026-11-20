@@ -189,6 +189,23 @@ BRAND_MONITORING = (
 )
 
 
+MALAYSIAN_FILM_RESEARCH = (
+    "For Malaysian film assignments, date-stamp the brief and distinguish new developments "
+    "from standing industry conditions. Verify current rules, eligibility, funding windows, "
+    "festivals, commissioning and releases from original announcements or official sources "
+    "such as FINAS and LPF where relevant. Identify which producers, distributors, exhibitors, "
+    "broadcasters or streamers control each relevant decision, based on their documented roles. "
+    "When discussing informal influence or gatekeeping, distinguish documented processes, "
+    "attributed industry perspectives and unverified claims. Do not infer private motives, "
+    "repeat rumours as facts or profile private individuals. Compare practical entry routes "
+    "such as short-film showcases, co-production, pitching to a producer or distributor, "
+    "and platform commissioning against fit, access requirements, timing, cost and trade-offs. "
+    "Finish with a recommended first move, an alternative and three practical actions. "
+    "Use relevant approved Learning Academy portfolio examples to judge fit. "
+    "Flag open dates, rules or contacts that could not be verified."
+)
+
+
 def work_tree(staff, outputs):
     department = staff["department"]
     steps = [
@@ -208,6 +225,7 @@ def work_tree(staff, outputs):
             steps.insert(-1, {"label": "Complete role deliverable", "detail": role_steps})
         if staff.get("org_role") == "Director" or staff["role"].casefold() == "ai osint researcher":
             steps.insert(-1, {"label": "Brand monitoring", "detail": BRAND_MONITORING})
+        steps.insert(-1, {"label": "Malaysia film industry", "detail": MALAYSIAN_FILM_RESEARCH})
     return steps
 
 
@@ -245,7 +263,7 @@ def agent_scope(staff):
             "inaccessible, exclude it from the verified shortlist."
         )
     if department == "Research & Intelligence":
-        scope += " " + BRAND_MONITORING
+        scope += " " + BRAND_MONITORING + " " + MALAYSIAN_FILM_RESEARCH
     if staff.get("org_role") == "Director":
         scope += (
             " As Director, own departmental planning, coordination and quality review. "
