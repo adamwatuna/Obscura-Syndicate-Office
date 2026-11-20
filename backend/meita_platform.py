@@ -10,6 +10,7 @@ from fastapi import HTTPException
 
 _JOB_FIELDS = {"staff_id": {"type": "string"}, "title": {"type": "string"},
                "brief": {"type": "string"},
+               "output": {"type": "string", "enum": ["report", "image"]},
                "priority": {"type": "string", "enum": ["Urgent", "High", "Normal", "Low"]},
                "due_date": {"type": ["string", "null"]}}
 _REPLY_FIELDS = {
@@ -46,7 +47,12 @@ def respond(message, context, client_factory=None, images=()):
             "the current CEO message explicitly asks to assign specific internal "
             "work. Propose eligible staff from the roster, use distinct task titles, "
             "and write self-contained job briefs with acceptance criteria, reference "
-            "direction. Use Normal priority unless specified, and an ISO YYYY-MM-DD "
+            "direction. A short instruction such as 'buatkan poster' is sufficient to start. "
+            "For explicit requests to produce an actual poster, graphic or image, assign "
+            "one Creative specialist with output=image. Say what to make and which attached "
+            "examples to follow. The specialist writes the production prompt. Use output=report "
+            "for scripts, ideas, feedback, research, video briefs and other text deliverables. "
+            "Use Normal priority unless specified, and an ISO YYYY-MM-DD "
             "due date only when the CEO's deadline is unambiguous, otherwise null. "
             "For ordinary chat use "
             "intent chat with empty title and jobs. Existing task follow-ups should "
