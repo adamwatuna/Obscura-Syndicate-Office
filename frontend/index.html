@@ -253,7 +253,7 @@
 </head><body><div id="login" class="login"><div class="panel"><div class="eyebrow">PRIVATE EXECUTIVE WORKSPACE</div><h1>AI Private Office</h1><p>Welcome back. Sign in to access your executive workspace.</p><form id="loginForm"><label for="password">CEO password</label><input id="password" type="password" autocomplete="current-password" required>
  <div id="loginMfaWrap" class="hidden" style="margin-top:14px"><label for="loginMfaCode">Authenticator or recovery code</label><input id="loginMfaCode" type="text" autocomplete="one-time-code" inputmode="text" maxlength="32" placeholder="6-digit code or saved recovery code"><p class="muted">Enter the code from your authenticator app. Recovery codes work once.</p></div>
  <div style="height:18px"></div><button class="primary" style="width:100%">Sign in securely</button><p id="loginError" class="err"></p></form><p style="font-size:11px">Authorized access only.</p></div></div>
-<div id="app" class="shell hidden"><aside><div class="brand">AI Private Office<small>EXECUTIVE WORKSPACE</small></div><div class="nav" id="nav"><button data-view="hq" class="active">◫ &nbsp; Executive HQ</button><button data-view="meita">✦ &nbsp; Meita AI</button><button data-view="workforce">♙ &nbsp; AI Workforce</button><button data-view="desks">▦ &nbsp; Live Desks</button><button data-view="deliverables">▣ &nbsp; Task Centre</button><button data-view="monthly">▣ &nbsp; Monthly Workplan</button><button data-view="academy">▤ &nbsp; Learning Academy</button><button data-view="research">⌕ &nbsp; Research Intelligence</button><button data-view="finance">◈ &nbsp; Finance & Audit</button><button data-view="integrations">⌘ &nbsp; Integration Centre</button><button data-view="governance">◇ &nbsp; Governance</button></div><div class="bottom"><button class="secondary" id="logout">Sign out</button><p>Private office environment</p></div></aside><main><header class="top"><div><div class="eyebrow">YOUR EXECUTIVE WORKSPACE</div><h1 id="pageTitle">Executive HQ</h1><div class="muted" id="today"></div></div><span class="pill">● Private workspace</span></header>
+<div id="app" class="shell hidden"><aside><div class="brand">AI Private Office<small>EXECUTIVE WORKSPACE</small></div><div class="nav" id="nav"><button data-view="hq" class="active">◫ &nbsp; Executive HQ</button><button data-view="meita">✦ &nbsp; Meita AI</button><button data-view="workforce">♙ &nbsp; AI Workforce</button><button data-view="desks">▦ &nbsp; Live Desks</button><button data-view="deliverables">▣ &nbsp; Task Centre</button><button data-view="monthly">▣ &nbsp; Monthly Workplan</button><button data-view="academy">▤ &nbsp; Learning Academy</button><button data-view="creative">◈ &nbsp; Creative Studio</button><button data-view="research">⌕ &nbsp; Research Intelligence</button><button data-view="finance">◈ &nbsp; Finance & Audit</button><button data-view="integrations">⌘ &nbsp; Integration Centre</button><button data-view="governance">◇ &nbsp; Governance</button></div><div class="bottom"><button class="secondary" id="logout">Sign out</button><p>Private office environment</p></div></aside><main><header class="top"><div><div class="eyebrow">YOUR EXECUTIVE WORKSPACE</div><h1 id="pageTitle">Executive HQ</h1><div class="muted" id="today"></div></div><span class="pill">● Private workspace</span></header>
 <section class="view active" id="hq">
 <div class="hq-hero">
  <div><div class="hq-kicker">OBSCURA · EXECUTIVE COMMAND DESK</div>
@@ -467,6 +467,48 @@
   <div style="height:15px"></div><button class="primary">Register learning source</button>
  </form></div>
  <div class="card" style="margin-top:20px"><h3>Previously registered learning sources</h3><div id="lessonList"></div></div>
+</section>
+<section class="view" id="creative">
+ <div class="delivery-layout">
+  <div>
+   <div class="card"><h3>Generate or edit an image</h3>
+    <form id="studioImageForm">
+     <label for="studioPrompt">Creative brief</label><textarea id="studioPrompt" rows="4" maxlength="4000" minlength="3" required></textarea>
+     <label for="studioImageReference">Reference image (optional)</label><input id="studioImageReference" type="file" accept="image/png,image/jpeg,image/webp">
+     <label for="studioSize">Image format</label><select id="studioSize"><option>1024x1024</option><option>1024x1536</option><option>1536x1024</option></select>
+     <button class="primary" type="submit">Generate image</button>
+    </form>
+   </div>
+   <div class="card" style="margin-top:14px"><h3>Poster design</h3>
+    <form id="studioDesignForm">
+     <label for="studioBackground">Background image</label><input id="studioBackground" type="file" accept="image/png,image/jpeg,image/webp">
+     <label for="studioTitle">Title</label><input id="studioTitle" maxlength="120" required>
+     <label for="studioSubtitle">Subtitle</label><input id="studioSubtitle" maxlength="180">
+     <label for="studioColor">Background colour</label><input id="studioColor" type="color" value="#22162b">
+     <button class="primary" type="submit">Render poster</button>
+    </form>
+   </div>
+   <div class="card" style="margin-top:14px"><h3>Trim video</h3>
+    <form id="studioVideoForm">
+     <label for="studioClip">Video file · up to 20 MB</label><input id="studioClip" name="file" type="file" accept=".mp4,.mov,.webm" required>
+     <div class="formgrid"><div><label for="studioStart">Start (seconds)</label><input id="studioStart" name="start" type="number" min="0" step="0.1" value="0" required></div>
+     <div><label for="studioEnd">End (seconds)</label><input id="studioEnd" name="end" type="number" min="0.1" step="0.1" value="10" required></div></div>
+     <button class="primary" type="submit">Export MP4</button>
+    </form>
+   </div>
+  </div>
+  <div>
+   <div class="card"><h3>Preview</h3><div id="studioPreview"><p class="muted">Generated or edited media will appear here.</p></div>
+    <div class="task-actions" id="studioOutputActions" hidden>
+     <a class="secondary" id="studioDownload" download>Download</a>
+     <button class="secondary" id="studioUseImage" type="button" hidden>Use as poster background</button>
+    </div>
+    <label for="studioSubmission">Send to a Task Centre submission</label><select id="studioSubmission"></select>
+    <button type="button" id="studioAttach" class="primary" disabled>Send for review</button>
+    <p id="studioFeedback" role="status" aria-live="polite" class="muted"></p>
+   </div>
+  </div>
+ </div>
 </section>
 <section class="view" id="research">
  <div class="toolbar"><div>
@@ -682,7 +724,7 @@ async function copyCEORecoveryCodes(){
 async function api(path,options={}){const r=await fetch('/api/'+path,{credentials:'same-origin',headers:{'Content-Type':'application/json'},...options});if(r.status===401){$('app').classList.add('hidden');$('login').classList.remove('hidden');throw Error('Session expired. Please sign in.')}if(!r.ok){let j=await r.json().catch(()=>({}));throw Error(j.detail||'Request failed')}return r.json()}
 function msg(s){$('toast').textContent=s;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',3000)}
 function toggle(id){$(id).classList.toggle('hidden')}
-function show(id){if(id==='tasks'){id='deliverables';$('assignedTasks').open=true} document.querySelectorAll('.view').forEach(e=>e.classList.toggle('active',e.id===id));document.querySelectorAll('[data-view]').forEach(e=>e.classList.toggle('active',e.dataset.view===id));$('pageTitle').textContent=({hq:'Executive HQ',meita:'Meita · Acting COO',workforce:'Your AI Workforce',desks:'Live Desks',monthly:'Monthly Workplan',academy:'Learning Academy',research:'Research Intelligence',finance:'Finance & Audit',deliverables:'Task Centre',integrations:'Integration Centre',governance:'Governance'})[id];window.scrollTo(0,0)}
+function show(id){if(id==='tasks'){id='deliverables';$('assignedTasks').open=true} document.querySelectorAll('.view').forEach(e=>e.classList.toggle('active',e.id===id));document.querySelectorAll('[data-view]').forEach(e=>e.classList.toggle('active',e.dataset.view===id));$('pageTitle').textContent=({hq:'Executive HQ',meita:'Meita · Acting COO',workforce:'Your AI Workforce',desks:'Live Desks',monthly:'Monthly Workplan',academy:'Learning Academy',creative:'Creative Studio',research:'Research Intelligence',finance:'Finance & Audit',deliverables:'Task Centre',integrations:'Integration Centre',governance:'Governance'})[id];window.scrollTo(0,0)}
 function staffPortrait(s){
   const slot=Number(s.portrait_slot);
   if(s.portrait_slot!==null && s.portrait_slot!==undefined && Number.isInteger(slot)&&slot>=0&&slot<9){
@@ -712,6 +754,124 @@ function newNewsTask(){
   $('taskFormHeading').textContent='Assign news monitoring brief';
   form.elements.title.focus();
 }
+let studioBlob=null,studioObjectUrl=null,studioBackgroundBlob=null,studioBusy=false;
+async function loadStudioSubmissions(){
+ const select=$('studioSubmission'),previous=select.value;
+ try{
+  const {items}=await api('deliverables');
+  select.replaceChildren(new Option('Select a submission',''));
+  for(const item of items||[]){
+   if(!item.archived_task&&item.department==='Creative')select.add(new Option(item.task_title,item.id));
+  }
+  if([...select.options].some(option=>option.value===previous))select.value=previous;
+ }catch(error){$('studioFeedback').textContent=error.message}
+ $('studioAttach').disabled=!studioBlob||!select.value;
+}
+function showStudioOutput(blob,name){
+ if(studioObjectUrl)URL.revokeObjectURL(studioObjectUrl);
+ studioBlob=new File([blob],name,{type:blob.type});studioObjectUrl=URL.createObjectURL(studioBlob);
+ const video=blob.type==='video/mp4';
+ const preview=document.createElement(video?'video':'img');
+ preview.src=studioObjectUrl;preview.style.cssText='max-width:100%;max-height:460px;border-radius:8px';
+ if(video){preview.controls=true;preview.playsInline=true}else preview.alt='Creative Studio image';
+ $('studioPreview').replaceChildren(preview);
+ $('studioOutputActions').hidden=false;$('studioUseImage').hidden=video;
+ $('studioDownload').href=studioObjectUrl;$('studioDownload').download=name;
+ $('studioAttach').disabled=!$('studioSubmission').value;
+}
+async function studioRequest(path,body,headers){
+ const result=await fetch('/api/'+path,{method:'POST',body,headers,credentials:'same-origin'});
+ if(!result.ok){const error=await result.json().catch(()=>null);throw Error(typeof error?.detail==='string'?error.detail:'Creative Studio request failed ('+result.status+')')}
+ return result;
+}
+async function studioWork(form,work){
+ if(studioBusy)return;
+ studioBusy=true;
+ const button=form.querySelector('[type=submit]'),feedback=$('studioFeedback');
+ button.disabled=true;feedback.textContent='Working…';
+ try{feedback.textContent=await work()}
+ catch(error){feedback.textContent=error.message}
+ finally{studioBusy=false;button.disabled=false}
+}
+$('studioImageForm').onsubmit=event=>{
+ event.preventDefault();
+ const reference=$('studioImageReference').files[0];
+ const prompt=reference?'Send this reference image to OpenAI for editing? API credits may be used.':
+  'Generate one image with the configured OpenAI account? API credits may be used.';
+ if(!confirm(prompt))return;
+ studioWork(event.currentTarget,async()=>{
+  const brief={prompt:$('studioPrompt').value.trim(),size:$('studioSize').value};
+  let output;
+  if(reference){
+   if(reference.size>20*1024*1024)throw Error('Reference image exceeds 20 MB.');
+   const form=new FormData();form.append('file',reference,reference.name);
+   form.append('prompt',brief.prompt);form.append('size',brief.size);
+   output=await studioRequest('creative/image/edit',form);
+  }else{
+   output=await studioRequest('creative/image',JSON.stringify(brief),{'Content-Type':'application/json'});
+  }
+  showStudioOutput(await output.blob(),'creative-image.png');
+  return 'Image ready for review.';
+ });
+};
+$('studioVideoForm').onsubmit=event=>{
+ event.preventDefault();
+ const form=event.currentTarget;
+ studioWork(form,async()=>{
+  const output=await studioRequest('creative/video/trim',new FormData(form));
+  showStudioOutput(await output.blob(),'creative-video.mp4');
+  return 'MP4 ready for review.';
+ });
+};
+function drawStudioText(ctx,text,y,maximum,font){
+ ctx.font=font;ctx.fillStyle='#fff';
+ ctx.fillText(text,60,y,maximum);
+}
+$('studioDesignForm').onsubmit=event=>{
+ event.preventDefault();
+ studioWork(event.currentTarget,async()=>{
+  const canvas=document.createElement('canvas');canvas.width=1080;canvas.height=1350;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle=$('studioColor').value;ctx.fillRect(0,0,1080,1350);
+  const file=$('studioBackground').files[0]||studioBackgroundBlob;
+  if(file){
+   if(file.size>20*1024*1024)throw Error('Background size exceeds 20 MB.');
+   const image=await createImageBitmap(file);
+   const scale=Math.max(1080/image.width,1350/image.height),w=image.width*scale,h=image.height*scale;
+   ctx.drawImage(image,(1080-w)/2,(1350-h)/2,w,h);image.close();
+  }
+  const overlay=ctx.createLinearGradient(0,640,0,1350);
+  overlay.addColorStop(0,'transparent');overlay.addColorStop(1,'rgba(0,0,0,.8)');
+  ctx.fillStyle=overlay;ctx.fillRect(0,640,1080,710);
+  drawStudioText(ctx,$('studioTitle').value,1130,960,'bold 76px Georgia');
+  drawStudioText(ctx,$('studioSubtitle').value,1215,960,'34px sans-serif');
+  const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
+  if(!blob)throw Error('Poster could not be rendered.');
+  showStudioOutput(blob,'creative-poster.png');
+  return 'Poster ready for review.';
+ });
+};
+$('studioUseImage').onclick=()=>{
+ if(studioBlob?.type.startsWith('image/')){
+  studioBackgroundBlob=studioBlob;$('studioBackground').value='';
+  $('studioFeedback').textContent='Image selected as poster background.';
+  $('studioTitle').focus();
+ }
+};
+$('studioSubmission').onchange=()=>{$('studioAttach').disabled=!studioBlob||!$('studioSubmission').value};
+$('studioAttach').onclick=async()=>{
+ const id=$('studioSubmission').value,file=studioBlob,button=$('studioAttach');
+ if(!id||!file)return;
+ button.disabled=true;
+ try{
+  const form=new FormData();form.append('file',file,file.name);
+  await studioRequest('deliverables/'+encodeURIComponent(id)+'/files',form);
+  show('deliverables');selectedSubmission=id;
+  $('deliveryFilter').value='all';$('deliverySearch').value='';
+  await loadDeliveryInbox();msg('Media added to Task Centre for review');
+ }catch(error){$('studioFeedback').textContent=error.message}
+ finally{button.disabled=!studioBlob||!$('studioSubmission').value}
+};
 function openStaffNewsReport(id){
   show('deliverables');
   selectedSubmission=id;
@@ -2168,7 +2328,7 @@ async function renderSelectedSubmission(){
   detail.remove();
   const heading=deliveryText('h4','Full staff submission');root.append(heading);
   const full=deliveryText('div',undefined,'delivery-report');full.append(staffReportRender(report.result));root.append(full);
-  const fileHeader=deliveryText('h4','Completed files');fileHeader.style.marginTop='18px';root.append(fileHeader);
+  const fileHeader=deliveryText('h4','Review images & videos');root.insertBefore(fileHeader,heading);
   const grid=deliveryText('div',undefined,'delivery-file-grid');
   for(const file of item.assets||[]){
    const card=deliveryText('div',undefined,'delivery-file-card');
@@ -2184,7 +2344,7 @@ async function renderSelectedSubmission(){
    card.append(deliveryLink('Download original file',fileUrl));grid.append(card);
   }
   if(!item.assets?.length)grid.append(deliveryText('p','No photo, video or source file has been submitted for this task yet. The written report and downloadable slides are available above.','muted'));
-  root.append(grid);
+  root.insertBefore(grid,heading);
   const uploadRow=deliveryText('div',undefined);
   uploadRow.style.marginTop='17px';
   uploadRow.append(deliveryText('label','Attach a finished file to this submission (CEO upload)'));
@@ -2927,7 +3087,7 @@ function renderResearchRoster(){
 }
 async function refresh(){state=await api('office');render();renderDirectorSelect()}
 async function updateTask(id,status){try{await api('tasks/'+id,{method:'PATCH',body:JSON.stringify({status})});await refresh();msg('Task updated')}catch(e){msg(e.message);await refresh()}}
-$('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){show(b.dataset.view);if(b.dataset.view==='hq')loadNewsBriefings();if(b.dataset.view==='integrations')loadSocial();if(b.dataset.view==='academy')loadAcademyLibrary();if(b.dataset.view==='finance')loadFinancePlanning();if(b.dataset.view==='deliverables')loadDeliveryInbox();if(b.dataset.view==='research')loadResearchReports();if(b.dataset.view==='meita')loadAiDiagnostics();if(b.dataset.view==='governance'){loadCEOSecurityStatus();loadAiDiagnostics();loadOfficeAutomation()}}});
+$('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){show(b.dataset.view);if(b.dataset.view==='hq')loadNewsBriefings();if(b.dataset.view==='integrations')loadSocial();if(b.dataset.view==='academy')loadAcademyLibrary();if(b.dataset.view==='finance')loadFinancePlanning();if(b.dataset.view==='deliverables')loadDeliveryInbox();if(b.dataset.view==='research')loadResearchReports();if(b.dataset.view==='creative')loadStudioSubmissions();if(b.dataset.view==='meita')loadAiDiagnostics();if(b.dataset.view==='governance'){loadCEOSecurityStatus();loadAiDiagnostics();loadOfficeAutomation()}}});
 $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').textContent='';try{await api('login',{method:'POST',body:JSON.stringify({password:$('password').value,otp:$('loginMfaCode').value.trim()})});$('password').value='';$('loginMfaCode').value='';await enter()}catch(err){$('loginError').textContent=err.message}});
 async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await refreshLiveActivity();await loadMeita();await loadMeitaTaskHistory();await loadAcademyLibrary();await loadFinancePlanning();await loadDeliveryInbox();await loadRuns();await loadDirectorPlans();$('monthlyPeriod').value=malaysiaPeriod();await loadMonthly();await loadNewsBriefings();await loadSocial();const oauthParams=new URLSearchParams(window.location.search);
 const integ=oauthParams.get('integration');
