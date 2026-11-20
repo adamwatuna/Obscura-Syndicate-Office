@@ -9,7 +9,37 @@ from fastapi import HTTPException
 from backend import references as office_references
 from backend import academy as office_academy
 from backend import canva, canva_layout, creative, deliverables, finance_actuals, department_playbooks, staff_agents, staff_browser
-from pydantic import ValidationError
+from pydantic import BaseModel, Field, ValidationError
+from datetime import date
+from typing import Literal
+
+class OperationsChange(BaseModel):
+    task_id: str
+    priority: Literal["Low", "Normal", "High", "Urgent"]
+    due_date: str
+    reason: str
+
+
+class OperationsReview(BaseModel):
+    report: str
+    updates: list[OperationsChange] = Field(max_length=8)
+
+
+def _apply_operations_changes(db, changes):
+    # Compare against the original snapshot inside the review transaction.
+    for change in sorted(changes, key=lambda item: item["task_id"]):
+        result = db.execute("""UPDATE tasks SET priority=%s, due_date=%s
+            WHERE id=%s AND status='To do' AND NOT ai_run_started
+              AND deleted_at IS NULL AND recurrence='None' AND series_id IS NULL
+              AND title=%s AND assignee IS NOT DISTINCT FROM %s
+              AND priority=%s AND due_date IS NOT DISTINCT FROM %s::date
+              AND NOT EXISTS (SELECT 1 FROM workforce_runs r WHERE r.task_id=tasks.id)""",
+            (change["priority"], change["due_date"], change["task_id"], change["title"],
+             change["assignee"], change["old_priority"], change["old_due_date"]))
+        if result.rowcount != 1:
+            raise HTTPException(409, "A proposed Operations task changed. Request revision before approving.")
+    return len(changes)
+
 
 def dbconn():
     url=os.getenv("DATABASE_URL","").strip()
@@ -30,6 +60,8 @@ def init(db):
     db.execute("ALTER TABLE workforce_runs ADD COLUMN IF NOT EXISTS web_searched BOOLEAN NOT NULL DEFAULT FALSE")
     db.execute("ALTER TABLE workforce_runs ADD COLUMN IF NOT EXISTS searched_at TIMESTAMPTZ")
     db.execute("ALTER TABLE workforce_runs ADD COLUMN IF NOT EXISTS sources JSONB NOT NULL DEFAULT '[]'::jsonb")
+
+    db.execute("ALTER TABLE workforce_runs ADD COLUMN IF NOT EXISTS operations_changes JSONB NOT NULL DEFAULT '[]'::jsonb")
 
 def get_runs():
     try:
@@ -82,7 +114,7 @@ def review(ident,status,feedback=""):
         with dbconn() as db:
             init(db)
             row=db.execute("""UPDATE workforce_runs SET status=%s,reviewed_at=NOW()
-                WHERE id=%s AND status='For approval' RETURNING id,task_id,task_title,sources,staff_id""",
+                WHERE id=%s AND status='For approval' RETURNING id,task_id,task_title,sources,staff_id,operations_changes""",
                 (status,ident)).fetchone()
             if not row: raise HTTPException(404,"Pending result not found")
             task_status, job_status = {
@@ -112,13 +144,16 @@ def review(ident,status,feedback=""):
                      status + ": " + feedback.strip(), "staff:" + row["staff_id"],
                      int(time.time())))
                 feedback_saved = True
+            changes_applied = 0
+            if status == "Approved" and row.get("operations_changes"):
+                changes_applied = _apply_operations_changes(db, row["operations_changes"])
             handoff = []
             if status == "Approved":
                 task = db.execute("SELECT category FROM tasks WHERE id=%s AND deleted_at IS NULL",
                                   (row["task_id"],)).fetchone()
                 if task and task["category"] == "Opportunity Scan":
                     handoff = _queue_opportunity_handoff(db, row)
-        return {"ok":True,"handoff_jobs":handoff,"feedback_saved":feedback_saved}
+        return {"ok":True,"handoff_jobs":handoff,"feedback_saved":feedback_saved,"operations_changes_applied":changes_applied}
     except psycopg.Error: raise HTTPException(503,"Unable to review workforce result")
 
 def _news_sources(data):
@@ -191,7 +226,11 @@ def _execute(task,staff):
     source_required = is_news or is_research or task.get("category") == "Opportunity Scan"
     finance_ledger_requested = department_playbooks.finance_ledger_requested(
         staff, task["title"], brief)
-    search_enabled = canva_mode != "video" and not finance_ledger_requested
+    is_operations = staff.get("department") == "Operations & Project Management"
+    operations_research = is_operations and department_playbooks.operations_ai_research_requested(task["title"], brief)
+    operations = is_operations and task.get("category") == "General" and not operations_research
+    source_required = source_required or operations_research
+    search_enabled = canva_mode != "video" and not finance_ledger_requested and not operations
     if canva_mode and not canva.allowed(staff, canva_mode):
         raise HTTPException(403, "Staff role is not approved for this Canva operation")
     instruction=("You are an AI staff member producing an INTERNAL draft deliverable for CEO review only. "
@@ -251,7 +290,26 @@ def _execute(task,staff):
     reference_context=''
     reference_images=[]
     image_reference = None
+    operations_snapshot = {}
     with dbconn() as db:
+        if operations:
+            records = [dict(row) for row in db.execute("""SELECT id,title,assignee,priority,due_date,status,
+                recurrence,series_id,ai_run_started,
+                EXISTS (SELECT 1 FROM workforce_runs r WHERE r.task_id=t.id) AS has_output
+                FROM tasks t WHERE deleted_at IS NULL AND status NOT IN ('Completed','Abandoned')
+                  AND id<>%s ORDER BY created DESC,id LIMIT 40""", (task["id"],)).fetchall()]
+            operations_snapshot = {row["id"]: row for row in records if
+                row["status"] == "To do" and not row["ai_run_started"] and not row["has_output"]
+                and row["recurrence"] == "None" and not row["series_id"]}
+            reference_context += "\nCurrent work queue (up to 40 open tasks):\n" + json.dumps(records, default=str)
+            instruction += (
+                " Act as Operations think tank: identify blockers, dependencies and workflow bottlenecks "
+                "grounded in the supplied records. Recommend team or app improvements with impact, owner "
+                "and next step. Propose changes only for relevant unstarted one-time tasks without output. "
+                "Return a report and up to eight updates; each uses an exact existing task ID, desired priority "
+                "and ISO YYYY-MM-DD due_date (use the original date or empty string to keep it), and evidence-based reason. "
+                "Use an empty update list when no changes are justified. Do not claim changes are applied."
+            )
         if finance_ledger_requested:
             actuals = finance_actuals.summary(db)["monthly"]
             reference_context = ("Recorded Finance & Audit monthly totals, keyed by currency, "
@@ -358,6 +416,12 @@ def _execute(task,staff):
              "input":[{"role":"user","content":"Task: "+task["title"]+"\nTask details: "+str(task.get("brief") or "")[:3800]+"\nAttached CEO references and Learning Academy guidance:\n"+reference_context+"\nProvide the deliverable for CEO review."}],
              "max_output_tokens":min(4000,max(200,int(os.getenv("AI_MAX_OUTPUT_TOKENS","4000")))),
              "store":False}
+    if operations:
+        schema = OperationsReview.model_json_schema()
+        for model_schema in [schema, *schema.get("$defs", {}).values()]:
+            model_schema["additionalProperties"] = False
+        payload["text"] = {"format": {"type": "json_schema", "name": "operations_review",
+                                     "strict": True, "schema": schema}}
     if canva_mode == "produce" and not autofill:
         payload["text"] = {"format": {
             "type": "json_schema", "name": "canva_design_plan", "strict": True,
@@ -381,7 +445,7 @@ def _execute(task,staff):
                        "required": ["prompt", "size"]},
         }}
     # All roles can inspect a public page explicitly supplied in the CEO brief.
-    browser_url = None if finance_ledger_requested or autofill or canva_mode in {"video", "review"} else staff_browser.public_url_from_brief(brief)
+    browser_url = None if operations or finance_ledger_requested or autofill or canva_mode in {"video", "review"} else staff_browser.public_url_from_brief(brief)
     if browser_url and urlsplit(browser_url).hostname in {"canva.com", "www.canva.com"}:
         browser_url = None
     browser_image = staff_browser.screenshot(browser_url) if browser_url and canva_mode != "video" else None
@@ -526,6 +590,37 @@ def _execute(task,staff):
         qa_notes.append("- Editable-design links were generated from IDs returned by Canva. Browser sharing permissions require CEO review.")
     if qa_notes:
         answer += "\n\n## Delivery checks\n" + "\n".join(qa_notes)
+    operations_changes = []
+    if operations:
+        try:
+            plan = OperationsReview.model_validate_json(answer)
+            answer = plan.report.strip()
+            if not answer:
+                raise ValueError
+            seen = set()
+            for update in plan.updates:
+                row = operations_snapshot.get(update.task_id)
+                if not row or update.task_id in seen or not update.reason.strip():
+                    raise ValueError
+                seen.add(update.task_id)
+                old_due = row["due_date"].isoformat() if row["due_date"] else None
+                new_due = date.fromisoformat(update.due_date).isoformat() if update.due_date else old_due
+                if (update.priority, new_due) == (row["priority"], old_due):
+                    continue
+                operations_changes.append({
+                    "task_id": update.task_id, "title": row["title"], "assignee": row["assignee"],
+                    "old_priority": row["priority"], "old_due_date": old_due,
+                    "priority": update.priority, "due_date": new_due,
+                    "reason": " ".join(update.reason.split())[:300],
+                })
+        except (ValidationError, ValueError):
+            raise HTTPException(502, "Operations returned an invalid task update proposal") from None
+        if operations_changes:
+            answer += "\n\n## Task changes applied on approval\n" + "\n".join(
+                f"- {change['title']}: priority {change['old_priority']} → {change['priority']}; "
+                f"due {change['old_due_date'] or 'not set'} → {change['due_date'] or 'not set'}. "
+                f"Reason: {change['reason']}" for change in operations_changes
+            )
     ident=secrets.token_hex(12)
     try:
         with dbconn() as db:
@@ -539,11 +634,11 @@ def _execute(task,staff):
                 raise HTTPException(409,"AI task was abandoned by CEO; result not published")
             db.execute("""INSERT INTO workforce_runs
                 (id,task_id,task_title,staff_id,staff_name,model,result,status,
-                 web_searched,searched_at,sources)
+                 web_searched,searched_at,sources,operations_changes)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,'For approval',%s,
-                        CASE WHEN %s THEN NOW() ELSE NULL END,%s)""",
+                        CASE WHEN %s THEN NOW() ELSE NULL END,%s,%s)""",
                 (ident,task["id"],task["title"],staff["id"],staff["name"],model,answer,
-                 bool(sources),bool(sources),Jsonb(sources)))
+                 bool(sources),bool(sources),Jsonb(sources),Jsonb(operations_changes)))
             if browser_image:
                 deliverables.save_asset(db, ident, "public-page-preview.png", browser_image)
             if image is not None:

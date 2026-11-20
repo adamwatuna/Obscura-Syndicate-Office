@@ -2214,11 +2214,11 @@ async function renderSelectedSubmission(){
    const button=deliveryText('button',{'Approved':'Approve deliverable','Revision requested':'Request revision','Rejected':'Reject'}[status],status==='Approved'?'primary':'secondary');
    button.type='button';
    button.onclick=async()=>{
-    if(!confirm({'Approved':'Approve this AI result?','Revision requested':'Request revision for this AI result?','Rejected':'Reject this result and close the task? AI will stop working on it.'}[status]))return;
+    if(!confirm({'Approved':'Approve this AI result and apply any listed task updates?','Revision requested':'Request revision for this AI result?','Rejected':'Reject this result and close the task? AI will stop working on it.'}[status]))return;
     try{
      const review=await api('workforce/runs/'+encodeURIComponent(id)+'/review',{method:'POST',body:JSON.stringify({status,feedback:status==='Rejected'?'':feedback.value.trim()})});
      await Promise.all([loadDeliveryInbox(),refresh(),loadMeitaTaskHistory()]);
-     msg(review.handoff_jobs?.length?'Approved · '+review.handoff_jobs.length+' Job Radar follow-up tasks queued':review.feedback_saved?'Review and Academy feedback saved':'CEO review saved');
+     msg(review.handoff_jobs?.length?'Approved · '+review.handoff_jobs.length+' Job Radar follow-up tasks queued':review.feedback_saved?'Review and Academy feedback saved':review.operations_changes_applied?'Approved · '+review.operations_changes_applied+' tasks updated':'CEO review saved');
     }catch(err){msg(err.message)}
    };controls.append(button);
   }
