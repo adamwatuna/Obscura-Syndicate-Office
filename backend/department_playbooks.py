@@ -316,6 +316,15 @@ def finance_ledger_requested(staff, title, brief):
     ))
 
 
+OPERATIONS_REVIEW = (
+    "Use the current task records to identify blockers, handoffs and missing ownership. "
+    "Propose changes with evidence, priority, responsible owner and next step. "
+    "For team or app improvements, explain the expected impact and acceptance criteria. "
+    "Run a follow-up review against actual records, and flag where a status is unverified. "
+    "The CEO can approve proposed updates to priority and deadline for eligible one-time tasks."
+)
+
+
 def role_deliverable(staff):
     department = staff["department"]
     if department == "Research & Intelligence":
@@ -357,6 +366,8 @@ def work_tree(staff, outputs):
         steps[-1:-1] = [{"label": name, "detail": detail} for name, detail in CREATIVE_PRODUCTION.items()]
     if department == "Finance & Treasury":
         steps.insert(-1, {"label": "App overhead and sustainability", "detail": FINANCE_OVERHEAD})
+    if department == "Operations & Project Management":
+        steps.insert(-1, {"label": "Project records and improvements", "detail": OPERATIONS_REVIEW})
     return steps
 
 
@@ -390,6 +401,8 @@ def agent_scope(staff):
         "If no relevant material is available, work from the brief and state any material gaps. "
         "Before submission compare the actual result with the brief and report unmet acceptance criteria."
     )
+    if department == "Operations & Project Management":
+        scope += " " + OPERATIONS_REVIEW
     if department == "Finance & Treasury":
         scope += " " + FINANCE_OVERHEAD
     if department == "Creative":
