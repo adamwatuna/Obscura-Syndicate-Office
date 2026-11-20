@@ -17,13 +17,14 @@ from datetime import datetime, timezone
 from cryptography.fernet import Fernet, InvalidToken
 from fastapi import HTTPException
 
-PROVIDERS = ("instagram", "meta", "google", "tiktok", "canva")
-PLATFORMS = ("facebook", "instagram", "youtube", "tiktok", "canva")
+PROVIDERS = ("instagram", "meta", "google", "tiktok", "canva", "gmail")
+PLATFORMS = ("facebook", "instagram", "youtube", "tiktok", "canva", "gmail")
 SUPPORTED_PUBLISH = ("facebook", "instagram")
 PERMISSION_MODES = ("off", "approval_required", "direct_publish")
 GRAPH = "https://graph.facebook.com/v27.0"
 INSTAGRAM_GRAPH = "https://graph.instagram.com/v27.0"
 CLIENT_VARS = {
+    "gmail": ("SOCIAL_GOOGLE_CLIENT_ID", "SOCIAL_GOOGLE_CLIENT_SECRET"),
     "canva": ("CANVA_CLIENT_ID", "CANVA_CLIENT_SECRET"),
     "instagram": ("SOCIAL_INSTAGRAM_APP_ID", "SOCIAL_INSTAGRAM_APP_SECRET"),
     "meta": ("SOCIAL_META_APP_ID", "SOCIAL_META_APP_SECRET"),
@@ -31,6 +32,7 @@ CLIENT_VARS = {
     "tiktok": ("SOCIAL_TIKTOK_CLIENT_KEY", "SOCIAL_TIKTOK_CLIENT_SECRET"),
 }
 SCOPES = {
+    "gmail": "https://www.googleapis.com/auth/gmail.readonly",
     "canva": "design:content:read design:content:write",
     "instagram": "instagram_business_basic,instagram_business_content_publish",
     "meta": "pages_show_list,pages_read_engagement,pages_manage_posts,instagram_basic,instagram_content_publish",
@@ -162,10 +164,10 @@ def oauth_start(db,provider,session):
         return _query("https://www.facebook.com/v27.0/dialog/oauth",{
             "client_id":client,"redirect_uri":redirect,"state":state,
             "response_type":"code","scope":SCOPES["meta"]})
-    if provider=="google":
+    if provider in ("google", "gmail"):
         return _query("https://accounts.google.com/o/oauth2/v2/auth",{
             "client_id":client,"redirect_uri":redirect,"state":state,
-            "response_type":"code","scope":SCOPES["google"],
+            "response_type":"code","scope":SCOPES[provider],
             "access_type":"offline","prompt":"select_account consent"})
     return _query("https://www.tiktok.com/v2/auth/authorize/",{
         "client_key":client,"redirect_uri":redirect,"state":state,
@@ -219,6 +221,22 @@ def oauth_complete(db,provider,code,*,verifier=None):
     client,secret,base,_=_configuration(provider)
     redirect=f"{base}/api/social/oauth/{provider}/callback"
     if not code or len(code)>3000:raise HTTPException(400,"Missing OAuth authorization code")
+    if provider == "gmail":
+        payload = _http_json("https://oauth2.googleapis.com/token", {
+            "client_id": client, "client_secret": secret,
+            "grant_type": "authorization_code", "redirect_uri": redirect, "code": code,
+        })
+        token, refresh = payload.get("access_token"), payload.get("refresh_token")
+        if not token or not refresh or SCOPES["gmail"] not in payload.get("scope", "").split():
+            raise HTTPException(502, "Gmail read-only authorization was not granted")
+        profile = _http_json("https://gmail.googleapis.com/gmail/v1/users/me/profile",
+                             headers={"Authorization": f"Bearer {token}"})
+        address = profile.get("emailAddress")
+        if not address:
+            raise HTTPException(502, "Gmail did not return a mailbox")
+        _store_account(db, "gmail", "gmail", address, "Gmail invoice inbox",
+                       token, refresh, _expiry(payload.get("expires_in")), payload["scope"])
+        return 1
     if provider == "canva":
         if not verifier:
             raise HTTPException(403, "Canva verification missing")
@@ -361,7 +379,7 @@ def account_summary(db):
             "id":provider,
             "name":{"instagram":"Instagram · Direct Login (no Facebook Page)",
                     "meta":"Facebook Pages & Page-linked Instagram",
-                    "google":"YouTube (Google)","tiktok":"TikTok","canva":"Canva"}[provider],
+                    "google":"YouTube (Google)","tiktok":"TikTok","canva":"Canva","gmail":"Gmail · Finance invoices"}[provider],
             "configured":ok,
             "publishing_available":provider in ("instagram","meta"),
             "callback":base.rstrip("/")+f"/api/social/oauth/{provider}/callback" if base else "",

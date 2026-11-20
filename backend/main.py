@@ -23,7 +23,7 @@ from backend import meita_autowork, meita_decks
 from backend import social, social_publish
 from backend import references as office_references
 from backend import academy as office_academy
-from backend import finance_actuals, finance_planning
+from backend import finance_actuals, finance_gmail, finance_planning
 from backend import ai_provider
 from backend import ceo_security, creative
 from backend import deliverables as staff_deliverables
@@ -424,6 +424,14 @@ def academy_save_vision(ident:int):
         if saved['created']:
             audit(db,'academy.vision.saved',f'{saved["id"]} from Meita message {ident}')
     return saved
+
+
+@app.get('/api/finance/invoices/gmail', dependencies=[Depends(guard)])
+def finance_gmail_invoices():
+    with connect() as db:
+        access = finance_gmail.token(db)
+        audit(db, 'finance.gmail.listed', 'Obscura Invoices')
+    return finance_gmail.list_invoices(access)
 
 
 @app.get('/api/finance/actuals', dependencies=[Depends(guard)])
