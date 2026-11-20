@@ -238,6 +238,19 @@ ACADEMY_APPLICATION = {
 }
 
 
+MARKETING_BRAND_REVIEW = (
+    "Before proposing or submitting a campaign, review audience fit, message, tone, visual identity, "
+    "claims, asset rights and cultural context against the CEO brief and relevant Learning Academy "
+    "references. Include a concise Brand Do & Don't section with concrete examples and reasons. "
+    "Distinguish established brand rules from suggestions. When an item is unclear, label it for "
+    "CEO review. Flag unsubstantiated performance or client claims, misleading testimonials, "
+    "unapproved logo alterations, questionable asset usage and trend choices that weaken positioning. "
+    "For production clients, prioritize relevant portfolio evidence and qualified enquiries; "
+    "for original films, prioritize trailer engagement, audience intent and verified release information. "
+    "Nur Aina reviews brand fit and hands Creative usable copy and visual constraints for draft work."
+)
+
+
 def role_deliverable(staff):
     department = staff["department"]
     if department == "Research & Intelligence":
@@ -272,6 +285,8 @@ def work_tree(staff, outputs):
             steps.insert(-1, {"label": "Brand monitoring", "detail": BRAND_MONITORING})
         steps.insert(-1, {"label": "Malaysia film industry", "detail": MALAYSIAN_FILM_RESEARCH})
         steps.insert(-1, {"label": "Deep opportunity research", "detail": DEEP_OPPORTUNITY_RESEARCH})
+    if department == "Marketing & Growth":
+        steps.insert(-1, {"label": "Brand Do & Don't", "detail": MARKETING_BRAND_REVIEW})
     return steps
 
 
@@ -305,6 +320,8 @@ def agent_scope(staff):
         "If no relevant material is available, work from the brief and state any material gaps. "
         "Before submission compare the actual result with the brief and report unmet acceptance criteria."
     )
+    if department == "Marketing & Growth":
+        scope += " " + MARKETING_BRAND_REVIEW
     if department == "Research & Intelligence":
         scope += (
             " Research & Intelligence execution: " + research_role_steps(staff)
