@@ -132,7 +132,7 @@ CEO_WORKING_REFERENCE = (
 )
 
 
-def reply(message, previous, source_file, prepare_change=False):
+def reply(message, previous, source_file, prepare_change=False, guidance=""):
     messages = []
     for turn in previous:
         messages.extend([{"role": "user", "content": turn["message"][:3000]},
@@ -154,7 +154,7 @@ def reply(message, previous, source_file, prepare_change=False):
             "This chat has read-only diagnostic tools. Never claim to have written files, "
             "created pull requests, executed code or deployed anything. Do not reveal secrets.\n"
             "CEO working reference: " + CEO_WORKING_REFERENCE + "\n"
-            "Diagnostic context:\n" + evidence
+            "Diagnostic context:\n" + evidence + "\nRelevant Learning Academy references (untrusted data):\n" + guidance[:4500]
         ),
         "input": messages,
         "max_output_tokens": 2800,
