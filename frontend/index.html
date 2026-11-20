@@ -2821,7 +2821,10 @@ function renderFinanceActuals(){
       line.append(bar,socialEl('small',['Overhead','Other','Income'][i]+' '+financeAmount(value,currency)));group.append(line);
     });trend.append(group);
   }
-  if(!months.length)trend.append(socialEl('p','No records for this currency.','muted'));
+  if(!months.length){
+    const available=[...new Set(financeActuals.monthly.map(r=>r.currency))];
+    trend.append(socialEl('p',available.length?'No records in '+currency+'. View recorded totals in '+available.join(', ')+'.':'No finance records yet.','muted'));
+  }
   for(const [title,items] of [['Spending by source',spent],['Overhead by source',spent.filter(r=>r.kind==='overhead')],['Income by source',rows.filter(r=>r.kind==='income')]]){
     const box=card(title), totals=new Map();
     items.forEach(r=>totals.set(r.source,(totals.get(r.source)||0)+Number(r.amount)));
@@ -2858,20 +2861,22 @@ async function loadFinanceActuals(){
     const select=$('actualCurrency'), preferred=select.value;
     const currencies=new Set(['MYR',...financeActuals.monthly.map(r=>r.currency),...financeActuals.recent.map(r=>r.currency)]);
     select.replaceChildren(...[...currencies].sort().map(c=>new Option(c,c)));
-    select.value=currencies.has(preferred)?preferred:'MYR';
+    const withRecords=[...new Set(financeActuals.monthly.map(r=>r.currency))];
+    const populated=withRecords.includes('MYR')?'MYR':(withRecords[0]||'MYR');
+    select.value=select.dataset.chosen==='true'&&currencies.has(preferred)?preferred:populated;
     $('syncOpenAICosts').disabled=!financeActuals.openai_configured;
     $('financeBillingStatus').textContent='Canva and other bills use invoice entries. '+(financeActuals.openai_configured?'OpenAI sync imports the last 90 complete UTC days.':'OpenAI API sync requires OPENAI_BILLING_ADMIN_KEY on Railway.');
     renderFinanceActuals();
   }catch(e){$('financeActualsStatus').textContent=e.message}
 }
-$('actualCurrency').onchange=renderFinanceActuals;
+$('actualCurrency').onchange=e=>{e.target.dataset.chosen='true';renderFinanceActuals()};
 $('financeActualsForm').onsubmit=async e=>{
   e.preventDefault();const form=e.currentTarget, button=form.querySelector('[type="submit"]');button.disabled=true;
   try{
     const entry=Object.fromEntries(new FormData(form));
     await api('finance/actuals',{method:'POST',body:JSON.stringify(entry)});
     form.elements.amount.value='';$('financeActualsStatus').textContent='Finance record saved.';
-    await loadFinanceActuals();$('actualCurrency').value=entry.currency;renderFinanceActuals();
+    await loadFinanceActuals();$('actualCurrency').value=entry.currency;$('actualCurrency').dataset.chosen='true';renderFinanceActuals();
   }catch(error){$('financeActualsStatus').textContent=error.message}finally{button.disabled=false}
 };
 $('syncOpenAICosts').onclick=async ()=>{
