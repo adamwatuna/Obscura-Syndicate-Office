@@ -18,16 +18,19 @@ APP = "https://api.canva.com/rest/v1"
 PRODUCERS = {"art director", "graphic designer", "brand identity designer"}
 
 
-def access(staff):
-    if staff.get("department") != "Creative":
-        return None
-    role = " ".join(staff.get("role", "").casefold().split()).removeprefix("ai ")
-    if role in PRODUCERS:
-        return "produce"
-    if role == "creative director" and staff.get("name", "").casefold() == "maryam":
-        return "review"
-    return None
-
+def allowed(staff, operation):
+    department = staff.get("department")
+    role = " ".join((staff.get("role") or "").casefold().split()).removeprefix("ai ")
+    if operation == "produce":
+        return (department == "Creative" and role in PRODUCERS | {"ui/ux designer"}
+                or department == "Marketing & Growth"
+                and role in {"social media strategist", "digital marketing specialist", "content strategist"})
+    if operation == "video":
+        return department == "Creative" and role in {"video editor", "motion graphics designer"}
+    if operation == "review" and department == "Creative":
+        return (role == "creative quality assurance specialist"
+                or role == "creative director" and (staff.get("name") or "").casefold() == "maryam")
+    return False
 
 def access_token(db):
     accounts = db.execute("""SELECT * FROM social_accounts WHERE provider='canva'
@@ -83,11 +86,11 @@ def job(token, endpoint, payload, content_type, headers=None):
     return result
 
 
-def export_pdf(token, design_id):
-    payload = json.dumps({"design_id": design_id, "format": {"type": "pdf"}}).encode()
+def export_asset(token, design_id, file_type):
+    payload = json.dumps({"design_id": design_id, "format": {"type": file_type}}).encode()
     urls = job(token, "/exports", payload, "application/json").get("urls") or []
     if len(urls) != 1:
-        raise HTTPException(502, "Canva did not return a single downloadable PDF")
+        raise HTTPException(502, "Canva did not return a single downloadable file")
     url = urllib.parse.urlsplit(urls[0])
     host = url.hostname or ""
     if (url.scheme != "https" or url.username or url.password or url.port not in (None, 443)
@@ -95,15 +98,19 @@ def export_pdf(token, design_id):
                 or host.endswith(".canva.cn") or host == "canva-apps.com"
                 or host.endswith(".canva-apps.com"))):
         raise HTTPException(502, "Canva did not return a supported download URL")
-    pdf = request(urls[0], limit=deliverables.MAX_ASSET_BYTES)
-    deliverables.check_file("canva-design.pdf", pdf)
-    return pdf
+    data = request(urls[0], limit=deliverables.MAX_ASSET_BYTES)
+    deliverables.check_file(f"canva-design.{file_type}", data)
+    return data
+
+
+def export_pdf(token, design_id):
+    return export_asset(token, design_id, "pdf")
 
 
 def review_id(brief):
     match = re.search(r"https://www\.canva\.com/design/([A-Za-z0-9_-]+)(?=[/\s?]|$)", brief)
     if not match:
-        raise HTTPException(400, "Include the Canva design link for Maryam to review")
+        raise HTTPException(400, "Include the Canva design link for this task")
     return match.group(1)
 
 

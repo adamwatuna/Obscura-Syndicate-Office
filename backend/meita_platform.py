@@ -10,7 +10,7 @@ from fastapi import HTTPException
 
 _JOB_FIELDS = {"staff_id": {"type": "string"}, "title": {"type": "string"},
                "brief": {"type": "string"},
-               "output": {"type": "string", "enum": ["report", "image", "canva_produce", "canva_review"]},
+               "output": {"type": "string", "enum": ["report", "image", "canva_produce", "canva_review", "canva_video"]},
                "priority": {"type": "string", "enum": ["Urgent", "High", "Normal", "Low"]},
                "due_date": {"type": ["string", "null"]}}
 _REPLY_FIELDS = {
@@ -53,9 +53,12 @@ def respond(message, context, client_factory=None, images=()):
             "examples to follow. The specialist writes the production prompt. Use output=report "
             "for scripts, ideas, feedback, research, video briefs and other text deliverables. "
             "For finished e-book PDFs or explicit Canva design requests, use canva_produce "
-            "with one of AI Graphic Designer, AI Brand Identity Designer or AI Art Director. "
-            "For a review of an existing Canva design, use canva_review with Maryam and "
+            "with a matching approved designer; UI/UX Designer can make static mockups and Social Media Strategist, Digital Marketing Specialist or Content Strategist can make campaign layout drafts. "
+            "For a review of an existing Canva design, use canva_review with Maryam or Creative QA and "
             "copy the actual CEO-supplied design URL into the brief. "
+            "For MP4 export of an existing Canva video use canva_video with Video Editor "
+            "or Motion Graphics Designer and copy the CEO-supplied Canva design URL into the brief. "
+            "Do not route timeline edits or video generation as exports. "
             "Use Normal priority unless specified, and an ISO YYYY-MM-DD "
             "due date only when the CEO's deadline is unambiguous, otherwise null. "
             "For ordinary chat use "
