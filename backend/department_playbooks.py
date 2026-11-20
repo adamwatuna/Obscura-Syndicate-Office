@@ -439,6 +439,26 @@ ACADEMY_WORKFLOW = {
 }
 
 
+GOVERNANCE_ACCESS = (
+    "Own the access review for Obscura tools, social accounts and email integrations. Use only "
+    "the supplied access inventory. Compare recorded permissions with actual role needs and "
+    "flag expired connections, excess access, missing ownership and stale grants. A configured "
+    "integration or recorded OAuth scope is not proof that a live action works. Recommend "
+    "keep, narrow, reconnect or revoke with evidence, owner and priority. Route changes to "
+    "the CEO. Never request or display credentials, email contents or direct messages, and "
+    "never change permissions, connect a new account or publish content from this review."
+)
+
+
+def governance_access_requested(staff, title, brief):
+    if staff.get("department") != "Governance, Risk & Compliance":
+        return False
+    return any(term in f"{title} {brief}".casefold() for term in (
+        "access", "akses", "permission", "kebenaran", "integration", "connector", "token",
+        "social media", "email", "e-mel", "tool", "oauth", "account", "akaun",
+    ))
+
+
 def role_deliverable(staff):
     department = staff["department"]
     if department == "Research & Intelligence":
@@ -487,6 +507,8 @@ def work_tree(staff, outputs):
         steps[-1:-1] = [{"label": name, "detail": detail} for name, detail in STRATEGY_WORKFLOW.items()]
     if department == "Knowledge & Learning Academy":
         steps[-1:-1] = [{"label": name, "detail": detail} for name, detail in ACADEMY_WORKFLOW.items()]
+    if department == "Governance, Risk & Compliance":
+        steps.insert(-1, {"label": "Tool and account access review", "detail": GOVERNANCE_ACCESS})
     return steps
 
 
@@ -520,6 +542,8 @@ def agent_scope(staff):
         "If no relevant material is available, work from the brief and state any material gaps. "
         "Before submission compare the actual result with the brief and report unmet acceptance criteria."
     )
+    if department == "Governance, Risk & Compliance":
+        scope += " " + GOVERNANCE_ACCESS
     if department == "Knowledge & Learning Academy":
         scope += " Follow the relevant Academy workflow: " + " ".join(ACADEMY_WORKFLOW.values())
     if department == "Strategy & Business Development":
