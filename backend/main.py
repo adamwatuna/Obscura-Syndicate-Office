@@ -415,6 +415,13 @@ def academy_library(search:str='',kind:str='all',include_archived:bool=False):
     with connect() as db:
         return office_academy.library(db,search[:120],kind[:40],include_archived=include_archived)
 
+@app.post('/api/academy/archive-all',dependencies=[Depends(guard)])
+def academy_archive_all():
+    with connect() as db:
+        result = office_academy.archive_all(db)
+        audit(db, 'academy.archived', str(result["archived"]))
+    return result
+
 @app.patch('/api/academy/references/{ident}',dependencies=[Depends(guard)])
 def academy_edit_reference(ident:str,body:office_academy.LibraryReferenceEdit):
     with connect() as db:
