@@ -1,5 +1,10 @@
 """Finance actuals sourced from operator records and OpenAI organization costs."""
+import csv
+import io
 import json
+from bisect import bisect_right
+from functools import lru_cache
+from time import monotonic
 import os
 import secrets
 import urllib.error
@@ -40,7 +45,60 @@ def record(db, entry):
     return {"id": ident}
 
 
-def summary(db):
+@lru_cache(maxsize=2)
+def usd_rates(cache_period):
+    """Cache the public BNM noon midpoint feed for one hour per process."""
+    url = "https://storage.data.gov.my/finsector/exr/daily_1200.csv"
+    with urllib.request.urlopen(url, timeout=6) as stream:
+        raw = stream.read(8_000_001)
+    if len(raw) > 8_000_000:
+        raise ValueError("Unexpected BNM dataset size")
+    rows = csv.DictReader(io.StringIO(raw.decode("utf-8-sig")))
+    rates = {}
+    for row in rows:
+        if row.get("rate_type") != "middle" or not row.get("usd"):
+            continue
+        rate = Decimal(row["usd"])
+        if rate.is_finite() and rate > 0:
+            rates[date.fromisoformat(row["date"])] = rate
+    if not rates:
+        raise ValueError("No BNM USD rates")
+    return sorted(rates), rates
+
+
+def myr_view(daily):
+    if any(row["currency"] == "USD" for row in daily):
+        try:
+            dates, rates = usd_rates(int(monotonic() // 3600))
+        except (urllib.error.URLError, TimeoutError, ValueError, ArithmeticError):
+            dates, rates = [], {}
+    else:
+        dates, rates = [], {}
+    monthly = {}
+    missing = set()
+    applied = {}
+    for row in daily:
+        day, currency = row["day"], row["currency"]
+        amount = row["amount"]
+        if currency != "MYR":
+            ix = bisect_right(dates, day) - 1
+            if currency != "USD" or ix < 0 or (day - dates[ix]).days > 7:
+                missing.add((day, currency))
+                continue
+            rate_day = dates[ix]
+            rate = rates[rate_day]
+            applied[day] = {"day": day, "rate_day": rate_day, "rate": rate}
+            amount *= rate
+        key = (day.strftime("%Y-%m"), row["kind"], row["source"])
+        monthly[key] = monthly.get(key, Decimal(0)) + amount
+    return {"monthly": [{"month": month, "kind": kind, "source": source,
+                         "currency": "MYR", "amount": amount}
+                        for (month, kind, source), amount in sorted(monthly.items())],
+            "rates": [applied[day] for day in sorted(applied, reverse=True)],
+            "omitted_days": len(missing)}
+
+
+def summary(db, *, convert=False):
     init(db)
     rows = db.execute("""SELECT to_char(day,'YYYY-MM') AS month,kind,source,currency,
         SUM(amount) AS amount FROM finance_actuals WHERE
@@ -48,8 +106,15 @@ def summary(db):
         GROUP BY 1,2,3,4 ORDER BY 1,2,3,4""").fetchall()
     recent = db.execute("""SELECT day,kind,source,currency,amount,reference,origin
         FROM finance_actuals ORDER BY day DESC,id LIMIT 30""").fetchall()
-    return {"monthly": rows, "recent": recent,
-            "openai_configured": bool(os.getenv("OPENAI_BILLING_ADMIN_KEY", "").strip())}
+    result = {"monthly": rows, "recent": recent,
+              "openai_configured": bool(os.getenv("OPENAI_BILLING_ADMIN_KEY", "").strip())}
+    if convert:
+        daily = db.execute("""SELECT day,kind,source,currency,SUM(amount) AS amount
+            FROM finance_actuals WHERE
+            day >= (date_trunc('month', CURRENT_DATE) - INTERVAL '11 months')::date
+            GROUP BY 1,2,3,4""").fetchall()
+        result["myr"] = myr_view(daily)
+    return result
 
 
 def openai_costs():

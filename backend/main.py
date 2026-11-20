@@ -429,7 +429,7 @@ def academy_save_vision(ident:int):
 @app.get('/api/finance/actuals', dependencies=[Depends(guard)])
 def finance_actuals_summary():
     with connect() as db:
-        return finance_actuals.summary(db)
+        return finance_actuals.summary(db, convert=True)
 
 
 @app.post('/api/finance/actuals', dependencies=[Depends(guard)])
