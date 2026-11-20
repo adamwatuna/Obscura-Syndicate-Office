@@ -2182,9 +2182,9 @@ async function renderSelectedSubmission(){
    button.onclick=async()=>{
     if(!confirm({'Approved':'Approve this AI result?','Revision requested':'Request revision for this AI result?','Rejected':'Reject this result and close the task? AI will stop working on it.'}[status]))return;
     try{
-     await api('workforce/runs/'+encodeURIComponent(id)+'/review',{method:'POST',body:JSON.stringify({status})});
+     const review=await api('workforce/runs/'+encodeURIComponent(id)+'/review',{method:'POST',body:JSON.stringify({status})});
      await Promise.all([loadDeliveryInbox(),refresh(),loadMeitaTaskHistory()]);
-     msg('CEO review saved');
+     msg(review.handoff_jobs?.length?'Approved · '+review.handoff_jobs.length+' Job Radar follow-up tasks queued':'CEO review saved');
     }catch(err){msg(err.message)}
    };controls.append(button);
   }
