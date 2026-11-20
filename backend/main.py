@@ -153,6 +153,7 @@ class Status(BaseModel):status:str
 
 class WorkforceReview(Status):
     feedback: str = Field(default="", max_length=1500)
+    academy_scope: str = Field(default="", max_length=140)
 class MeitaMessage(BaseModel):
     thread_id: str = Field(default="legacy", pattern=r"^(legacy|[a-f0-9]{32})$")
     message: str = Field(min_length=1,max_length=6000)
@@ -1168,7 +1169,7 @@ def workforce_run(task_id:str):
 
 @app.post('/api/workforce/runs/{ident}/review',dependencies=[Depends(guard)])
 def workforce_review(ident:str,body:WorkforceReview):
-    result=office_workforce.review(ident,body.status,body.feedback)
+    result=office_workforce.review(ident,body.status,body.feedback,body.academy_scope)
     with connect() as db: audit(db,'workforce.review',ident+': '+body.status)
     return result
 
