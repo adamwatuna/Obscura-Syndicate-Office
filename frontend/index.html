@@ -442,7 +442,7 @@
    <p>Meita references, CEO visions and internal knowledge for the AI team — all connected.</p></div>
   <div class="task-actions"><button class="secondary" type="button" onclick="loadAcademyLibrary()">Refresh library</button>
    <button class="primary" type="button" onclick="openAcademyUpload()">＋ Upload training reference</button>
-   <button class="secondary" onclick="toggle('lessonForm')">＋ Add note or link</button></div>
+   <button class="secondary" onclick="toggle('lessonForm')">＋ Add note or link</button><button type="button" class="secondary" onclick="archiveAcademyLibrary(this)">Archive all Academy materials</button></div>
  </div>
  <p class="muted">Staff apply relevant examples and CEO guidance while doing their work. Give each example a scope and topic tags so it reaches the right staff.</p>
  <form class="card formgrid hidden" id="academyUploadForm">
@@ -459,7 +459,7 @@
    <div><label for="academySearch">Search knowledge</label><input id="academySearch" placeholder="e.g. Bollywood, brand direction, film moodboard"></div>
    <div><label for="academyKind">Knowledge type</label><select id="academyKind"><option value="all">All knowledge</option><option value="reference">Uploaded / linked references</option><option value="project">Meita project visions</option><option value="lesson">Notes and saved sources</option></select></div>
   </div>
-  <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:500"><input id="academyShowArchived" type="checkbox" style="width:auto;margin:0"> Include archived references</label>
+  <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:500"><input id="academyShowArchived" type="checkbox" style="width:auto;margin:0"> Include archived materials</label>
   <div id="academyLibrary"><p class="muted">Loading knowledge library...</p></div>
  </div>
  <div id="lessonForm" class="card hidden" style="margin-top:20px"><form id="newLessonForm">
@@ -1742,6 +1742,16 @@ function academyRenderItem(item){
   else if(item.kind!=='Note')card.append(academyNode('p','Link registered only; no transcription or automatic ingestion claimed.','muted'));
  }
  return card;
+}
+async function archiveAcademyLibrary(button){
+ if(!confirm('Archive all current Learning Academy materials? Staff will stop using them as guidance. The archived records will remain available.'))return;
+ button.disabled=true;
+ try{
+  const result=await api('academy/archive-all',{method:'POST'});
+  await loadAcademyLibrary();
+  msg(result.archived+' Academy materials archived');
+ }catch(error){msg(error.message)}
+ finally{button.disabled=false}
 }
 async function loadAcademyLibrary(){
  const root=$('academyLibrary');
