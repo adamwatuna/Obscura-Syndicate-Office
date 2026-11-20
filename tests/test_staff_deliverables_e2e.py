@@ -57,6 +57,10 @@ class StaffDeliveryInboxTests(unittest.TestCase):
 
     def test_full_task_to_specialist_submission_review_and_download(self):
         task_id,run_id=self._staff_submission()
+        task=next(row for row in self.client.get("/api/office").json()["tasks"] if row["id"]==task_id)
+        self.assertIsNotNone(task["ai_started_at"])
+        self.assertIsNotNone(task["ai_finished_at"])
+        self.assertGreaterEqual(task["ai_finished_at"],task["ai_started_at"])
         inbox=self.client.get("/api/deliverables")
         self.assertEqual(inbox.status_code,200,inbox.text)
         row=next(item for item in inbox.json()["items"] if item["id"]==run_id)

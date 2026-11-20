@@ -57,6 +57,8 @@ def ensure_schema(db):
         assignee TEXT NOT NULL DEFAULT '',
         status TEXT NOT NULL DEFAULT 'To do',
         created BIGINT NOT NULL)""")
+    db.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS ai_started_at TIMESTAMPTZ")
+    db.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS ai_finished_at TIMESTAMPTZ")
     db.execute("""CREATE TABLE IF NOT EXISTS lessons (
         id TEXT PRIMARY KEY, title TEXT NOT NULL,
         kind TEXT NOT NULL, source TEXT NOT NULL,
