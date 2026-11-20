@@ -1066,7 +1066,7 @@ def workforce_run(task_id:str):
         record=db.execute('SELECT * FROM tasks WHERE id=%s FOR UPDATE',(task_id,)).fetchone()
         if record is None or record['deleted_at'] is not None:
             raise HTTPException(404,'Task not found')
-        if record['ai_run_started'] or record['status'] in ('For approval','Completed'):
+        if record['ai_run_started'] or record['status'] in ('For approval','Completed','Abandoned'):
             raise HTTPException(409,'AI task already started or completed')
         if not record['assignee']:
             raise HTTPException(400,'Assign an AI staff member before running this task')

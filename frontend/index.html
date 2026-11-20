@@ -406,6 +406,7 @@
     <option value="For approval">Awaiting CEO review</option>
     <option value="Approved">Approved / completed</option>
     <option value="Revision requested">Revision requested</option>
+    <option value="Rejected">Rejected</option>
     <option value="archived">Archived reports</option>
    </select>
   </div>
@@ -2175,11 +2176,11 @@ async function renderSelectedSubmission(){
   controls.append(deliveryLink('Meita project deck (.pptx)','/api/meita/deliverables/'+encodeURIComponent(item.meita_project_id)+'/powerpoint'));
  }
  if(item.status==='For approval'&&!item.archived_task){
-  for(const status of ['Approved','Revision requested']){
-   const button=deliveryText('button',status==='Approved'?'Approve deliverable':'Request revision',status==='Approved'?'primary':'secondary');
+  for(const status of ['Approved','Revision requested','Rejected']){
+   const button=deliveryText('button',{'Approved':'Approve deliverable','Revision requested':'Request revision','Rejected':'Reject'}[status],status==='Approved'?'primary':'secondary');
    button.type='button';
    button.onclick=async()=>{
-    if(!confirm((status==='Approved'?'Approve':'Request revision for')+' this real AI staff result?'))return;
+    if(!confirm({'Approved':'Approve this AI result?','Revision requested':'Request revision for this AI result?','Rejected':'Reject this result and close the task? AI will stop working on it.'}[status]))return;
     try{
      await api('workforce/runs/'+encodeURIComponent(id)+'/review',{method:'POST',body:JSON.stringify({status})});
      await Promise.all([loadDeliveryInbox(),refresh(),loadMeitaTaskHistory()]);
@@ -3033,8 +3034,8 @@ function startOpportunityScan(){
  startResearchTask();
  const form=$('newTaskForm');
  form.elements.category.value='Opportunity Scan';
- form.elements.title.value='Find open creative and production opportunities';
- form.elements.description.value='Find up to five live opportunities Obscura could bid or pitch for in Malaysia. Search public social posts, company sites, tender portals and job boards for creative, video and production briefs. Open the original post or listing for each lead. Give the organization, scope, relevant dates or deadline, fit for Obscura and the exact original URL. Label uncertain availability and leave out expired or unverified leads.';
+ form.elements.title.value='Job Radar — Creative and production opportunities';
+ form.elements.description.value='Find up to five verified freelance or studio opportunities in Malaysia or remote for video editing, motion graphics, branding or graphic design. Check Behance, company sites and public job boards. Open each original listing, deduplicate and rank the leads. Include client, scope, deadline, budget if stated, fit and original URL. Draft tailored pitches and suggest relevant portfolio sample types for the best two. Leave expired or unverified listings out of the shortlist.';
 }
 function renderResearchHeadlines(reports){
  const root=$('researchHeadlines'),seen=new Set();

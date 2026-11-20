@@ -40,7 +40,7 @@ def get_runs():
     except psycopg.Error: raise HTTPException(503,"Unable to load workforce results")
 
 def review(ident,status):
-    if status not in ("Approved","Revision requested"): raise HTTPException(400,"Invalid review status")
+    if status not in ("Approved","Revision requested","Rejected"): raise HTTPException(400,"Invalid review status")
     try:
         with dbconn() as db:
             init(db)
@@ -48,20 +48,25 @@ def review(ident,status):
                 WHERE id=%s AND status='For approval' RETURNING id,task_id""",
                 (status,ident)).fetchone()
             if not row: raise HTTPException(404,"Pending result not found")
-            approved=status=="Approved"
+            task_status, job_status = {
+                "Approved": ("Completed", "Completed"),
+                "Revision requested": ("To do", "Retry available"),
+                "Rejected": ("Abandoned", "Cancelled"),
+            }[status]
             db.execute("""UPDATE tasks SET status=%s
-                WHERE id=%s AND ai_run_started=TRUE AND deleted_at IS NULL""",
-                ("Completed" if approved else "To do",row["task_id"]))
+                WHERE id=%s AND (ai_run_started=TRUE OR (status='For approval' AND %s='Rejected'))
+                  AND deleted_at IS NULL""",
+                (task_status,row["task_id"],status))
             # Director and Meita job statuses are downstream of the same actual
             # workforce run. Review is propagated, not simulated.
             db.execute("""UPDATE director_jobs
                 SET status=%s,updated_at=NOW()
                 WHERE workforce_run_id=%s AND status='For approval'""",
-                ("Completed" if approved else "Retry available",ident))
+                (job_status,ident))
             db.execute("""UPDATE coo_jobs
                 SET status=%s,updated_at=NOW()
                 WHERE workforce_run_id=%s AND status='Delivered'""",
-                ("Completed" if approved else "Retry available",ident))
+                (job_status,ident))
         return {"ok":True}
     except psycopg.Error: raise HTTPException(503,"Unable to review workforce result")
 
@@ -169,6 +174,16 @@ def _execute(task,staff):
             "with reliable URLs, dates, methodology, source limitations and a justified "
             "High/Medium/Low confidence level for every significant conclusion. "
             "If accessible evidence is missing, report an information gap, never invent.")
+    if task.get("category") == "Opportunity Scan":
+        instruction += (
+            " JOB RADAR: Search public original listings, including Behance where accessible. "
+            "Prioritize relevant freelance or studio contracts in Malaysia or remote. Deduplicate "
+            "and rank up to five by fit, deadline and evidence. For each provide client, service, "
+            "scope, budget and deadline if stated, and the original URL. Keep unconfirmed leads "
+            "out of the shortlist. Draft tailored pitches for up to two verified leads, with "
+            "a suggested portfolio sample described by type unless a real approved link is supplied. "
+            "Keep the pitches ready for CEO review and do not claim to have applied."
+        )
     if is_news:
         instruction+=(
             " NEWS UPDATE TASK: Use the web_search tool to retrieve actual public "
