@@ -54,8 +54,9 @@ def review(ident,status):
                 "Rejected": ("Abandoned", "Cancelled"),
             }[status]
             db.execute("""UPDATE tasks SET status=%s
-                WHERE id=%s AND ai_run_started=TRUE AND deleted_at IS NULL""",
-                (task_status,row["task_id"]))
+                WHERE id=%s AND (ai_run_started=TRUE OR (status='For approval' AND %s='Rejected'))
+                  AND deleted_at IS NULL""",
+                (task_status,row["task_id"],status))
             # Director and Meita job statuses are downstream of the same actual
             # workforce run. Review is propagated, not simulated.
             db.execute("""UPDATE director_jobs
