@@ -124,8 +124,9 @@ def assign(db,proposal_id,staff,automatic=False):
         db.execute("""INSERT INTO tasks
             (id,title,description,category,assignee,priority,due_date,
              status,recurrence,created,ai_run_started,reference_ids)
-            VALUES (%s,%s,%s,'General',%s,%s,%s,%s,'None',%s,TRUE,%s)""",
-            (task_id,title,brief,person["id"],item.get("priority","Normal"),
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,'None',%s,TRUE,%s)""",
+            (task_id,title,brief,"Creative Image" if item.get("output") == "image" else "General",
+             person["id"],item.get("priority","Normal"),
              task_schedule.parse_due(item.get("due_date")),task_status,int(time.time()),
              Jsonb(proposal.get('reference_ids') or [])))
         snapshot={key:person.get(key) or "" for key in
@@ -220,15 +221,14 @@ def process_one(connect):
                 AND status='Available'""",(job["staff"]["id"],)).fetchone()
         if not person:
             raise RuntimeError("Assigned AI staff is no longer available")
-        reference_ids=[]
+        source={}
         if job.get('task_id'):
             with connect() as db:
-                source=db.execute('SELECT reference_ids FROM tasks WHERE id=%s',
-                                  (job['task_id'],)).fetchone()
-                reference_ids=(source or {}).get('reference_ids') or []
+                source=db.execute('SELECT reference_ids, category FROM tasks WHERE id=%s',
+                                  (job['task_id'],)).fetchone() or {}
         task={"id":job["task_id"] or job["id"],
-              "title":job["title"],"brief":job["brief"],"category":"General",
-              "reference_ids":reference_ids}
+              "title":job["title"],"brief":job["brief"],"category":source.get("category", "General"),
+              "reference_ids":source.get("reference_ids") or []}
         # Do not initiate a new paid AI request if the CEO cancelled after claim.
         with connect() as db:
             current=db.execute("SELECT status FROM coo_jobs WHERE id=%s",

@@ -35,7 +35,7 @@ def response(staff, payload, *, operation, timeout):
         "instructions": payload["instructions"],
         "tools": [{"type": "web_search", "mode": "live"}] if search else [],
         "multi_agent": {"enabled": False},
-        "text": {"format": {"type": "text"}},
+        "text": payload.get("text", {"format": {"type": "text"}}),
     }
     if search:
         config["instructions"] += (

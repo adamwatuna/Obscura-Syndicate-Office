@@ -8,7 +8,8 @@ from backend import ai_provider
 from fastapi import HTTPException
 from backend import references as office_references
 from backend import academy as office_academy
-from backend import department_playbooks, staff_agents
+from backend import creative, deliverables, department_playbooks, staff_agents
+from pydantic import ValidationError
 
 def dbconn():
     url=os.getenv("DATABASE_URL","").strip()
@@ -115,6 +116,7 @@ def _execute(task,staff):
     is_news=task.get("category")=="News Update"
     is_research=staff.get("department")=="Research & Intelligence"
     source_required=is_news or is_research
+    image_requested = task.get("category") == "Creative Image" and staff.get("department") == "Creative"
     instruction=("You are an AI staff member producing an INTERNAL draft deliverable for CEO review only. "
                  "Do not claim to have sent messages, published content, opened external systems, "
                  "performed transactions, or verified real-world information. "
@@ -152,11 +154,17 @@ def _execute(task,staff):
             "say so and identify information gaps. Never fabricate URLs or citations.")
     reference_context=''
     reference_images=[]
+    image_reference = None
     with dbconn() as db:
         direct_ids=task.get('reference_ids') or []
         if direct_ids:
             reference_context=office_references.summaries(db,direct_ids,max_chars=6000)
             reference_images=office_references.images(db,direct_ids)
+            if image_requested:
+                for example in office_references.validate_ids(db, direct_ids):
+                    if example["kind"] == "image" and example["preview"]:
+                        image_reference = ("reference.jpg", bytes(example["preview"]), "image/jpeg")
+                        break
         # Search the Academy at execution time, so newly saved CEO vision and
         # references can inform later tasks without requiring a second upload.
         knowledge=office_academy.relevant(
@@ -174,10 +182,30 @@ def _execute(task,staff):
                  "For videos, only sampled visual frames are provided, not audio/transcripts. "
                  "Learning Academy materials are retrieved as context for this execution, "
                  "not permanent training; do not imply you have learned everything in the library.")
+    if image_requested:
+        instruction += (
+            "\nIMAGE PRODUCTION: You are responsible for art direction. Write the image "
+            "generator's complete production prompt yourself, using the task constraints and "
+            "the attached examples when relevant. Keep any example to its requested purpose "
+            "(layout, style or content). The renderer gets the first attached still image as "
+            "a visual reference when present. Describe relevant details from other references "
+            "in your prompt. Choose the closest supported size for the intended use. "
+            "Return a JSON object only with keys prompt (3 to 4000 characters) and size "
+            "(1024x1024, 1024x1536, or 1536x1024). Do not write a report in this response."
+        )
     payload={"model":model,"instructions":instruction,
              "input":[{"role":"user","content":"Task: "+task["title"]+"\nTask details: "+str(task.get("brief") or "")[:3800]+"\nAttached CEO references and Learning Academy guidance:\n"+reference_context+"\nProvide the deliverable for CEO review."}],
              "max_output_tokens":min(4000,max(200,int(os.getenv("AI_MAX_OUTPUT_TOKENS","4000")))),
              "store":False}
+    if image_requested:
+        payload["text"] = {"format": {
+            "type": "json_schema", "name": "creative_image", "strict": True,
+            "schema": {"type": "object", "additionalProperties": False,
+                       "properties": {"prompt": {"type": "string"},
+                                      "size": {"type": "string", "enum": [
+                                          "1024x1024", "1024x1536", "1536x1024"]}},
+                       "required": ["prompt", "size"]},
+        }}
     if reference_images:
         original=payload['input'][0]['content']
         payload['input'][0]['content']=[{'type':'input_text','text':original},*reference_images]
@@ -203,6 +231,19 @@ def _execute(task,staff):
         if not sources or not (searched or data.get("agent_session")):
             raise HTTPException(502,
                 "No verifiable web-search sources returned; source-backed research was not saved")
+    image = None
+    if image_requested:
+        try:
+            image_brief = creative.ImageBrief.model_validate_json(answer)
+        except ValidationError:
+            raise HTTPException(502, "Creative did not return valid image production instructions") from None
+        with dbconn() as db:
+            existing = db.execute("SELECT status,deleted_at FROM tasks WHERE id=%s",
+                                  (task["id"],)).fetchone()
+            if not existing or existing["status"] != "In progress" or existing["deleted_at"]:
+                raise HTTPException(409, "Creative task is no longer active")
+        image = creative.generate_image(image_brief, image_reference)
+        answer = f"# {task['title']}\n\nCreative produced one image ({image_brief.size}). Preview it in Task Centre."
     ident=secrets.token_hex(12)
     try:
         with dbconn() as db:
@@ -221,5 +262,7 @@ def _execute(task,staff):
                         CASE WHEN %s THEN NOW() ELSE NULL END,%s)""",
                 (ident,task["id"],task["title"],staff["id"],staff["name"],model,answer,
                  source_required,source_required,Jsonb(sources)))
+            if image is not None:
+                deliverables.save_asset(db, ident, "creative-image.png", image)
     except psycopg.Error: raise HTTPException(503,"AI generated work but saving failed; retry carefully")
     return {"id":ident,"status":"For approval","result":answer}
