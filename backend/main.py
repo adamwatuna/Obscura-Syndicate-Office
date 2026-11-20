@@ -644,7 +644,13 @@ def it_chat_send(body: ITChatMessage):
         raise HTTPException(400, "Write a message to Daniel.")
     with connect() as db:
         previous = it_workspace.history(db, body.thread_id, 8)
-    answer, proposal = it_workspace.reply(message, previous, body.source_file.strip(), body.prepare_change)
+        director = db.execute("""SELECT id,name,department FROM staff
+            WHERE department='Technology & AI Systems' AND org_role='Director'
+            ORDER BY id LIMIT 1""").fetchone()
+        guidance = office_academy.relevant(db, message, staff=dict(director) if director else None,
+                                          limit=2, include_visual=False)["context"]
+    answer, proposal = it_workspace.reply(message, previous, body.source_file.strip(),
+                                          body.prepare_change, guidance)
     with connect() as db:
         db.execute("INSERT INTO it_chat_turns(thread_id,message,reply,proposal) VALUES(%s,%s,%s,%s)",
                    (body.thread_id,message,answer,Jsonb(proposal) if proposal else None))
