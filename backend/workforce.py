@@ -108,13 +108,13 @@ def _queue_opportunity_handoff(db, run):
     return meita_autowork.auto_assign_chat(db, proposal["id"], staff)["jobs"]
 
 
-def review(ident,status,feedback=""):
+def review(ident,status,feedback="",academy_scope=""):
     if status not in ("Approved","Revision requested","Rejected"): raise HTTPException(400,"Invalid review status")
     try:
         with dbconn() as db:
             init(db)
             row=db.execute("""UPDATE workforce_runs SET status=%s,reviewed_at=NOW()
-                WHERE id=%s AND status='For approval' RETURNING id,task_id,task_title,sources,staff_id,operations_changes""",
+                WHERE id=%s AND status='For approval' RETURNING id,task_id,task_title,sources,staff_id,operations_changes,result""",
                 (status,ident)).fetchone()
             if not row: raise HTTPException(404,"Pending result not found")
             task_status, job_status = {
@@ -144,6 +144,18 @@ def review(ident,status,feedback=""):
                      status + ": " + feedback.strip(), "staff:" + row["staff_id"],
                      int(time.time())))
                 feedback_saved = True
+            lesson_saved = False
+            if status == "Approved" and academy_scope:
+                author = db.execute("SELECT department FROM staff WHERE id=%s", (row["staff_id"],)).fetchone()
+                if (not author or author["department"] != "Knowledge & Learning Academy"
+                        or not office_academy._scope_valid(db, academy_scope)):
+                    raise HTTPException(400, "Choose an existing Academy audience for this lesson.")
+                db.execute("""INSERT INTO lessons (id,title,kind,source,assigned,status,created)
+                    VALUES (%s,%s,'Note',%s,%s,'CEO guidance',%s)""",
+                    (secrets.token_hex(12), ("Academy lesson · " + row["task_title"])[:200],
+                     row["result"][:2850] + "\n\nApproved submission ID: " + row["id"],
+                     academy_scope, int(time.time())))
+                lesson_saved = True
             changes_applied = 0
             if status == "Approved" and row.get("operations_changes"):
                 changes_applied = _apply_operations_changes(db, row["operations_changes"])
@@ -153,7 +165,7 @@ def review(ident,status,feedback=""):
                                   (row["task_id"],)).fetchone()
                 if task and task["category"] == "Opportunity Scan":
                     handoff = _queue_opportunity_handoff(db, row)
-        return {"ok":True,"handoff_jobs":handoff,"feedback_saved":feedback_saved,"operations_changes_applied":changes_applied}
+        return {"ok":True,"handoff_jobs":handoff,"feedback_saved":feedback_saved,"operations_changes_applied":changes_applied,"lesson_saved":lesson_saved}
     except psycopg.Error: raise HTTPException(503,"Unable to review workforce result")
 
 def _news_sources(data):
