@@ -89,6 +89,24 @@ def _governance_access_inventory(db):
                                          for name, keys in tools.items()}}
 
 
+def _independent_audit_evidence(db, auditor_id):
+    return {
+        "access_inventory": _governance_access_inventory(db),
+        "recent_access_and_approval_events": db.execute("""SELECT id,action,created FROM audit
+            WHERE action IN ('social.permission.changed','social.oauth.connected',
+                'social.account.disconnected','social.post.approved','social.post.rejected',
+                'social.post.published','workforce.review','delegation.approved',
+                'delegation.rejected','director.plan.approved','director.plan.rejected')
+            ORDER BY created DESC,id DESC LIMIT 40""").fetchall(),
+        "recent_workforce_decisions": db.execute("""SELECT id,task_id,status,reviewed_at
+            FROM workforce_runs WHERE reviewed_at IS NOT NULL AND staff_id<>%s
+            ORDER BY reviewed_at DESC,id DESC LIMIT 30""", (auditor_id,)).fetchall(),
+        "recent_publishing_metadata": db.execute("""SELECT id,status,approval_mode,approved_at,
+            created_at,updated_at FROM social_posts ORDER BY updated_at DESC,id DESC LIMIT 20""").fetchall(),
+        "monthly_finance_totals": finance_actuals.summary(db)["monthly"][-60:],
+    }
+
+
 def get_runs():
     try:
         with dbconn() as db:
@@ -269,7 +287,8 @@ def _execute(task,staff):
     operations = is_operations and task.get("category") == "General" and not operations_research
     source_required = source_required or operations_research
     access_review = department_playbooks.governance_access_requested(staff, task["title"], brief)
-    search_enabled = canva_mode != "video" and not (finance_ledger_requested or operations or access_review)
+    independent_audit = staff.get("department") == "Independent Audit" and staff.get("org_role") == "Independent Auditor"
+    search_enabled = canva_mode != "video" and not (finance_ledger_requested or operations or access_review or independent_audit)
     if canva_mode and not canva.allowed(staff, canva_mode):
         raise HTTPException(403, "Staff role is not approved for this Canva operation")
     instruction=("You are an AI staff member producing an INTERNAL draft deliverable for CEO review only. "
@@ -331,6 +350,14 @@ def _execute(task,staff):
     image_reference = None
     operations_snapshot = {}
     with dbconn() as db:
+        if independent_audit:
+            evidence = _independent_audit_evidence(db, staff["id"])
+            reference_context += (
+                "\nRead-only audit evidence. Sections contain recent records only; event created "
+                "values are Unix timestamps. Finance totals are aggregated by month and currency. "
+                "Use scope limits and report when a specific transaction or pilot cannot be linked.\n"
+                + json.dumps(evidence, default=str)[:15500] + "\n"
+            )
         if access_review:
             inventory = _governance_access_inventory(db)
             reference_context += (
@@ -502,7 +529,7 @@ def _execute(task,staff):
                        "required": ["prompt", "size"]},
         }}
     # All roles can inspect a public page explicitly supplied in the CEO brief.
-    browser_url = None if access_review or operations or finance_ledger_requested or autofill or canva_mode in {"video", "review"} else staff_browser.public_url_from_brief(brief)
+    browser_url = None if independent_audit or access_review or operations or finance_ledger_requested or autofill or canva_mode in {"video", "review"} else staff_browser.public_url_from_brief(brief)
     if browser_url and urlsplit(browser_url).hostname in {"canva.com", "www.canva.com"}:
         browser_url = None
     browser_image = staff_browser.screenshot(browser_url) if browser_url and canva_mode != "video" else None
