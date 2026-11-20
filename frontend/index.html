@@ -2584,11 +2584,11 @@ function renderSocialProviders(){
     card.append(status);
     if(provider.id==='instagram')card.append(socialEl('p','No Facebook Page or Facebook Login needed.','muted'));
     if(provider.id==='google')card.append(socialEl('p','OAuth ready does not mean connected. Choose your Obscura YouTube channel (not personal) during Google authorization.','muted'));
-    const button=socialEl('button',connected?'Connect another account':'Connect via OAuth','secondary');
+    const button=socialEl('button',provider.id==='canva'?'Connect Canva':connected?'Connect another account':'Connect via OAuth','secondary');
     button.type='button';button.disabled=!provider.configured;
     button.onclick=()=>connectSocial(provider.id);
     card.append(button);
-    if(!provider.publishing_available){
+    if(!provider.publishing_available && provider.id!=='canva'){
       card.append(socialEl('p','Connection supported · media publishing not yet enabled','muted'));
     }
     if(provider.callback){
