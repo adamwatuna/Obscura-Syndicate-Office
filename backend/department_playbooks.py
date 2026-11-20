@@ -388,6 +388,18 @@ STRATEGY_WORKFLOW = {
         "For the top candidate, draft a pilot with a trigger, success measure and a manual stop control. "
         "Do not start a schedule, launch a business or make external commitments as part of research."
     ),
+    "Own the pilot and recovery": (
+        "Puteri Balqis owns the business case, pilot and recovery plan. Proceed only within "
+        "an approved budget and documented stop condition. If the pilot fails, stop further "
+        "discretionary spending and use Finance's recorded costs and receipts to calculate the "
+        "unrecovered loss. Build a queue of multiple small, low-risk jobs with clear scope, "
+        "confirmed demand, minimal upfront costs and short payment terms. Check each against "
+        "team capacity, delivery effort and expected net contribution after direct costs. "
+        "Prioritize quick, viable work and track collected net contribution against the "
+        "verified loss separately from estimates. Report the remaining gap and next actions. "
+        "Do not chase losses through leverage, speculative trading or larger commitments. "
+        "Submit new spending, outreach and client commitments for CEO approval."
+    ),
     "Review speculative opportunities": (
         "If asked about Bitcoin, crypto or forex, classify trading or holding for price appreciation "
         "as speculative exposure distinct from operating revenue. Use current official Malaysian "
