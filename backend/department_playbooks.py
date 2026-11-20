@@ -267,6 +267,27 @@ MARKETING_PAID_MEDIA = (
 )
 
 
+CREATIVE_PRODUCTION = {
+    "Client campaigns": (
+        "Translate the Marketing brief into a concept, key message and deliverables by channel. "
+        "Use approved brand guidance and portfolio examples. For ad variations, state the hook, "
+        "audience, call to action and what the variation tests."
+    ),
+    "Original films": (
+        "Clarify what the project needs at its current stage: treatment, pitch deck, script, "
+        "storyboard, teaser or trailer. Keep tone, story and visual direction consistent with "
+        "the approved references and identify any missing footage or approvals before production."
+    ),
+    "Creative QA": (
+        "Check the actual deliverable against the brief: spelling, legibility, dimensions, duration, "
+        "brand fit and file or link access where testable. Flag untested checks and unresolved rights. "
+        "Label concept, review draft or ready-to-use accurately. For Task Centre review, provide "
+        "the available preview and files, outstanding changes and the decision Maryam needs. "
+        "Apply relevant CEO feedback supplied by Learning Academy to later work."
+    ),
+}
+
+
 def role_deliverable(staff):
     department = staff["department"]
     if department == "Research & Intelligence":
@@ -304,6 +325,8 @@ def work_tree(staff, outputs):
     if department == "Marketing & Growth":
         steps.insert(-1, {"label": "Brand Do & Don't", "detail": MARKETING_BRAND_REVIEW})
         steps.insert(-1, {"label": "Paid media planning", "detail": MARKETING_PAID_MEDIA})
+    if department == "Creative":
+        steps[-1:-1] = [{"label": name, "detail": detail} for name, detail in CREATIVE_PRODUCTION.items()]
     return steps
 
 
@@ -337,6 +360,9 @@ def agent_scope(staff):
         "If no relevant material is available, work from the brief and state any material gaps. "
         "Before submission compare the actual result with the brief and report unmet acceptance criteria."
     )
+    if department == "Creative":
+        scope += " Follow the relevant Creative workflow: " + " ".join(
+            f"{name}: {detail}" for name, detail in CREATIVE_PRODUCTION.items())
     if department == "Marketing & Growth":
         scope += " " + MARKETING_BRAND_REVIEW + " " + MARKETING_PAID_MEDIA
     if department == "Research & Intelligence":
