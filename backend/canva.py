@@ -147,10 +147,10 @@ def make_layout(title, answer):
     return stream.getvalue()
 
 
-def produce(token, title, answer):
+def import_design(token, title, content):
     metadata = json.dumps({"title_base64": base64.b64encode(title.encode()).decode(),
                            "mime_type": "application/vnd.openxmlformats-officedocument.presentationml.presentation"})
-    result = job(token, "/imports", make_layout(title, answer), "application/octet-stream",
+    result = job(token, "/imports", content, "application/octet-stream",
                  {"Import-Metadata": metadata})
     designs = (result.get("result") or {}).get("designs") or []
     if len(designs) != 1:
@@ -160,3 +160,7 @@ def produce(token, title, answer):
         raise HTTPException(502, "Canva returned an invalid design ID")
     link = f"https://www.canva.com/design/{design_id}/edit"
     return link, export_pdf(token, design_id)
+
+
+def produce(token, title, answer):
+    return import_design(token, title, make_layout(title, answer))

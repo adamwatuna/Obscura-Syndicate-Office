@@ -8,7 +8,7 @@ from backend import ai_provider
 from fastapi import HTTPException
 from backend import references as office_references
 from backend import academy as office_academy
-from backend import canva, creative, deliverables, finance_actuals, department_playbooks, staff_agents
+from backend import canva, canva_layout, creative, deliverables, finance_actuals, department_playbooks, staff_agents
 from pydantic import ValidationError
 
 def dbconn():
@@ -208,9 +208,16 @@ def _execute(task,staff):
         instruction += (" Review the extracted text for the assigned criteria. "
                         "Describe the review as text-based. Do not claim to have assessed visual layout.")
     if canva_mode == "produce":
-        instruction += (" Write the complete reader-facing content and headings that go into "
-                        "the designed document. Do not include a production brief, status report, "
-                        "instructions to the operator, or claims of having called Canva.")
+        instruction += (
+            " DESIGN PRODUCTION: Return only the structured design plan. Write the actual reader-facing "
+            "headlines and copy. Never put design notes, limitations, setup instructions or a report inside pages. "
+            "Create one design per requested option (up to three). Keep the same menu and example text across "
+            "comparison variants. Map food magazine to editorial, production shot list to storyboard, "
+            "and step cards or checklists to workbook. Give each requested cover, chapter opener, "
+            "and guide its own page. Leave blocks empty on covers. Use short labels and compact copy. "
+            "For any requested illustration or photo, include a complete artwork_prompt for one realistic "
+            "product image without text, shared across the designs; leave it empty for text-only requests."
+        )
     if image_requested:
         instruction += (
             "\nIMAGE PRODUCTION: You are responsible for art direction. Write the image "
@@ -228,6 +235,11 @@ def _execute(task,staff):
              "input":[{"role":"user","content":"Task: "+task["title"]+"\nTask details: "+str(task.get("brief") or "")[:3800]+"\nAttached CEO references and Learning Academy guidance:\n"+reference_context+"\nProvide the deliverable for CEO review."}],
              "max_output_tokens":min(4000,max(200,int(os.getenv("AI_MAX_OUTPUT_TOKENS","4000")))),
              "store":False}
+    if canva_mode == "produce":
+        payload["text"] = {"format": {
+            "type": "json_schema", "name": "canva_design_plan", "strict": True,
+            "schema": canva_layout.DesignPlan.model_json_schema(),
+        }}
     if image_requested:
         payload["text"] = {"format": {
             "type": "json_schema", "name": "creative_image", "strict": True,
@@ -288,15 +300,34 @@ def _execute(task,staff):
                 raise HTTPException(409, "Creative task is no longer active")
         image = creative.generate_image(image_brief, image_reference)
         answer = f"# {task['title']}\n\nCreative produced one image ({image_brief.size}). Preview it in Task Centre."
+    canva_files = []
     if canva_mode == "produce":
+        try:
+            plan = canva_layout.DesignPlan.model_validate_json(answer)
+        except ValidationError:
+            raise HTTPException(502, "Designer returned invalid page data. Retry the Canva task.") from None
         with dbconn() as db:
             row = db.execute("SELECT status, deleted_at FROM tasks WHERE id=%s",
                              (task["id"],)).fetchone()
             if not row or row["status"] != "In progress" or row["deleted_at"]:
                 raise HTTPException(409, "Canva production task is no longer active")
             token = canva.access_token(db)
-        link, pdf = canva.produce(token, task["title"], answer)
-        answer = f"# {task['title']}\n\n[Edit in Canva]({link})\n\nThe PDF is attached for review."
+        artwork = None
+        if plan.artwork_prompt.strip():
+            artwork = creative.generate_image(creative.ImageBrief(
+                prompt=plan.artwork_prompt.strip(), size="1024x1024"))
+        links = []
+        for index, design in enumerate(plan.designs, 1):
+            with dbconn() as db:
+                row = db.execute("SELECT status, deleted_at FROM tasks WHERE id=%s",
+                                 (task["id"],)).fetchone()
+                if not row or row["status"] != "In progress" or row["deleted_at"]:
+                    raise HTTPException(409, "Canva production task is no longer active")
+            link, exported = canva.import_design(token, design.name, canva_layout.render(design, artwork))
+            label = design.name.replace("[", "").replace("]", "").replace("\n", " ")
+            links.append(f"- [{label} · Edit in Canva]({link})")
+            canva_files.append((f"{index}-{deliverables.safe_filename(design.name)[:65]}.pdf", exported))
+        answer = f"# {task['title']}\n\n" + "\n".join(links) + "\n\nPDF previews are attached."
     ident=secrets.token_hex(12)
     try:
         with dbconn() as db:
@@ -321,5 +352,7 @@ def _execute(task,staff):
                 deliverables.save_asset(db, ident, "canva-video.mp4", video)
             if pdf is not None:
                 deliverables.save_asset(db, ident, "canva-design.pdf", pdf)
+            for filename, exported in canva_files:
+                deliverables.save_asset(db, ident, filename, exported)
     except psycopg.Error: raise HTTPException(503,"AI generated work but saving failed; retry carefully")
     return {"id":ident,"status":"For approval","result":answer}
