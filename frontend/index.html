@@ -494,6 +494,25 @@
  </div>
 </section>
 <section class="view" id="finance">
+ <div class="toolbar"><div><h3>Spending, overhead & income</h3><p class="muted">Recorded totals by currency · last 12 months</p></div>
+   <label>Currency <select id="actualCurrency"></select></label></div>
+ <div id="financeActualsStatus" class="muted" role="status"></div>
+ <div class="staffgrid" id="financeActualsCharts"></div>
+ <div class="card" style="margin:20px 0"><h3>Record a bill or income</h3>
+  <form id="financeActualsForm"><div class="formgrid">
+   <label>Date <input name="day" type="date" required></label>
+   <label>Type <select name="kind"><option value="overhead">Overhead</option><option value="expense">Other spending</option><option value="income">Income received</option></select></label>
+   <label>Source <input name="source" maxlength="120" placeholder="Canva, Railway or client" required></label>
+   <label>Currency <input name="currency" value="MYR" pattern="[A-Z]{3}" maxlength="3" required></label>
+   <label>Amount <input name="amount" type="number" min=".01" step=".01" required></label>
+   <label>Invoice or receipt reference <input name="reference" maxlength="250"></label>
+  </div><div class="task-actions" style="margin-top:16px">
+   <button class="primary" type="submit">Save record</button>
+   <button class="secondary" id="syncOpenAICosts" type="button" disabled>Sync OpenAI API costs</button>
+  </div></form>
+  <p id="financeBillingStatus" class="muted"></p>
+ </div>
+ <div class="card" style="margin-bottom:22px"><h3>Recent records</h3><div id="financeActualsRecent"></div></div>
  <div class="toolbar"><div><p>Budget Planning Studio · Phase 1</p>
   <p class="muted">CEO-controlled scenario planning, proposed budgets and estimated cash flow — no banking connections or actual transaction data.</p></div>
   <span class="tag">Planning only · No bank connected</span></div>
@@ -2776,6 +2795,94 @@ async function createSocialFromRun(){
   }catch(err){msg(err.message)}
 }
 
+let financeActuals = {monthly:[],recent:[]};
+const financePalette=['#a665f5','#38bda8','#edaa5a','#648cf5','#e36894','#85aa68'];
+function financeAmount(value,currency){
+  return new Intl.NumberFormat('en-MY',{style:'currency',currency,maximumFractionDigits:2}).format(value);
+}
+function renderFinanceActuals(){
+  const currency=$('actualCurrency').value||'MYR', root=$('financeActualsCharts');
+  const rows=financeActuals.monthly.filter(r=>r.currency===currency);
+  const spent=rows.filter(r=>r.kind!=='income');
+  const card=(title)=>{const box=socialEl('div',undefined,'card');box.append(socialEl('h3',title));root.append(box);return box};
+  const sum=items=>items.reduce((n,r)=>n+Number(r.amount),0);
+  root.replaceChildren();
+  const trend=card('Monthly cash flow');
+  trend.append(socialEl('p','Spending '+financeAmount(sum(spent),currency)+' · Income '+financeAmount(sum(rows.filter(r=>r.kind==='income')),currency),'muted'));
+  const months=[...new Set(rows.map(r=>r.month))].sort();
+  const buckets=months.map(month=>[month,...['overhead','expense','income'].map(kind=>sum(rows.filter(r=>r.month===month&&r.kind===kind)))]);
+  const scale=Math.max(1,...buckets.flatMap(([,over,other,income])=>[Math.abs(over),Math.abs(other),Math.abs(income)]));
+  trend.append(socialEl('p','Overhead · Other spending · Income','muted'));
+  for(const [month,...values] of buckets){
+    const group=socialEl('div');group.append(socialEl('strong',month));
+    values.forEach((value,i)=>{
+      const line=socialEl('div');line.style.cssText='display:grid;grid-template-columns:minmax(80px,1fr) max-content;gap:10px;align-items:center;margin:4px 0';
+      const bar=socialEl('div');bar.style.cssText='height:8px;border-radius:4px;background:'+financePalette[i]+';width:'+(Math.abs(value)/scale*100)+'%';
+      line.append(bar,socialEl('small',['Overhead','Other','Income'][i]+' '+financeAmount(value,currency)));group.append(line);
+    });trend.append(group);
+  }
+  if(!months.length)trend.append(socialEl('p','No records for this currency.','muted'));
+  for(const [title,items] of [['Spending by source',spent],['Overhead by source',spent.filter(r=>r.kind==='overhead')],['Income by source',rows.filter(r=>r.kind==='income')]]){
+    const box=card(title), totals=new Map();
+    items.forEach(r=>totals.set(r.source,(totals.get(r.source)||0)+Number(r.amount)));
+    box.append(socialEl('strong',financeAmount(sum(items),currency)));
+    const vals=[...totals].sort((a,b)=>b[1]-a[1]), positive=vals.filter(([,v])=>v>0);
+    const total=positive.reduce((n,[,v])=>n+v,0);
+    if(total>0){
+      let cursor=0;
+      const segments=positive.map(([,v],i)=>{
+        const start=cursor;cursor+=v/total*100;
+        return financePalette[i%financePalette.length]+' '+start+'% '+cursor+'%';
+      });
+      const pie=socialEl('div');pie.setAttribute('role','img');pie.setAttribute('aria-label',title+' pie chart');
+      pie.style.cssText='width:130px;aspect-ratio:1;border-radius:50%;margin:16px auto;background:conic-gradient('+segments.join(',')+')';box.append(pie);
+    }
+    const list=socialEl('ul');
+    vals.forEach(([name,value])=>{
+      const li=socialEl('li',name+' · '+financeAmount(value,currency));
+      const index=positive.findIndex(([source])=>source===name);
+      if(index>=0)li.style.borderLeft='5px solid '+financePalette[index%financePalette.length];
+      li.style.paddingLeft='7px';list.append(li);
+    });
+    if(vals.some(([,v])=>v<0))box.append(socialEl('small','Credits are included in the total and listed below.'));
+    box.append(vals.length?list:socialEl('p','No records yet.','muted'));
+  }
+  const recent=$('financeActualsRecent');recent.replaceChildren();
+  const entries=financeActuals.recent.filter(r=>r.currency===currency);
+  entries.forEach(r=>recent.append(socialEl('p',r.day+' · '+r.source+' · '+r.kind+' · '+financeAmount(Number(r.amount),currency)+(r.reference?' · '+r.reference:''))));
+  if(!entries.length)recent.append(socialEl('p','No recent records for this currency.','muted'));
+}
+async function loadFinanceActuals(){
+  try{
+    financeActuals=await api('finance/actuals');
+    const select=$('actualCurrency'), preferred=select.value;
+    const currencies=new Set(['MYR',...financeActuals.monthly.map(r=>r.currency),...financeActuals.recent.map(r=>r.currency)]);
+    select.replaceChildren(...[...currencies].sort().map(c=>new Option(c,c)));
+    select.value=currencies.has(preferred)?preferred:'MYR';
+    $('syncOpenAICosts').disabled=!financeActuals.openai_configured;
+    $('financeBillingStatus').textContent='Canva and other bills use invoice entries. '+(financeActuals.openai_configured?'OpenAI sync imports the last 90 complete UTC days.':'OpenAI API sync requires OPENAI_BILLING_ADMIN_KEY on Railway.');
+    renderFinanceActuals();
+  }catch(e){$('financeActualsStatus').textContent=e.message}
+}
+$('actualCurrency').onchange=renderFinanceActuals;
+$('financeActualsForm').onsubmit=async e=>{
+  e.preventDefault();const form=e.currentTarget, button=form.querySelector('[type="submit"]');button.disabled=true;
+  try{
+    const entry=Object.fromEntries(new FormData(form));
+    await api('finance/actuals',{method:'POST',body:JSON.stringify(entry)});
+    form.elements.amount.value='';$('financeActualsStatus').textContent='Finance record saved.';
+    await loadFinanceActuals();$('actualCurrency').value=entry.currency;renderFinanceActuals();
+  }catch(error){$('financeActualsStatus').textContent=error.message}finally{button.disabled=false}
+};
+$('syncOpenAICosts').onclick=async ()=>{
+  const button=$('syncOpenAICosts');button.disabled=true;$('financeActualsStatus').textContent='Syncing OpenAI API costs…';
+  try{
+    const result=await api('finance/actuals/openai',{method:'POST'});
+    $('financeActualsStatus').textContent='OpenAI sync complete · '+result.days_with_costs+' days returned.';
+    await loadFinanceActuals();
+  }catch(error){$('financeActualsStatus').textContent=error.message}
+  finally{button.disabled=!financeActuals.openai_configured}
+};
 async function loadFinancePlanning(){
  const root=$('budgetDraftList'),status=$('budgetSummary');if(!root)return;
  try{
@@ -2927,7 +3034,7 @@ function renderResearchRoster(){
 }
 async function refresh(){state=await api('office');render();renderDirectorSelect()}
 async function updateTask(id,status){try{await api('tasks/'+id,{method:'PATCH',body:JSON.stringify({status})});await refresh();msg('Task updated')}catch(e){msg(e.message);await refresh()}}
-$('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){show(b.dataset.view);if(b.dataset.view==='hq')loadNewsBriefings();if(b.dataset.view==='integrations')loadSocial();if(b.dataset.view==='academy')loadAcademyLibrary();if(b.dataset.view==='finance')loadFinancePlanning();if(b.dataset.view==='deliverables')loadDeliveryInbox();if(b.dataset.view==='research')loadResearchReports();if(b.dataset.view==='meita')loadAiDiagnostics();if(b.dataset.view==='governance'){loadCEOSecurityStatus();loadAiDiagnostics();loadOfficeAutomation()}}});
+$('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){show(b.dataset.view);if(b.dataset.view==='hq')loadNewsBriefings();if(b.dataset.view==='integrations')loadSocial();if(b.dataset.view==='academy')loadAcademyLibrary();if(b.dataset.view==='finance'){loadFinancePlanning();loadFinanceActuals()}if(b.dataset.view==='deliverables')loadDeliveryInbox();if(b.dataset.view==='research')loadResearchReports();if(b.dataset.view==='meita')loadAiDiagnostics();if(b.dataset.view==='governance'){loadCEOSecurityStatus();loadAiDiagnostics();loadOfficeAutomation()}}});
 $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').textContent='';try{await api('login',{method:'POST',body:JSON.stringify({password:$('password').value,otp:$('loginMfaCode').value.trim()})});$('password').value='';$('loginMfaCode').value='';await enter()}catch(err){$('loginError').textContent=err.message}});
 async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await refreshLiveActivity();await loadMeita();await loadMeitaTaskHistory();await loadAcademyLibrary();await loadFinancePlanning();await loadDeliveryInbox();await loadRuns();await loadDirectorPlans();$('monthlyPeriod').value=malaysiaPeriod();await loadMonthly();await loadNewsBriefings();await loadSocial();const oauthParams=new URLSearchParams(window.location.search);
 const integ=oauthParams.get('integration');
