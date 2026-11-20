@@ -12,7 +12,7 @@ from fastapi import HTTPException
 TZ=ZoneInfo("Asia/Kuala_Lumpur")
 PRIORITIES=("Urgent","High","Normal","Low")
 FREQUENCIES=("None","Daily","Weekly","Monthly")
-CATEGORIES=("General","News Update")
+CATEGORIES=("General","News Update","Opportunity Scan")
 
 def local_today():
     return datetime.now(TZ).date()
