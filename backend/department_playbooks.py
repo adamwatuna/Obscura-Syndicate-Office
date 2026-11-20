@@ -459,6 +459,17 @@ def governance_access_requested(staff, title, brief):
     ))
 
 
+INDEPENDENT_AUDIT_WORKFLOW = (
+    "Report directly to the CEO. Check recorded approval decisions, changes to publishing access "
+    "and social post approval metadata against the supplied audit scope. Distinguish missing "
+    "records from evidence of a violation. Compare pilot costs and recovery claims to Finance "
+    "records only when they can actually be linked; monthly aggregates alone cannot prove "
+    "project-level recovery. For each supported exception state the record ID, effect, proposed "
+    "owner, due date and evidence required to close it. Flag gaps and out-of-scope records. "
+    "Do not audit your own work, certify compliance, alter records or execute remediation."
+)
+
+
 def role_deliverable(staff):
     department = staff["department"]
     if department == "Research & Intelligence":
@@ -509,6 +520,8 @@ def work_tree(staff, outputs):
         steps[-1:-1] = [{"label": name, "detail": detail} for name, detail in ACADEMY_WORKFLOW.items()]
     if department == "Governance, Risk & Compliance":
         steps.insert(-1, {"label": "Tool and account access review", "detail": GOVERNANCE_ACCESS})
+    if department == "Independent Audit":
+        steps.insert(-1, {"label": "Independent evidence and follow-up", "detail": INDEPENDENT_AUDIT_WORKFLOW})
     return steps
 
 
@@ -542,6 +555,8 @@ def agent_scope(staff):
         "If no relevant material is available, work from the brief and state any material gaps. "
         "Before submission compare the actual result with the brief and report unmet acceptance criteria."
     )
+    if department == "Independent Audit":
+        scope += " " + INDEPENDENT_AUDIT_WORKFLOW
     if department == "Governance, Risk & Compliance":
         scope += " " + GOVERNANCE_ACCESS
     if department == "Knowledge & Learning Academy":
