@@ -416,6 +416,29 @@ STRATEGY_WORKFLOW = {
 }
 
 
+ACADEMY_WORKFLOW = {
+    "Research new knowledge and tool updates": (
+        "Research the requested topic or tool, including Canva and other tools used by Obscura. "
+        "Use live public research when current information is needed. Prefer official documentation, "
+        "release notes and primary sources. Cite links and dates and distinguish released features "
+        "from previews. Identify plan, region and permission requirements where documented. "
+        "Explain relevance to Obscura, what has changed and what needs a practical verification."
+    ),
+    "Teach AI staff": (
+        "Turn findings into a role-specific lesson, SOP or checklist with the target role, when to apply "
+        "it, a worked example, a practice task and a way to verify the result. Give the intended "
+        "department scope and source version. Submit the material for CEO review and approval "
+        "before it is used as Academy guidance. Describe a connector as available only when verified."
+    ),
+    "Coach the CEO": (
+        "When the CEO asks to learn a topic, match the depth and language to their stated goals and "
+        "level. Explain it in manageable steps with an Obscura-relevant example and a small exercise. "
+        "Give direct answers and offer feedback on the exercise. If a preference is missing, start "
+        "with reasonable assumptions and let the CEO adjust."
+    ),
+}
+
+
 def role_deliverable(staff):
     department = staff["department"]
     if department == "Research & Intelligence":
@@ -462,6 +485,8 @@ def work_tree(staff, outputs):
         steps.insert(-1, {"label": "AI updates and app research", "detail": OPERATIONS_AI_RESEARCH})
     if department == "Strategy & Business Development":
         steps[-1:-1] = [{"label": name, "detail": detail} for name, detail in STRATEGY_WORKFLOW.items()]
+    if department == "Knowledge & Learning Academy":
+        steps[-1:-1] = [{"label": name, "detail": detail} for name, detail in ACADEMY_WORKFLOW.items()]
     return steps
 
 
@@ -495,6 +520,8 @@ def agent_scope(staff):
         "If no relevant material is available, work from the brief and state any material gaps. "
         "Before submission compare the actual result with the brief and report unmet acceptance criteria."
     )
+    if department == "Knowledge & Learning Academy":
+        scope += " Follow the relevant Academy workflow: " + " ".join(ACADEMY_WORKFLOW.values())
     if department == "Strategy & Business Development":
         scope += " Follow the relevant Strategy workflow: " + " ".join(STRATEGY_WORKFLOW.values())
     if department == "Operations & Project Management":
