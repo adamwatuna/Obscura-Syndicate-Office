@@ -998,17 +998,29 @@ async def upload_delivery_file(ident:str,file:UploadFile=File(...)):
     return await run_in_threadpool(store)
 
 @app.get('/api/deliverables/{ident}/files/{asset_id}',dependencies=[Depends(guard)])
-def download_delivery_file(ident:str,asset_id:str,preview:bool=False):
+def download_delivery_file(ident:str,asset_id:str,request:Request,preview:bool=False):
+    from urllib.parse import quote as url_quote
+
     with connect() as db:
         row=staff_deliverables.get_asset(db,ident,asset_id)
-    name=row["filename"]
-    # The filename stored in the database is sanitized on upload and cannot
-    # inject response headers. Browsers still get a forced attachment.
-    from urllib.parse import quote as url_quote
-    return Response(content=bytes(row["content"]),media_type=row["media_type"],
-       headers={"Content-Disposition":("inline" if preview and row["kind"] in ("image","video")
-                                   else "attachment; filename*=UTF-8''"+url_quote(name,safe="")),
-                "X-Content-Type-Options":"nosniff","Cache-Control":"private, no-store"})
+    data=bytes(row["content"])
+    inline=preview and row["kind"] in ("image","video")
+    headers={"Content-Disposition": ("inline" if inline else
+             "attachment; filename*=UTF-8''"+url_quote(row["filename"],safe="")),
+             "X-Content-Type-Options":"nosniff","Cache-Control":"private, no-store"}
+    if inline and row["kind"]=="video":
+        headers["Accept-Ranges"]="bytes"
+        if requested_range:=request.headers.get("range"):
+            span=staff_deliverables.video_byte_range(requested_range,len(data))
+            if span is None:
+                headers["Content-Range"]=f"bytes */{len(data)}"
+                return Response(status_code=416,headers=headers)
+            start,end=span
+            headers["Content-Range"]=f"bytes {start}-{end}/{len(data)}"
+            return Response(data[start:end+1],status_code=206,
+                            media_type=row["media_type"],headers=headers)
+    return Response(data,media_type=row["media_type"],headers=headers)
+
 
 @app.get('/api/deliverables/{ident}/report.txt',dependencies=[Depends(guard)])
 def download_delivery_report(ident:str):

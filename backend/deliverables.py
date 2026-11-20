@@ -136,7 +136,25 @@ def get_deliverable(db,run_id):
         LEFT JOIN tasks t ON t.id=r.task_id
         WHERE r.id=%s AND r.status<>'Abandoned'""",(run_id,)).fetchone()
     if not row:raise HTTPException(404,"Deliverable not found")
-    return dict(row)
+    assets=db.execute("""SELECT id,filename,kind,media_type,size_bytes
+        FROM workforce_assets WHERE run_id=%s ORDER BY created_at,id""",(run_id,)).fetchall()
+    return {**dict(row),"assets":[dict(asset) for asset in assets]}
+
+
+def video_byte_range(header, size):
+    """Parse a single range for browser video streaming."""
+    match=re.fullmatch(r"bytes=([0-9]{0,20})-([0-9]{0,20})",header)
+    if not match or not size:
+        return None
+    first,last=match.groups()
+    if first:
+        start=int(first)
+        end=min(int(last), size-1) if last else size-1
+    elif last and int(last):
+        start,end=max(0,size-int(last)),size-1
+    else:
+        return None
+    return (start,end) if start<=end else None
 
 
 def get_asset(db,run_id,asset_id):
