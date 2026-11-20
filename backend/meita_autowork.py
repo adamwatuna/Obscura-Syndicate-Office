@@ -77,6 +77,8 @@ def _record_problem(db,error):
     # Never store raw exception strings. Only record safe operator guidance.
     detail=(error.detail if isinstance(error,ai_provider.AIProviderError)
             else "AI work failed. Check Railway logs with this job ID.")
+    if isinstance(error, HTTPException) and isinstance(error.detail, str) and error.detail.startswith("QA:"):
+        detail = error.detail
     manual=code in ("invalid_api_key","insufficient_quota",
                     "billing_hard_limit_reached","model_not_found","model_not_supported")
     seconds=300 if code=="rate_limit_exceeded" else 120 if code in ("timeout","connection_error") else 45
