@@ -1,5 +1,5 @@
 """AI Workforce: generate internal task deliverables, pending CEO review."""
-import io, json, logging, os, secrets, urllib.request, urllib.error
+import io, json, logging, os, secrets, time, urllib.request, urllib.error
 from urllib.parse import urlsplit
 from psycopg.types.json import Jsonb
 import psycopg
@@ -75,13 +75,13 @@ def _queue_opportunity_handoff(db, run):
     return meita_autowork.auto_assign_chat(db, proposal["id"], staff)["jobs"]
 
 
-def review(ident,status):
+def review(ident,status,feedback=""):
     if status not in ("Approved","Revision requested","Rejected"): raise HTTPException(400,"Invalid review status")
     try:
         with dbconn() as db:
             init(db)
             row=db.execute("""UPDATE workforce_runs SET status=%s,reviewed_at=NOW()
-                WHERE id=%s AND status='For approval' RETURNING id,task_id,task_title,sources""",
+                WHERE id=%s AND status='For approval' RETURNING id,task_id,task_title,sources,staff_id""",
                 (status,ident)).fetchone()
             if not row: raise HTTPException(404,"Pending result not found")
             task_status, job_status = {
@@ -103,13 +103,21 @@ def review(ident,status):
                 SET status=%s,updated_at=NOW()
                 WHERE workforce_run_id=%s AND status='Delivered'""",
                 (job_status,ident))
+            feedback_saved = False
+            if feedback.strip() and status in {"Approved", "Revision requested"}:
+                db.execute("""INSERT INTO lessons (id,title,kind,source,assigned,status,created)
+                    VALUES (%s,%s,'Note',%s,%s,'CEO guidance',%s)""",
+                    (secrets.token_hex(12), ("CEO feedback · " + row["task_title"])[:200],
+                     status + ": " + feedback.strip(), "staff:" + row["staff_id"],
+                     int(time.time())))
+                feedback_saved = True
             handoff = []
             if status == "Approved":
                 task = db.execute("SELECT category FROM tasks WHERE id=%s AND deleted_at IS NULL",
                                   (row["task_id"],)).fetchone()
                 if task and task["category"] == "Opportunity Scan":
                     handoff = _queue_opportunity_handoff(db, row)
-        return {"ok":True,"handoff_jobs":handoff}
+        return {"ok":True,"handoff_jobs":handoff,"feedback_saved":feedback_saved}
     except psycopg.Error: raise HTTPException(503,"Unable to review workforce result")
 
 def _news_sources(data):
@@ -505,6 +513,17 @@ def _execute(task,staff):
             answer += "\n\nCloud browser captured a public reference. See the attached screenshot."
         else:
             answer += "\n\nCloud browser did not return a screenshot for the public reference."
+    qa_notes = []
+    for filename, content in canva_files + ([("canva-design.pdf", pdf)] if pdf else []):
+        try:
+            _, page_count = deliverables.pdf_page_image(content, 1)
+        except HTTPException as error:
+            raise HTTPException(502, "QA: Canva PDF could not render its first page.") from error
+        qa_notes.append(f"- {filename}: first page rendered successfully ({page_count} pages).")
+    if canva_files:
+        qa_notes.append("- Editable-design links were generated from IDs returned by Canva. Browser sharing permissions require CEO review.")
+    if qa_notes:
+        answer += "\n\n## Delivery checks\n" + "\n".join(qa_notes)
     ident=secrets.token_hex(12)
     try:
         with dbconn() as db:
