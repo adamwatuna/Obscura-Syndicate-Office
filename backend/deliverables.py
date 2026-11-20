@@ -102,11 +102,11 @@ def save_asset(db,run_id,filename,data):
 def list_deliverables(db,limit=250):
     init(db)
     rows=db.execute("""SELECT r.id,r.task_id,r.task_title,r.staff_id,r.staff_name,
-      r.status,r.created_at,r.reviewed_at,r.model,r.web_searched,
+      r.status,r.created_at,r.reviewed_at,r.model,r.web_searched,r.sources,
       LEFT(r.result,440) AS excerpt,
       COALESCE(s.role,'AI Staff') AS staff_role,
       COALESCE(s.department,'Unassigned') AS department,
-      t.description AS task_description,t.status AS task_status,
+      t.description AS task_description,t.status AS task_status,t.category AS task_category,
       t.deleted_at IS NOT NULL AS archived_task,
       j.proposal_id AS meita_project_id
       FROM workforce_runs r

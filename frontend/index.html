@@ -228,6 +228,12 @@
 .meita-thread-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
 @media(min-width:850px){.meita-thread-layout{grid-template-columns:minmax(160px,220px) minmax(0,1fr)}}
 </style>
+<style>
+.research-headline-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(245px,100%),1fr));gap:14px;margin-top:14px}
+.research-headline{border:1px solid #505762;border-top:3px solid #bca46d;padding:15px;min-width:0;overflow-wrap:anywhere}
+.research-headline h4{font:700 clamp(1.12rem,2vw,1.55rem)/1.2 Georgia,serif;margin:.5em 0}
+.research-headline a{text-decoration:underline;text-underline-offset:.18em}
+</style>
 </head><body><div id="login" class="login"><div class="panel"><div class="eyebrow">PRIVATE EXECUTIVE WORKSPACE</div><h1>AI Private Office</h1><p>Welcome back. Sign in to access your executive workspace.</p><form id="loginForm"><label for="password">CEO password</label><input id="password" type="password" autocomplete="current-password" required>
  <div id="loginMfaWrap" class="hidden" style="margin-top:14px"><label for="loginMfaCode">Authenticator or recovery code</label><input id="loginMfaCode" type="text" autocomplete="one-time-code" inputmode="text" maxlength="32" placeholder="6-digit code or saved recovery code"><p class="muted">Enter the code from your authenticator app. Recovery codes work once.</p></div>
  <div style="height:18px"></div><button class="primary" style="width:100%">Sign in securely</button><p id="loginError" class="err"></p></form><p style="font-size:11px">Authorized access only.</p></div></div>
@@ -401,7 +407,7 @@
 <div id="taskForm" class="card hidden" style="margin-top:18px"><div class="toolbar"><h3 id="taskFormHeading">New AI assignment</h3><button class="secondary" type="button" onclick="cancelOfficeTask()">Close</button></div>
 <form id="newTaskForm"><label>Task title</label><input name="title" maxlength="250" required placeholder="Prepare November market intelligence briefing">
 <label>Task description / AI instructions</label><textarea name="description" rows="5" maxlength="3000" required placeholder="Define scope, deliverables, references, quality expectations and what the AI must not do."></textarea>
-<div class="formgrid"><div><label>Task category</label><select name="category" id="taskCategory"><option value="General">General Task</option><option value="News Update">News Update · Executive Briefing</option></select></div><div><label>Assign to AI staff</label><select name="assignee" id="assignee"><option value="">Unassigned</option></select></div>
+<div class="formgrid"><div><label>Task category</label><select name="category" id="taskCategory"><option value="General">General Task</option><option value="News Update">News Update · Executive Briefing</option><option value="Opportunity Scan">Opportunity Scan</option></select></div><div><label>Assign to AI staff</label><select name="assignee" id="assignee"><option value="">Unassigned</option></select></div>
 <div><label>Priority</label><select name="priority"><option>Normal</option><option>High</option><option>Urgent</option><option>Low</option></select></div>
 <div><label>Due date (Malaysia)</label><input name="due_date" type="date" id="taskDueDate"><button type="button" class="secondary" style="margin-top:8px" onclick="setTaskTomorrow()">Tomorrow</button></div>
 <div><label>Repeat schedule</label><select name="recurrence" id="taskRecurrence"><option>None</option><option>Daily</option><option>Weekly</option><option>Monthly</option></select></div></div>
@@ -497,9 +503,14 @@
  </div>
  <div class="card" style="margin-top:20px">
   <div class="toolbar">
-   <h3>Research reports &amp; opportunities</h3>
+   <h3>News &amp; opportunities</h3>
+   <button class="primary" type="button" onclick="startOpportunityScan()">＋ Assign opportunity scan</button>
    <button class="secondary" type="button" onclick="loadResearchReports()">Refresh reports</button>
   </div>
+  <div id="researchHeadlines" class="research-headline-grid" role="region" aria-label="News and opportunities"></div>
+ </div>
+ <div class="card" style="margin-top:20px">
+  <h3>Research reports</h3>
   <div id="researchReports" role="region" aria-label="Research reports"></div>
  </div>
 </section>
@@ -2839,6 +2850,35 @@ function startResearchTask(){
  $('newTaskForm').elements.title.placeholder='e.g. Verify industry trends and competitor positioning';
  $('newTaskForm').elements.description.placeholder='Define research questions, timeframe, permitted public sources, evidence quality and confidence expectations.';
 }
+function startOpportunityScan(){
+ startResearchTask();
+ const form=$('newTaskForm');
+ form.elements.category.value='Opportunity Scan';
+ form.elements.title.value='Find open creative and production opportunities';
+ form.elements.description.value='Find up to five live opportunities Obscura could bid or pitch for in Malaysia. Search public social posts, company sites, tender portals and job boards for creative, video and production briefs. Open the original post or listing for each lead. Give the organization, scope, relevant dates or deadline, fit for Obscura and the exact original URL. Label uncertain availability and leave out expired or unverified leads.';
+}
+function renderResearchHeadlines(reports){
+ const root=$('researchHeadlines'),seen=new Set();
+ root.replaceChildren();
+ for(const item of reports){
+  if(!item.web_searched||!['News Update','Opportunity Scan'].includes(item.task_category))continue;
+  for(const source of item.sources||[]){
+   let url;
+   try{url=new URL(source.url)}catch(_){continue}
+   if(!['https:','http:'].includes(url.protocol)||url.username||url.password||seen.has(url.href))continue;
+   seen.add(url.href);
+   const card=deliveryText('article',undefined,'research-headline');
+   const heading=deliveryText('h4');
+   staffReportSafeLink(source.title&&source.title!==url.hostname?source.title:item.task_title,url.href,heading);
+   card.append(deliveryText('small',item.task_category==='Opportunity Scan'?'Opportunity':'News','tag'),heading,
+    deliveryText('p',url.hostname+' · Found '+new Date(item.created_at).toLocaleDateString('en-MY',{timeZone:'Asia/Kuala_Lumpur'}),'muted'));
+   staffReportSafeLink('Open original posting ↗',url.href,card);
+   root.append(card);
+   if(seen.size===24)return;
+  }
+ }
+ if(!seen.size)root.append(deliveryText('p','Source links will appear here after Research completes a News Update or Opportunity Scan.','muted'));
+}
 let researchReportsKey=null,researchReportsLoading=false;
 async function loadResearchReports(){
  if(researchReportsLoading)return;
@@ -2850,6 +2890,7 @@ async function loadResearchReports(){
   const key=JSON.stringify(reports.map(({id,status,reviewed_at})=>[id,status,reviewed_at]));
   if(key===researchReportsKey)return;
   researchReportsKey=key;
+  renderResearchHeadlines(reports);
   const openIds=new Set([...root.querySelectorAll('details[open]')].map(panel=>panel.dataset.reportId));
   root.replaceChildren();
   if(!reports.length)root.append(deliveryText('p','Completed Research & Intelligence reports will appear here.','muted'));
