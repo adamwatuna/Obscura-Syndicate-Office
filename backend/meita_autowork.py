@@ -184,10 +184,18 @@ def _memory_from_result(db,job,answer):
         ON CONFLICT(id) DO NOTHING""",
         (ident,title,content))
 
+def saved_attempt(db, job):
+    return db.execute("""SELECT id,result FROM workforce_runs
+        WHERE task_id=%s AND status='For approval'
+          AND (%s::timestamptz IS NULL OR created_at >= %s::timestamptz)
+        ORDER BY created_at DESC LIMIT 1""",
+        (job["task_id"] or job["id"], job.get("started_at"), job.get("started_at"))).fetchone()
+
+
 def _finish_success(db,job,run_id,answer):
     db.execute("""UPDATE coo_jobs SET status='Delivered',
-        workforce_run_id=%s,updated_at=NOW()
-        WHERE id=%s AND status='Running'""",(run_id,job["id"]))
+        workforce_run_id=%s,failure_code=NULL,failure_message=NULL,updated_at=NOW()
+        WHERE id=%s AND status IN ('Running','Needs verification')""",(run_id,job["id"]))
     if job.get("task_id"):
         db.execute("""UPDATE tasks SET status='For approval',
             ai_run_started=TRUE WHERE id=%s""",(job["task_id"],))
@@ -295,9 +303,7 @@ def recover_interrupted(connect):
             WHERE status='Cancellation requested'
             AND updated_at < NOW()-INTERVAL '12 minutes'""")
         for job in stalled:
-            existing=db.execute("""SELECT id,result FROM workforce_runs
-                WHERE task_id=%s ORDER BY created_at DESC LIMIT 1""",
-                (job["task_id"] or job["id"],)).fetchone()
+            existing=saved_attempt(db,job)
             if existing:
                 _finish_success(db,dict(job),existing["id"],existing["result"])
             else:

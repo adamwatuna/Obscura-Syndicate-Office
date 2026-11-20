@@ -1448,17 +1448,21 @@ async function loadMeitaTaskHistory(){
         const remove=meitaNode('button','Remove from view','danger');remove.type='button';
         remove.onclick=()=>controlMeitaJob(task.id,'remove');menu.append(remove);
         more.append(trigger,menu);record.append(more);
-        if(['Approved','Retry available'].includes(task.status)){
-          const retrying=task.status==='Retry available';
-          const retry=meitaNode('button',retrying?'Retry AI task':'Run AI','secondary');
+        if(['Approved','Retry available','Needs verification'].includes(task.status)){
+          const interrupted=task.status==='Needs verification';
+          const retrying=task.status!=='Approved';
+          const retry=meitaNode('button',interrupted?'Recover interrupted task':retrying?'Retry AI task':'Run AI','secondary');
           retry.type='button';retry.style.marginLeft='10px';
           retry.onclick=async()=>{
-            if(!confirm((retrying?'Retry the failed internal AI task?':'Run this approved AI task?')+' This uses API credits.'))return;
+            const prompt=interrupted?'Check for a saved result first? If none is found, another AI attempt will use API credits.':
+              (retrying?'Retry the failed internal AI task?':'Run this approved AI task?')+' This uses API credits.';
+            if(!confirm(prompt))return;
             retry.disabled=true;
             try{
-              await api('meita/jobs/'+encodeURIComponent(task.id)+(retrying?'/retry':'/run'),{method:'POST'});
+              const action=interrupted?'/retry?retry_interrupted=true':retrying?'/retry':'/run';
+              const result=await api('meita/jobs/'+encodeURIComponent(task.id)+action,{method:'POST'});
               await loadMeitaTaskHistory();
-              msg(retrying?'AI task requeued':'AI task queued');
+              msg(result.status==='Delivered'?'Saved AI report recovered':retrying?'AI task requeued':'AI task queued');
             }catch(err){msg(err.message);retry.disabled=false}
           };
           record.append(retry);

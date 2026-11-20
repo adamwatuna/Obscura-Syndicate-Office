@@ -844,8 +844,8 @@ def meita_remove_job(ident:str):
     return result
 
 @app.post('/api/meita/jobs/{ident}/retry',dependencies=[Depends(guard)])
-def meita_retry_internal_job(ident:str):
-    return queue_meita_job(ident, "Retry available")
+def meita_retry_internal_job(ident:str, retry_interrupted:bool=False):
+    return queue_meita_job(ident, "Needs verification" if retry_interrupted else "Retry available")
 
 
 @app.post('/api/meita/jobs/{ident}/run',dependencies=[Depends(guard)])
@@ -858,22 +858,29 @@ def meita_run_approved_job(ident:str):
 def queue_meita_job(ident:str, expected_status:str):
     with connect() as db:
         meita_autowork.init(db)
-        control=meita_autowork.provider_status(db)
-        if control["manual_resume_required"]:
-            raise HTTPException(409,
-                "AI queue is paused due to provider configuration or quota. Check AI Diagnostics, then resume.")
-        job=db.execute("""SELECT j.id,j.status,j.task_id,j.staff
+        job=db.execute("""SELECT j.*
             FROM coo_jobs j WHERE j.id=%s AND j.archived_at IS NULL
             FOR UPDATE""",(ident,)).fetchone()
         if not job:raise HTTPException(404,"Meita task not found")
         if job["status"]!=expected_status:
             raise HTTPException(409,"This Meita task is not ready for this action")
+        if expected_status=="Needs verification":
+            saved=meita_autowork.saved_attempt(db,job)
+            if saved:
+                meita_autowork._finish_success(db,job,saved["id"],saved["result"])
+                return {"ok":True,"status":"Delivered"}
+        if os.getenv("MEITA_AUTO_WORKER_ENABLED","true").lower()!="true":
+            raise HTTPException(503,"Meita's AI worker is disabled")
+        control=meita_autowork.provider_status(db)
+        if control["manual_resume_required"]:
+            raise HTTPException(409,
+                "AI queue is paused due to provider configuration or quota. Check AI Diagnostics, then resume.")
         current=db.execute("""SELECT 1 FROM staff WHERE id=%s
             AND status='Available'""",(job["staff"]["id"],)).fetchone()
         if not current:raise HTTPException(409,"Assigned AI staff is unavailable")
         db.execute("""UPDATE coo_jobs SET status='Queued',updated_at=NOW()
             WHERE id=%s""",(ident,))
-        action = 'meita.autorun.retry_requested' if expected_status == 'Retry available' else 'meita.run_requested'
+        action = 'meita.run_requested' if expected_status == 'Approved' else 'meita.autorun.retry_requested'
         audit(db,action,ident)
     return {"ok":True,"status":"Queued"}
 
