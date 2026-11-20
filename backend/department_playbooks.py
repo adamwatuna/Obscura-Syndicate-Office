@@ -206,6 +206,24 @@ MALAYSIAN_FILM_RESEARCH = (
 )
 
 
+DEEP_OPPORTUNITY_RESEARCH = (
+    "For opportunity research, search across relevant public channels: commissioning briefs, "
+    "freelance jobs, tenders, grants, private funds, corporate sponsorship and co-production "
+    "calls. Search in Malay and English where useful. Check official pages of production houses, "
+    "agencies, broadcasters, platforms, foundations, corporate funders and programme operators. "
+    "Use job boards and public posts for discovery, then verify against the original listing. "
+    "For each opportunity record the issuer, type, scope, location, deadline with timezone "
+    "if published, eligibility, application channel, original URL and verification date. "
+    "For funding, record the form of support and any stated co-funding, recoupment, equity, "
+    "IP, reporting or exclusivity conditions. Do not invent missing figures or requirements. "
+    "Deduplicate leads and separate verified open opportunities from closed, unverified or "
+    "potential future calls. Rank verified leads by eligibility, portfolio fit, urgency and "
+    "effort. Name the next action for each and highlight disqualifiers. Use approved Academy "
+    "portfolio references to assess fit without disclosing private material in public searches. "
+    "If no suitable calls can be verified, report the coverage and gaps. Do not submit applications."
+)
+
+
 def work_tree(staff, outputs):
     department = staff["department"]
     steps = [
@@ -226,6 +244,7 @@ def work_tree(staff, outputs):
         if staff.get("org_role") == "Director" or staff["role"].casefold() == "ai osint researcher":
             steps.insert(-1, {"label": "Brand monitoring", "detail": BRAND_MONITORING})
         steps.insert(-1, {"label": "Malaysia film industry", "detail": MALAYSIAN_FILM_RESEARCH})
+        steps.insert(-1, {"label": "Deep opportunity research", "detail": DEEP_OPPORTUNITY_RESEARCH})
     return steps
 
 
@@ -263,7 +282,7 @@ def agent_scope(staff):
             "inaccessible, exclude it from the verified shortlist."
         )
     if department == "Research & Intelligence":
-        scope += " " + BRAND_MONITORING + " " + MALAYSIAN_FILM_RESEARCH
+        scope += " " + BRAND_MONITORING + " " + MALAYSIAN_FILM_RESEARCH + " " + DEEP_OPPORTUNITY_RESEARCH
     if staff.get("org_role") == "Director":
         scope += (
             " As Director, own departmental planning, coordination and quality review. "
