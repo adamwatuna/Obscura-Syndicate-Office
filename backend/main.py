@@ -150,6 +150,9 @@ class Task(BaseModel):
     recurrence: str = 'None'
 class Lesson(BaseModel):title:str=Field(min_length=1,max_length=200);kind:str;source:str=Field(min_length=1,max_length=3000);assigned:str=''
 class Status(BaseModel):status:str
+
+class WorkforceReview(Status):
+    feedback: str = Field(default="", max_length=1500)
 class MeitaMessage(BaseModel):
     thread_id: str = Field(default="legacy", pattern=r"^(legacy|[a-f0-9]{32})$")
     message: str = Field(min_length=1,max_length=6000)
@@ -1098,8 +1101,8 @@ def workforce_run(task_id:str):
     return result
 
 @app.post('/api/workforce/runs/{ident}/review',dependencies=[Depends(guard)])
-def workforce_review(ident:str,body:Status):
-    result=office_workforce.review(ident,body.status)
+def workforce_review(ident:str,body:WorkforceReview):
+    result=office_workforce.review(ident,body.status,body.feedback)
     with connect() as db: audit(db,'workforce.review',ident+': '+body.status)
     return result
 
