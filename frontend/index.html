@@ -2176,15 +2176,20 @@ async function renderSelectedSubmission(){
   controls.append(deliveryLink('Meita project deck (.pptx)','/api/meita/deliverables/'+encodeURIComponent(item.meita_project_id)+'/powerpoint'));
  }
  if(item.status==='For approval'&&!item.archived_task){
+  const feedback=document.createElement('textarea');
+  feedback.maxLength=1500;feedback.rows=2;
+  feedback.placeholder='Optional feedback for Learning Academy';
+  feedback.setAttribute('aria-label','Feedback for Learning Academy');
+  root.append(feedback);
   for(const status of ['Approved','Revision requested','Rejected']){
    const button=deliveryText('button',{'Approved':'Approve deliverable','Revision requested':'Request revision','Rejected':'Reject'}[status],status==='Approved'?'primary':'secondary');
    button.type='button';
    button.onclick=async()=>{
     if(!confirm({'Approved':'Approve this AI result?','Revision requested':'Request revision for this AI result?','Rejected':'Reject this result and close the task? AI will stop working on it.'}[status]))return;
     try{
-     const review=await api('workforce/runs/'+encodeURIComponent(id)+'/review',{method:'POST',body:JSON.stringify({status})});
+     const review=await api('workforce/runs/'+encodeURIComponent(id)+'/review',{method:'POST',body:JSON.stringify({status,feedback:status==='Rejected'?'':feedback.value.trim()})});
      await Promise.all([loadDeliveryInbox(),refresh(),loadMeitaTaskHistory()]);
-     msg(review.handoff_jobs?.length?'Approved · '+review.handoff_jobs.length+' Job Radar follow-up tasks queued':'CEO review saved');
+     msg(review.handoff_jobs?.length?'Approved · '+review.handoff_jobs.length+' Job Radar follow-up tasks queued':review.feedback_saved?'Review and Academy feedback saved':'CEO review saved');
     }catch(err){msg(err.message)}
    };controls.append(button);
   }
