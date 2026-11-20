@@ -9,11 +9,11 @@ HTML = Path(__file__).resolve().parents[1] / "frontend" / "index.html"
 
 
 class StaffReportFormattingTests(unittest.TestCase):
-    def test_reports_are_rich_and_meita_uses_same_renderer(self):
+    def test_reports_are_rich_and_research_uses_same_renderer(self):
         html = HTML.read_text(encoding="utf-8")
         self.assertIn("function staffReportRender(value)", html)
         self.assertIn("full.append(staffReportRender(report.result))", html)
-        self.assertIn("text.append(staffReportRender(report.content", html)
+        self.assertIn("report.replaceChildren(staffReportRender(full.result))", html)
         for marker in ("report-rich h1", "report-rich h2", "report-rich pre",
                        "report-rich table", "report-rich blockquote",
                        "report-table-scroll"):
