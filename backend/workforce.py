@@ -189,7 +189,9 @@ def _execute(task,staff):
     autofill = canva_mode == "produce" and "canva autofill" in brief.casefold()
     template_id = canva.review_id(brief) if autofill else None
     source_required = is_news or is_research or task.get("category") == "Opportunity Scan"
-    search_enabled = canva_mode != "video"
+    finance_ledger_requested = department_playbooks.finance_ledger_requested(
+        staff, task["title"], brief)
+    search_enabled = canva_mode != "video" and not finance_ledger_requested
     if canva_mode and not canva.allowed(staff, canva_mode):
         raise HTTPException(403, "Staff role is not approved for this Canva operation")
     instruction=("You are an AI staff member producing an INTERNAL draft deliverable for CEO review only. "
@@ -250,9 +252,7 @@ def _execute(task,staff):
     reference_images=[]
     image_reference = None
     with dbconn() as db:
-        if (staff.get("department") == "Finance & Treasury"
-                and any(term in f"{task['title']} {task.get('brief') or ''}".casefold()
-                        for term in ("billing", "overhead", "finance & audit", "rekod perbelanjaan", "recorded income"))):
+        if finance_ledger_requested:
             actuals = finance_actuals.summary(db)["monthly"]
             reference_context = ("Recorded Finance & Audit monthly totals, keyed by currency, "
                                  "month, source and kind. Analyze these records only. "
@@ -381,7 +381,7 @@ def _execute(task,staff):
                        "required": ["prompt", "size"]},
         }}
     # All roles can inspect a public page explicitly supplied in the CEO brief.
-    browser_url = None if autofill or canva_mode in {"video", "review"} else staff_browser.public_url_from_brief(brief)
+    browser_url = None if finance_ledger_requested or autofill or canva_mode in {"video", "review"} else staff_browser.public_url_from_brief(brief)
     if browser_url and urlsplit(browser_url).hostname in {"canva.com", "www.canva.com"}:
         browser_url = None
     browser_image = staff_browser.screenshot(browser_url) if browser_url and canva_mode != "video" else None
