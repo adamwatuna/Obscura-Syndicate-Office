@@ -163,9 +163,24 @@ SOURCE_PATHS = {
 }
 
 
+RESEARCH_ROLE_STEPS = {
+    "director": "Define the decision and assign only needed research work. Check the evidence before making a recommendation and identify any specialist handoffs.",
+    "intelligence analyst": "Turn source findings into a decision brief. Separate observations, inference and open questions. Give the recommendation, rationale and what would change it.",
+    "osint researcher": "Build an evidence log with publisher, original URL, publication date and what was observed. Deduplicate copies. Mark pages that could not be opened as unverified.",
+    "fact-checking specialist": "Make a claim-by-claim table with evidence, verdict and confidence rationale. Flag conflicting accounts and distinguish lack of evidence from a disproven claim.",
+    "market research analyst": "Define market, timeframe and comparison criteria. Compare competitors consistently. Label estimated figures and explain how they were derived.",
+}
+
+
+def research_role_steps(staff):
+    if staff.get("org_role") == "Director":
+        return RESEARCH_ROLE_STEPS["director"]
+    return RESEARCH_ROLE_STEPS.get(staff["role"].casefold().removeprefix("ai "), "")
+
+
 def work_tree(staff, outputs):
     department = staff["department"]
-    return [
+    steps = [
         {"label": "Find sources", "detail": SOURCE_PATHS.get(
             department, "Start with the assignment, attached evidence and relevant Learning Academy references.")},
         {"label": "Choose a tool", "detail": "Pick the output that matches the brief. Check access before relying on an external connector.",
@@ -174,6 +189,13 @@ def work_tree(staff, outputs):
          + " When multiple options are useful, compare them against the same criteria and explain the trade-offs."},
         {"label": "Verify and submit", "detail": "Check the result against the brief. Attach any requested files, link the evidence, and flag unresolved requirements."},
     ]
+    if department == "Research & Intelligence":
+        steps.insert(1, {"label": "Apply Academy guidance",
+                         "detail": "Use relevant department or staff references for portfolio fit, decision criteria and report format."})
+        role_steps = research_role_steps(staff)
+        if role_steps:
+            steps.insert(-1, {"label": "Complete role deliverable", "detail": role_steps})
+    return steps
 
 
 def agent_scope(staff):
@@ -199,6 +221,16 @@ def agent_scope(staff):
         "If comparing sources or options, apply the same criteria and explain meaningful trade-offs. "
         f"Quality check: {operating_standard(department)}"
     )
+    if department == "Research & Intelligence":
+        scope += (
+            " Research & Intelligence execution: " + research_role_steps(staff)
+            + " Apply relevant Learning Academy guidance for CEO preferences, portfolio fit and "
+            "report format. For public claims and current listings, use primary public evidence. "
+            "Never put private Academy material into search queries. When no relevant Academy item "
+            "is supplied, continue from the brief. Before submission, check that each material "
+            "finding has an actual source and its verification status. If an original listing is "
+            "inaccessible, exclude it from the verified shortlist."
+        )
     if staff.get("org_role") == "Director":
         scope += (
             " As Director, own departmental planning, coordination and quality review. "
