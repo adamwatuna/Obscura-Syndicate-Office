@@ -557,17 +557,18 @@ def get_meita_reference_content(ident:str,preview:bool=False):
 def meita_live_activity():
     with connect() as db:
         meita_autowork.init(db)
-        rows=db.execute("""SELECT j.id,j.task_id,j.title,j.status,j.started_at,j.updated_at,
+        rows=db.execute("""SELECT j.id,j.task_id,j.title,j.status,j.started_at,j.updated_at,wr.created_at AS delivered_at,
             j.staff->>'id' AS staff_id,j.staff->>'name' AS staff_name,
             j.proposal_id,p.title AS project_title,t.status AS task_status,
             'Meita' AS source
             FROM coo_jobs j JOIN coo_proposals p ON p.id=j.proposal_id
+            LEFT JOIN workforce_runs wr ON wr.id=j.workforce_run_id
             LEFT JOIN tasks t ON t.id=j.task_id
             WHERE j.archived_at IS NULL AND (t.id IS NULL OR t.deleted_at IS NULL)
             ORDER BY j.created_at DESC LIMIT 250""").fetchall()
         org.init_plans(db)
         director_rows=db.execute("""SELECT j.id,j.task_id,j.title,j.status,
-            NULL::timestamptz AS started_at,j.updated_at,
+            NULL::timestamptz AS started_at,j.updated_at,NULL::timestamptz AS delivered_at,
             j.staff_id,j.staff_name,j.plan_id AS proposal_id,
             p.title AS project_title,t.status AS task_status,
             'Director' AS source

@@ -243,6 +243,13 @@
 [hidden]{display:none!important}
 @media(max-width:680px){.office-split{grid-template-columns:minmax(0,1fr)}}
 </style>
+<style>
+.hq-runtime-list{max-height:310px;overflow:auto}
+.hq-runtime-list .item{align-items:center;gap:12px}
+.hq-runtime-list .item>div{min-width:0;overflow-wrap:anywhere}
+.hq-runtime-value{white-space:nowrap;font-variant-numeric:tabular-nums}
+#hqRuntimeProject{width:auto;max-width:min(100%,310px)}
+</style>
 </head><body><div id="login" class="login"><div class="panel"><div class="eyebrow">PRIVATE EXECUTIVE WORKSPACE</div><h1>AI Private Office</h1><p>Welcome back. Sign in to access your executive workspace.</p><form id="loginForm"><label for="password">CEO password</label><input id="password" type="password" autocomplete="current-password" required>
  <div id="loginMfaWrap" class="hidden" style="margin-top:14px"><label for="loginMfaCode">Authenticator or recovery code</label><input id="loginMfaCode" type="text" autocomplete="one-time-code" inputmode="text" maxlength="32" placeholder="6-digit code or saved recovery code"><p class="muted">Enter the code from your authenticator app. Recovery codes work once.</p></div>
  <div style="height:18px"></div><button class="primary" style="width:100%">Sign in securely</button><p id="loginError" class="err"></p></form><p style="font-size:11px">Authorized access only.</p></div></div>
@@ -289,6 +296,13 @@
  </section>
 </div>
 <div class="two hq-summary-row"><div class="card hq-team-panel"><div class="toolbar"><h2 class="sectiontitle">Meet your Directors</h2><button class="secondary" onclick="show('workforce')">Manage team</button></div><div class="hq-leaders" id="hqStaff"></div></div><div class="card hq-recent-tasks-panel"><div class="toolbar"><h2 class="sectiontitle">Recent tasks</h2><button type="button" class="secondary" onclick="show('tasks')">View all tasks</button></div><div id="hqTasks"></div></div></div>
+<section class="hq-command-card" style="margin-top:18px">
+ <div class="header"><div><h3>Task Runtime</h3><p class="sub">AI working time for each task and project</p></div>
+  <select id="hqRuntimeProject" aria-label="Filter runtime by project" onchange="renderHqRuntime(state.tasks,liveActivity)"><option value="all">All projects &amp; tasks</option></select>
+ </div>
+ <p id="hqRuntimeSummary" class="muted"></p>
+ <div id="hqRuntimeList" class="hq-runtime-list"></div>
+</section>
 <div class="card" style="margin-top:18px" id="hqNewsCard">
  <div class="toolbar"><div><h2 class="sectiontitle">Staff News Briefings</h2><p class="muted">Latest source-backed reports from AI staff, based only on news tasks assigned by the CEO.</p></div>
   <div class="task-actions"><button class="secondary" type="button" onclick="loadNewsBriefings()">Refresh news</button><button class="primary" type="button" onclick="newNewsTask()">+ Assign news task</button></div>
@@ -1073,6 +1087,57 @@ function hqDateMalaysia(timestamp){
  if(!date||Number.isNaN(date.getTime()))return null;
  return date.toLocaleDateString('sv-SE',{timeZone:'Asia/Kuala_Lumpur'});
 }
+function formatRuntime(ms){
+ const seconds=Math.max(0,Math.floor(ms/1000));
+ const hours=Math.floor(seconds/3600),minutes=Math.floor(seconds/60)%60;
+ return [hours?hours+'h':'',hours||minutes?minutes+'m':'',seconds%60+'s'].filter(Boolean).join(' ');
+}
+function tickHqRuntime(){
+ for(const clock of $('hqRuntimeList').querySelectorAll('[data-runtime-start]')){
+  clock.textContent=formatRuntime(Date.now()-Number(clock.dataset.runtimeStart));
+ }
+}
+function renderHqRuntime(tasks,jobs){
+ const filter=$('hqRuntimeProject'),selected=filter.value;
+ const byTask=new Map(jobs.filter(job=>job.task_id).map(job=>[job.task_id,job]));
+ const projects=new Map();
+ for(const job of jobs){
+  if(job.proposal_id&&job.project_title)projects.set(job.proposal_id,job.project_title);
+ }
+ filter.replaceChildren(new Option('All projects & tasks','all'),new Option('Standalone tasks','standalone'));
+ for(const [id,title] of projects)filter.add(new Option(title,id));
+ if([...filter.options].some(option=>option.value===selected))filter.value=selected;
+ const rows=tasks.map(task=>{
+  const job=byTask.get(task.id);
+  const started=Date.parse(task.ai_started_at||job?.started_at||'');
+  const finished=Date.parse(task.ai_started_at?task.ai_finished_at||'':job?.delivered_at||'');
+  const active=Number.isFinite(started)&&!Number.isFinite(finished)&&task.status==='In progress';
+  return {task,job,started,finished,active};
+ }).filter(({job})=>filter.value==='all'||(filter.value==='standalone'?!job?.proposal_id:job?.proposal_id===filter.value));
+ rows.sort((a,b)=>Number(b.active)-Number(a.active)||
+   (b.started||b.task.created*1000)-(a.started||a.task.created*1000));
+ const measured=rows.filter(row=>Number.isFinite(row.started)&&row.finished>=row.started);
+ const sum=measured.reduce((total,row)=>total+row.finished-row.started,0);
+ const projectsOnly=filter.value!=='all'&&filter.value!=='standalone';
+ const prefix=measured.length?formatRuntime(sum)+' recorded AI work · '+measured.length+' / '+rows.length+' tasks timed':'No completed runtime recorded';
+ const projectWindow=projectsOnly&&measured.length&&!rows.some(row=>row.active)?
+  ' · Recorded span '+formatRuntime(Math.max(...measured.map(row=>row.finished))-Math.min(...measured.map(row=>row.started))):'';
+ $('hqRuntimeSummary').textContent=prefix+projectWindow+' · Latest attempt per task';
+ const root=$('hqRuntimeList'),scrollTop=root.scrollTop;
+ root.replaceChildren();
+ for(const {task,job,started,finished,active} of rows){
+  const row=meitaNode('div',undefined,'item');
+  const text=meitaNode('div');
+  text.append(meitaNode('strong',task.title),meitaNode('small',[job?.project_title,task.status].filter(Boolean).join(' · ')));
+  const clock=meitaNode('strong',finished>=started?formatRuntime(finished-started):
+    active?formatRuntime(Date.now()-started):task.status==='To do'&&!Number.isFinite(started)?'Not started':'Not recorded','hq-runtime-value');
+  if(active)clock.dataset.runtimeStart=String(started);
+  row.append(text,clock);root.append(row);
+ }
+ if(!rows.length)root.append(meitaNode('p','No tasks in this view.','muted'));
+ root.scrollTop=scrollTop;
+}
+setInterval(()=>{if($('hq').classList.contains('active'))tickHqRuntime()},1000);
 function renderExecutivePulse(tasks,jobs){
  const today=new Date(Date.now()+8*3600000).toISOString().slice(0,10);
  const base=new Date(today+'T00:00:00.000Z');
@@ -1181,7 +1246,7 @@ function renderWorkSurfaces(staff,tasks){
  if(grouped.size)officeBars(audit,[...grouped].sort((a,b)=>b[1]-a[1]));
  else audit.append(meitaNode('p','No audit events in this period.','muted'));
 }
-function render(){const s=state.staff,t=state.tasks,l=state.lessons;$('kStaff').textContent=s.length;$('kOpen').textContent=t.filter(x=>!['Completed','Abandoned'].includes(x.status)).length;$('kApproval').textContent=t.filter(x=>x.status==='For approval').length;$('kLessons').textContent=academyTotal===null?l.length:academyTotal;renderLeadershipSpotlight(s);renderOfficeCharts(s,t);renderExecutivePulse(t,liveActivity);renderWorkforceHierarchy(s);
+function render(){const s=state.staff,t=state.tasks,l=state.lessons;$('kStaff').textContent=s.length;$('kOpen').textContent=t.filter(x=>!['Completed','Abandoned'].includes(x.status)).length;$('kApproval').textContent=t.filter(x=>x.status==='For approval').length;$('kLessons').textContent=academyTotal===null?l.length:academyTotal;renderLeadershipSpotlight(s);renderOfficeCharts(s,t);renderExecutivePulse(t,liveActivity);renderHqRuntime(t,liveActivity);renderWorkforceHierarchy(s);
 const taskrow=x=>`<div class="item"><div><strong>${esc(x.title)}</strong><small>${esc(s.find(z=>z.id===x.assignee)?.name||'Unassigned')} · ${esc(x.status)}</small></div></div>`;$('hqTasks').innerHTML=t.length?t.slice(0,5).map(taskrow).join(''):'<p>No tasks yet.</p>';
 const assigneeSelect=$('assignee'),currentAssignee=assigneeSelect.value;
 assigneeSelect.textContent='';

@@ -1,5 +1,5 @@
 """AI Workforce: generate internal task deliverables, pending CEO review."""
-import json, os, secrets, urllib.request, urllib.error
+import json, logging, os, secrets, urllib.request, urllib.error
 from urllib.parse import urlsplit
 from psycopg.types.json import Jsonb
 import psycopg
@@ -93,6 +93,22 @@ def _news_sources(data):
 
 
 def execute(task,staff):
+    with dbconn() as db:
+        attempt = db.execute("""UPDATE tasks SET ai_started_at=clock_timestamp(),ai_finished_at=NULL
+            WHERE id=%s AND deleted_at IS NULL RETURNING ai_started_at""",(task["id"],)).fetchone()
+    try:
+        return _execute(task,staff)
+    finally:
+        if attempt:
+            try:
+                with dbconn() as db:
+                    db.execute("""UPDATE tasks SET ai_finished_at=clock_timestamp()
+                        WHERE id=%s AND ai_started_at=%s""",(task["id"],attempt["ai_started_at"]))
+            except (HTTPException,psycopg.Error):
+                logging.getLogger(__name__).warning("Could not save task runtime finish timestamp")
+
+
+def _execute(task,staff):
     if os.getenv("AI_ENGINE_ENABLED","false").lower()!="true": raise HTTPException(503,"AI engine is disabled")
     if len(task["title"])>250: raise HTTPException(400,"Task is too long")
     model=os.getenv("OPENAI_MODEL","gpt-5.4")
