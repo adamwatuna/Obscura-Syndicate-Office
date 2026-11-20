@@ -404,6 +404,7 @@
     <option value="For approval">Awaiting CEO review</option>
     <option value="Approved">Approved / completed</option>
     <option value="Revision requested">Revision requested</option>
+    <option value="archived">Archived reports</option>
    </select>
   </div>
   <div class="delivery-layout">
@@ -2089,13 +2090,14 @@ async function loadDeliveryInbox(background=false){
  try{
   const data=await api('deliverables');
   const items=data.items||[];
-  const signature=rows=>JSON.stringify(rows.map(item=>[item.id,item.status,item.reviewed_at,item.assets?.length]));
+  const signature=rows=>JSON.stringify(rows.map(item=>[item.id,item.status,item.reviewed_at,item.assets?.length,item.archived_task]));
   if(background&&signature(submittedWork)===signature(items))return;
   submittedWork=items;
-  $('deliveryCountAll').textContent=String(submittedWork.length);
-  $('deliveryCountReview').textContent=String(submittedWork.filter(x=>x.status==='For approval').length);
-  $('deliveryCountApproved').textContent=String(submittedWork.filter(x=>x.status==='Approved').length);
-  $('deliveryCountFiles').textContent=String(submittedWork.reduce((sum,x)=>sum+(x.assets||[]).length,0));
+  const active=submittedWork.filter(item=>!item.archived_task);
+  $('deliveryCountAll').textContent=String(active.length);
+  $('deliveryCountReview').textContent=String(active.filter(x=>x.status==='For approval').length);
+  $('deliveryCountApproved').textContent=String(active.filter(x=>x.status==='Approved').length);
+  $('deliveryCountFiles').textContent=String(active.reduce((sum,x)=>sum+(x.assets||[]).length,0));
   if(selectedSubmission&&!submittedWork.some(x=>x.id===selectedSubmission))selectedSubmission=null;
   if(!selectedSubmission && submittedWork.length)selectedSubmission=submittedWork[0].id;
   renderDeliveryInbox();
@@ -2106,7 +2108,7 @@ async function loadDeliveryInbox(background=false){
 function renderDeliveryInbox(){
  const root=$('deliveryInbox');root.textContent='';
  const search=$('deliverySearch').value.trim().toLowerCase(),filter=$('deliveryFilter').value;
- const matches=submittedWork.filter(x=>(filter==='all'||x.status===filter)&&
+ const matches=submittedWork.filter(x=>(filter==='archived'?x.archived_task:!x.archived_task&&(filter==='all'||x.status===filter))&&
    [x.task_title,x.staff_name,x.staff_role,x.department,x.excerpt].join(' ').toLowerCase().includes(search));
  if(!matches.length){
   root.append(deliveryText('p','No matching staff submissions. Completed tasks will appear here once AI has saved a real deliverable.','muted'));
@@ -2144,7 +2146,7 @@ async function renderSelectedSubmission(){
  if(item.meita_project_id){
   controls.append(deliveryLink('Meita project deck (.pptx)','/api/meita/deliverables/'+encodeURIComponent(item.meita_project_id)+'/powerpoint'));
  }
- if(item.status==='For approval'){
+ if(item.status==='For approval'&&!item.archived_task){
   for(const status of ['Approved','Revision requested']){
    const button=deliveryText('button',status==='Approved'?'Approve deliverable':'Request revision',status==='Approved'?'primary':'secondary');
    button.type='button';
