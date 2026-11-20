@@ -130,12 +130,12 @@ class StaffDeliveryInboxTests(unittest.TestCase):
             self.assertEqual(db.execute("""SELECT COUNT(*) AS n FROM workforce_assets
                 WHERE run_id=%s""",(run_id,)).fetchone()["n"],0)
 
-    def test_submitted_work_column_not_another_mock_report_feed(self):
+    def test_task_centre_includes_real_staff_deliverables(self):
         source=(__import__("pathlib").Path(__file__).resolve().parents[1]/"frontend"/"index.html").read_text()
         for key in ('data-view="deliverables"','id="deliveryInbox"','id="deliveryDetail"',
                     'id="deliveryFilter"','id="deliverySearch"','id="deliveryCountApproved"',
                     'Download presentation (.pptx)','Download original file',
-                    "async function loadDeliveryInbox()"):
+                    "async function loadDeliveryInbox(background=false)", 'id="taskWorkload"', 'id="assignedTasks"'):
             self.assertIn(key,source)
         self.assertIn("No photo, video or source file has been submitted",source)
 

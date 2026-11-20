@@ -186,6 +186,9 @@ def _score(query, title, tags, notes, body):
     tag_terms=_keywords(tags)
     note_terms=_keywords(notes)
     body_terms=_keywords(body[:7000])
+    matched = terms & (title_terms | tag_terms | note_terms | body_terms)
+    if len(matched)<min(2,len(terms)) or not terms & (title_terms | tag_terms | note_terms):
+        return 0
     return sum(7 for t in terms if t in title_terms)+sum(
         6 for t in terms if t in tag_terms)+sum(
         3 for t in terms if t in note_terms)+sum(
@@ -193,14 +196,16 @@ def _score(query, title, tags, notes, body):
 
 
 def _eligible(scope, staff):
-    if staff is None or scope in ("all","All AI Staff",""):
+    if scope in ("all","All AI Staff",""):
         return True
+    if staff is None:
+        return False
     return (scope == "staff:"+staff.get("id","") or
             scope == "department:"+staff.get("department","") or
             scope in (staff.get("name"),staff.get("department")))
 
 
-def relevant(db, query, staff=None, exclude_ids=(), limit=3, include_visual=True):
+def relevant(db, query, staff=None, exclude_ids=(), limit=3, include_visual=True, task_category="General"):
     """Deterministic relevance; never sends the whole library into every AI call."""
     init(db)
     rows=db.execute("""SELECT id,filename,kind,source_url,extracted_text,preview,
@@ -208,10 +213,18 @@ def relevant(db, query, staff=None, exclude_ids=(), limit=3, include_visual=True
         FROM meita_references WHERE academy_archived=FALSE
         ORDER BY created_at DESC LIMIT 250""").fetchall()
     omit=set(exclude_ids or [])
+    public_opportunity = staff is not None and staff.get("department") == "Research & Intelligence" and (
+        task_category == "Opportunity Scan" or re.search(
+            r"\b(?:opportunit(?:y|ies)|tenders?|rfps?|vacanc(?:y|ies)|cari (?:kerja|peluang)|vendor calls?)\b",
+            query, re.IGNORECASE,
+        )
+    )
     candidates=[]
     for row in rows:
         r=dict(row)
         if r["id"] in omit or not _eligible(r["academy_scope"],staff):
+            continue
+        if public_opportunity and r["academy_scope"] in ("all","All AI Staff",""):
             continue
         score=_score(query,r["academy_title"] or r["filename"],
                      r["academy_tags"],r["academy_notes"],r["extracted_text"])
@@ -235,7 +248,7 @@ def relevant(db, query, staff=None, exclude_ids=(), limit=3, include_visual=True
         WHERE chat_message_id IS NOT NULL
         ORDER BY created_at DESC LIMIT 100""").fetchall()
     ranked_projects=[]
-    for project in projects:
+    for project in ([] if public_opportunity else projects):
         score=_score(query,project["title"],"",project["brief"],project["brief"])
         if score>=5:
             ranked_projects.append((score,project))
@@ -250,6 +263,8 @@ def relevant(db, query, staff=None, exclude_ids=(), limit=3, include_visual=True
     ranked=[]
     for lesson in lessons:
         if not _eligible(lesson["assigned"] or "",staff):
+            continue
+        if public_opportunity and not lesson["assigned"]:
             continue
         score=_score(query,lesson["title"],"",lesson["source"],lesson["source"])
         if score>=5:

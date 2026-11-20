@@ -2,7 +2,7 @@ import os, json, hmac, hashlib, secrets, time, urllib.request, urllib.error, asy
 from contextlib import asynccontextmanager, suppress
 from urllib.parse import urlsplit
 from pathlib import Path
-from fastapi import FastAPI, HTTPException, Depends, Request, UploadFile, File
+from fastapi import FastAPI, HTTPException, Depends, Request, UploadFile, File, Form
 from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse, Response, JSONResponse
 from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
@@ -492,7 +492,12 @@ def home():return FileResponse(ROOT/'frontend'/'index.html')
 
 
 @app.post('/api/meita/references/upload',dependencies=[Depends(guard)])
-async def upload_meita_reference(file:UploadFile=File(...)):
+async def upload_meita_reference(
+    file: UploadFile = File(...),
+    academy_scope: str | None = Form(default=None, max_length=140),
+    academy_guidance: str = Form(default="", max_length=3000),
+    academy_tags: str = Form(default="", max_length=240),
+):
     """CEO-only uploads. Keep image/video parsing and database I/O off the event loop."""
     upload_id=secrets.token_hex(6)
     name=file.filename or 'reference'
@@ -508,7 +513,11 @@ async def upload_meita_reference(file:UploadFile=File(...)):
         raise HTTPException(413,"File exceeds 20 MB. Compress it or attach a smaller reference.")
     def persist():
         with connect() as db:
-            return office_references.save_file(db,name,data)
+            saved = office_references.save_file(db,name,data)
+            if academy_scope is not None:
+                office_academy.update_reference(db,saved["id"],office_academy.LibraryReferenceEdit(
+                    scope=academy_scope,notes=academy_guidance,tags=academy_tags))
+            return saved
     try:
         return await run_in_threadpool(persist)
     except HTTPException:
@@ -688,7 +697,7 @@ def platform_meita_chat(body:MeitaMessage):
         if routed["intent"]=="delegate":
             proposal=office_delegation.save_proposal(
                 db,body.message,plan,chat_message_id=message["id"],
-                reference_ids=body.reference_ids+academy["reference_ids"],
+                reference_ids=body.reference_ids,
                 platform_request_hash=request_hash)
             if config["auto_execute_internal"]:
                 if os.getenv("MEITA_AUTO_WORKER_ENABLED","true").lower()!="true":
@@ -717,7 +726,6 @@ def meita_chat(body:MeitaMessage):
         related=office_academy.relevant(
             db,body.message,exclude_ids=body.reference_ids,
             limit=min(2,6-len(body.reference_ids)))
-        effective_reference_ids=body.reference_ids+related['reference_ids']
         reference_context=office_references.summaries(
             db,body.reference_ids,max_chars=4500)
         if related['context']:
@@ -776,7 +784,7 @@ def meita_chat(body:MeitaMessage):
                     "Team configuration changed; please repeat the instruction")
             proposal=office_delegation.save_proposal(
                 db,routed["delegation_brief"],proposal_plan,
-                chat_message_id=message["id"],reference_ids=effective_reference_ids)
+                chat_message_id=message["id"],reference_ids=body.reference_ids)
             if config["auto_execute_internal"]:
                 if os.getenv("MEITA_AUTO_WORKER_ENABLED","true").lower()!="true":
                     raise HTTPException(503,"Meita internal auto-worker is disabled")
