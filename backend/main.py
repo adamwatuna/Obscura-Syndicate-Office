@@ -23,7 +23,7 @@ from backend import meita_autowork, meita_decks
 from backend import social, social_publish
 from backend import references as office_references
 from backend import academy as office_academy
-from backend import finance_planning
+from backend import finance_actuals, finance_planning
 from backend import ai_provider
 from backend import ceo_security, creative
 from backend import deliverables as staff_deliverables
@@ -424,6 +424,29 @@ def academy_save_vision(ident:int):
         if saved['created']:
             audit(db,'academy.vision.saved',f'{saved["id"]} from Meita message {ident}')
     return saved
+
+
+@app.get('/api/finance/actuals', dependencies=[Depends(guard)])
+def finance_actuals_summary():
+    with connect() as db:
+        return finance_actuals.summary(db)
+
+
+@app.post('/api/finance/actuals', dependencies=[Depends(guard)])
+def finance_actuals_record(body: finance_actuals.Entry):
+    with connect() as db:
+        result = finance_actuals.record(db, body)
+        audit(db, 'finance.actuals.recorded', result['id'])
+    return result
+
+
+@app.post('/api/finance/actuals/openai', dependencies=[Depends(guard)])
+def finance_sync_openai():
+    costs = finance_actuals.openai_costs()
+    with connect() as db:
+        result = finance_actuals.replace_openai(db, *costs)
+        audit(db, 'finance.actuals.openai_synced', str(result['days_with_costs']))
+    return result
 
 
 @app.get('/api/finance/planning',dependencies=[Depends(guard)])

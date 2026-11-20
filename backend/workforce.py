@@ -8,7 +8,7 @@ from backend import ai_provider
 from fastapi import HTTPException
 from backend import references as office_references
 from backend import academy as office_academy
-from backend import canva, creative, deliverables, department_playbooks, staff_agents
+from backend import canva, creative, deliverables, finance_actuals, department_playbooks, staff_agents
 from pydantic import ValidationError
 
 def dbconn():
@@ -159,9 +159,18 @@ def _execute(task,staff):
     reference_images=[]
     image_reference = None
     with dbconn() as db:
+        if (staff.get("department") == "Finance & Treasury"
+                and any(term in f"{task['title']} {task.get('brief') or ''}".casefold()
+                        for term in ("billing", "overhead", "finance & audit", "rekod perbelanjaan", "recorded income"))):
+            actuals = finance_actuals.summary(db)["monthly"]
+            reference_context = ("Recorded Finance & Audit monthly totals, keyed by currency, "
+                                 "month, source and kind. Analyze these records only. "
+                                 "Keep currencies separate and report coverage gaps. "
+                                 "The general planning-only rule still applies outside this ledger.\n"
+                                 + json.dumps(actuals[-120:], default=str) + "\n")
         direct_ids=task.get('reference_ids') or []
         if direct_ids:
-            reference_context=office_references.summaries(db,direct_ids,max_chars=6000)
+            reference_context+=office_references.summaries(db,direct_ids,max_chars=6000)
             reference_images=office_references.images(db,direct_ids)
             if image_requested:
                 for example in office_references.validate_ids(db, direct_ids):
@@ -213,6 +222,8 @@ def _execute(task,staff):
             "Return a JSON object only with keys prompt (3 to 4000 characters) and size "
             "(1024x1024, 1024x1536, or 1536x1024). Do not write a report in this response."
         )
+    if reference_context.startswith("Recorded Finance & Audit"):
+        instruction += " You may analyze the supplied internal billing and income ledger as recorded figures. Do not infer bank balances, make payments, or classify projections as actuals."
     payload={"model":model,"instructions":instruction,
              "input":[{"role":"user","content":"Task: "+task["title"]+"\nTask details: "+str(task.get("brief") or "")[:3800]+"\nAttached CEO references and Learning Academy guidance:\n"+reference_context+"\nProvide the deliverable for CEO review."}],
              "max_output_tokens":min(4000,max(200,int(os.getenv("AI_MAX_OUTPUT_TOKENS","4000")))),
