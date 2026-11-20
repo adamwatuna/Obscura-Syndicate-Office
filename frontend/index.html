@@ -255,7 +255,7 @@
 </head><body><div id="login" class="login"><div class="panel"><div class="eyebrow">PRIVATE EXECUTIVE WORKSPACE</div><h1>AI Private Office</h1><p>Welcome back. Sign in to access your executive workspace.</p><form id="loginForm"><label for="password">CEO password</label><input id="password" type="password" autocomplete="current-password" required>
  <div id="loginMfaWrap" class="hidden" style="margin-top:14px"><label for="loginMfaCode">Authenticator or recovery code</label><input id="loginMfaCode" type="text" autocomplete="one-time-code" inputmode="text" maxlength="32" placeholder="6-digit code or saved recovery code"><p class="muted">Enter the code from your authenticator app. Recovery codes work once.</p></div>
  <div style="height:18px"></div><button class="primary" style="width:100%">Sign in securely</button><p id="loginError" class="err"></p></form><p style="font-size:11px">Authorized access only.</p></div></div>
-<div id="app" class="shell hidden"><aside><div class="brand">AI Private Office<small>EXECUTIVE WORKSPACE</small></div><div class="nav" id="nav"><button data-view="hq" class="active">◫ &nbsp; Executive HQ</button><button data-view="meita">✦ &nbsp; Meita AI</button><button data-view="workforce">♙ &nbsp; AI Workforce</button><button data-view="desks">▦ &nbsp; Live Desks</button><button data-view="deliverables">▣ &nbsp; Task Centre</button><button data-view="monthly">▣ &nbsp; Monthly Workplan</button><button data-view="academy">▤ &nbsp; Learning Academy</button><button data-view="research">⌕ &nbsp; Research Intelligence</button><button data-view="finance">◈ &nbsp; Finance & Audit</button><button data-view="integrations">⌘ &nbsp; Integration Centre</button><button data-view="governance">◇ &nbsp; Governance</button></div><div class="bottom"><button class="secondary" id="logout">Sign out</button><p>Private office environment</p></div></aside><main><header class="top"><div><div class="eyebrow">YOUR EXECUTIVE WORKSPACE</div><h1 id="pageTitle">Executive HQ</h1><div class="muted" id="today"></div></div><span class="pill">● Private workspace</span></header>
+<div id="app" class="shell hidden"><aside><div class="brand">AI Private Office<small>EXECUTIVE WORKSPACE</small></div><div class="nav" id="nav"><button data-view="hq" class="active">◫ &nbsp; Executive HQ</button><button data-view="meita">✦ &nbsp; Meita AI</button><button data-view="itSystem">⌘ &nbsp; IT &amp; AI System</button><button data-view="workforce">♙ &nbsp; AI Workforce</button><button data-view="desks">▦ &nbsp; Live Desks</button><button data-view="deliverables">▣ &nbsp; Task Centre</button><button data-view="monthly">▣ &nbsp; Monthly Workplan</button><button data-view="academy">▤ &nbsp; Learning Academy</button><button data-view="research">⌕ &nbsp; Research Intelligence</button><button data-view="finance">◈ &nbsp; Finance & Audit</button><button data-view="integrations">⌘ &nbsp; Integration Centre</button><button data-view="governance">◇ &nbsp; Governance</button></div><div class="bottom"><button class="secondary" id="logout">Sign out</button><p>Private office environment</p></div></aside><main><header class="top"><div><div class="eyebrow">YOUR EXECUTIVE WORKSPACE</div><h1 id="pageTitle">Executive HQ</h1><div class="muted" id="today"></div></div><span class="pill">● Private workspace</span></header>
 <section class="view active" id="hq">
 <div class="hq-hero">
  <div><div class="hq-kicker">OBSCURA · EXECUTIVE COMMAND DESK</div>
@@ -312,6 +312,23 @@
  <div id="hqNewsList"><p class="muted">Loading staff news briefings…</p></div>
  <p class="muted" style="font-size:11px">Briefings are generated only when CEO selects Run AI. Drafts require CEO approval and may incur web-search API charges. News may become outdated after the research time.</p>
 </div><div class="notice">Manage departments through Meita and your Directors. Authorized AI staff can generate internal deliverables for CEO review; external application access, publishing and payments are not connected.</div></section>
+<section class="view" id="itSystem">
+ <div class="card">
+  <div class="toolbar"><h2>Daniel Hakim</h2><button type="button" class="secondary" id="itNewChat">+ New chat</button></div>
+  <label for="itThreadList">Chat history</label>
+  <select id="itThreadList"><option value="">New chat</option></select>
+  <div id="itMessages" role="log" aria-live="polite" style="max-height:55vh;overflow:auto;margin:16px 0"></div>
+  <form id="itChatForm" class="formgrid">
+   <div class="wide"><label for="itMessage">Message Daniel</label>
+   <textarea id="itMessage" rows="4" maxlength="6000" required placeholder="Describe the bug or improvement you want to investigate"></textarea></div>
+   <div><label for="itSourceFile">Source file (optional)</label>
+   <input id="itSourceFile" maxlength="160" placeholder="backend/main.py"></div>
+   <label><input id="itPrepareChange" type="checkbox"> Prepare a code change from this file</label>
+   <div class="wide"><button id="itSend" class="primary" type="submit">Send</button></div>
+   <p id="itStatus" class="muted wide" role="status"></p>
+  </form>
+ </div>
+</section>
 <section class="view" id="meita">
 <div class="toolbar"><div>
 <p>CEO speaks once. Meita coordinates the AI team, assigns internal work and delivers the results.</p></div>
@@ -711,9 +728,74 @@ async function copyCEORecoveryCodes(){
 }
 
 async function api(path,options={}){const r=await fetch('/api/'+path,{credentials:'same-origin',headers:{'Content-Type':'application/json'},...options});if(r.status===401){$('app').classList.add('hidden');$('login').classList.remove('hidden');throw Error('Session expired. Please sign in.')}if(!r.ok){let j=await r.json().catch(()=>({}));throw Error(j.detail||'Request failed')}return r.json()}
+let itThread=crypto.randomUUID().replaceAll('-',''), itLoad=0, itSending=false;
+function appendITMessage(name, content){
+ const card=document.createElement('article');
+ card.className='card';card.style.marginBottom='8px';
+ const label=document.createElement('strong');label.textContent=name;card.append(label);
+ card.append(staffReportRender(content));
+ $('itMessages').append(card);$('itMessages').scrollTop=$('itMessages').scrollHeight;
+}
+async function loadITChat(){
+ const revision=++itLoad,thread=itThread;
+ try{
+  const result=await api('it/chat?thread_id='+encodeURIComponent(thread));
+  if(revision!==itLoad||thread!==itThread)return;
+  $('itThreadList').replaceChildren(new Option('New chat',''));
+  for(const saved of result.threads)$('itThreadList').add(new Option(saved.title,saved.id));
+  $('itThreadList').value=result.threads.some(saved=>saved.id===thread)?thread:'';
+  $('itMessages').replaceChildren();
+  for(const turn of result.turns){
+   appendITMessage('You',turn.message);appendITMessage('Daniel',turn.reply);
+   const latest=$('itMessages').lastElementChild;
+   if(turn.pull_request_url){
+    const link=document.createElement('a');link.textContent='Review draft PR';
+    link.href=turn.pull_request_url;link.target='_blank';link.rel='noopener noreferrer';latest.append(link);
+   }else if(turn.has_proposal){
+    const create=document.createElement('button');create.type='button';create.className='secondary';
+    create.textContent='Create draft PR';
+    create.onclick=async()=>{
+     if(!confirm('Create a draft PR in the Obscura GitHub repository for review?'))return;
+     create.disabled=true;
+     try{await api('it/chat/'+encodeURIComponent(turn.id)+'/draft-pr',{method:'POST'});await loadITChat();}
+     catch(error){$('itStatus').textContent=error.message;create.disabled=false;}
+    };
+    latest.append(create);
+   }
+  }
+ }catch(error){$('itStatus').textContent=error.message;}
+}
+function openITThread(id){
+ if(itSending)return;
+ itThread=id||crypto.randomUUID().replaceAll('-','');
+ $('itMessage').value='';$('itSourceFile').value='';$('itPrepareChange').checked=false;$('itStatus').textContent='';
+ loadITChat();
+}
+$('itNewChat').onclick=()=>openITThread('');
+$('itThreadList').onchange=event=>openITThread(event.target.value);
+$('itChatForm').onsubmit=async event=>{
+ event.preventDefault();
+ const message=$('itMessage').value.trim();
+ if(itSending||!message)return;
+ itSending=true;
+ $('itSend').disabled=$('itNewChat').disabled=$('itThreadList').disabled=true;
+ $('itStatus').textContent='Daniel is reviewing your request…';
+ try{
+  await api('it/chat',{method:'POST',body:JSON.stringify({
+   thread_id:itThread,message,source_file:$('itSourceFile').value.trim(),prepare_change:$('itPrepareChange').checked
+  })});
+  $('itMessage').value='';
+  $('itStatus').textContent='';
+  await loadITChat();
+ }catch(error){$('itStatus').textContent=error.message;}
+ finally{
+  itSending=false;
+  $('itSend').disabled=$('itNewChat').disabled=$('itThreadList').disabled=false;
+ }
+};
 function msg(s){$('toast').textContent=s;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',3000)}
 function toggle(id){$(id).classList.toggle('hidden')}
-function show(id){if(id==='tasks'){id='deliverables';$('assignedTasks').open=true} document.querySelectorAll('.view').forEach(e=>e.classList.toggle('active',e.id===id));document.querySelectorAll('[data-view]').forEach(e=>e.classList.toggle('active',e.dataset.view===id));$('pageTitle').textContent=({hq:'Executive HQ',meita:'Meita · Acting COO',workforce:'Your AI Workforce',desks:'Live Desks',monthly:'Monthly Workplan',academy:'Learning Academy',research:'Research Intelligence',finance:'Finance & Audit',deliverables:'Task Centre',integrations:'Integration Centre',governance:'Governance'})[id];window.scrollTo(0,0)}
+function show(id){if(id==='tasks'){id='deliverables';$('assignedTasks').open=true} document.querySelectorAll('.view').forEach(e=>e.classList.toggle('active',e.id===id));document.querySelectorAll('[data-view]').forEach(e=>e.classList.toggle('active',e.dataset.view===id));$('pageTitle').textContent=({hq:'Executive HQ',meita:'Meita · Acting COO',itSystem:'IT & AI System',workforce:'Your AI Workforce',desks:'Live Desks',monthly:'Monthly Workplan',academy:'Learning Academy',research:'Research Intelligence',finance:'Finance & Audit',deliverables:'Task Centre',integrations:'Integration Centre',governance:'Governance'})[id];window.scrollTo(0,0);if(id==='itSystem')loadITChat()}
 function staffPortrait(s){
   const slot=Number(s.portrait_slot);
   if(s.portrait_slot!==null && s.portrait_slot!==undefined && Number.isInteger(slot)&&slot>=0&&slot<9){
