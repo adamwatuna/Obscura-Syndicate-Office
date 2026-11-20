@@ -292,6 +292,17 @@ def _execute(task,staff):
     image_reference = None
     operations_snapshot = {}
     with dbconn() as db:
+        if staff.get("department") == "Strategy & Business Development":
+            capacity = db.execute("""SELECT s.department,s.role,s.status,COUNT(DISTINCT s.id) AS staff_count,
+                COUNT(t.id) AS open_tasks FROM staff s LEFT JOIN tasks t
+                ON t.assignee=s.id AND t.deleted_at IS NULL
+                AND t.status NOT IN ('Completed','Abandoned')
+                GROUP BY s.department,s.role,s.status ORDER BY s.department,s.role,s.status LIMIT 100""").fetchall()
+            reference_context += (
+                "\nInternal staff and open workload summary. Status and counts are signals, not "
+                "confirmed capacity or available hours. Do not send these records to public searches.\n"
+                + json.dumps(capacity, default=str)
+            )
         if operations:
             records = [dict(row) for row in db.execute("""SELECT id,title,assignee,priority,due_date,status,
                 recurrence,series_id,ai_run_started,
