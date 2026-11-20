@@ -149,6 +149,33 @@ def operating_standard(department):
         department, "Check the result against the brief and identify any missing evidence or dependencies.")
 
 
+SOURCE_PATHS = {
+    "Research & Intelligence": "Start with the brief and approved Academy references. Then obtain current public sources through web search. Prefer original records and corroborate material claims.",
+    "Marketing & Growth": "Start with the brand brief, audience data and approved campaigns. Use public competitor evidence only when the task supplies it or Research provides it.",
+    "Creative": "Start with the CEO brief, attached examples and the relevant brand or style guide in Learning Academy.",
+    "Finance & Treasury": "Use the period, currency and source from recorded Finance & Audit data supplied to the run, or clearly identified planning assumptions.",
+    "Operations & Project Management": "Start with assigned tasks, supplied milestones, dependencies and confirmed owners.",
+    "Technology & AI Systems": "Start with the supplied repository excerpts, logs and requirements. Verify platform behavior against available official documentation.",
+    "Strategy & Business Development": "Start with CEO objectives and the supplied Research, Finance and Operations evidence.",
+    "Knowledge & Learning Academy": "Start with the current approved version of the relevant Academy material and check its source and access scope.",
+    "Governance, Risk & Compliance": "Start with the supplied policy and control evidence. Flag missing or outdated material.",
+    "Independent Audit": "Start with the approved audit scope and independently inspect the supplied evidence.",
+}
+
+
+def work_tree(staff, outputs):
+    department = staff["department"]
+    return [
+        {"label": "Find sources", "detail": SOURCE_PATHS.get(
+            department, "Start with the assignment, attached evidence and relevant Learning Academy references.")},
+        {"label": "Choose a tool", "detail": "Pick the output that matches the brief. Check access before relying on an external connector.",
+         "outputs": outputs},
+        {"label": "Compare options", "detail": operating_standard(department)
+         + " When multiple options are useful, compare them against the same criteria and explain the trade-offs."},
+        {"label": "Verify and submit", "detail": "Check the result against the brief. Attach any requested files, link the evidence, and flag unresolved requirements."},
+    ]
+
+
 def agent_scope(staff):
     """Build the instructions for the assigned staff member's individual run."""
     department = staff["department"]
@@ -168,6 +195,8 @@ def agent_scope(staff):
         "Use reasonable reversible assumptions for minor gaps and state them in the handoff. "
         "If a required input, connector or artifact is unavailable, report the concrete blocker. "
         "Treat requested tools as preferences. Only rely on capabilities confirmed by this run. "
+        f"Sources: {SOURCE_PATHS.get(department, 'Start with the assignment and attached evidence.')} "
+        "If comparing sources or options, apply the same criteria and explain meaningful trade-offs. "
         f"Quality check: {operating_standard(department)}"
     )
     if staff.get("org_role") == "Director":
