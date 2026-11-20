@@ -226,7 +226,10 @@ def _execute(task,staff):
     source_required = is_news or is_research or task.get("category") == "Opportunity Scan"
     finance_ledger_requested = department_playbooks.finance_ledger_requested(
         staff, task["title"], brief)
-    operations = staff.get("department") == "Operations & Project Management" and task.get("category") == "General"
+    is_operations = staff.get("department") == "Operations & Project Management"
+    operations_research = is_operations and department_playbooks.operations_ai_research_requested(task["title"], brief)
+    operations = is_operations and task.get("category") == "General" and not operations_research
+    source_required = source_required or operations_research
     search_enabled = canva_mode != "video" and not finance_ledger_requested and not operations
     if canva_mode and not canva.allowed(staff, canva_mode):
         raise HTTPException(403, "Staff role is not approved for this Canva operation")
