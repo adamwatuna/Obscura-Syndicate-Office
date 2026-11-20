@@ -296,7 +296,13 @@ FINANCE_OVERHEAD = (
     "an exchange rate is supplied. Estimate a baseline and higher-usage budget with clearly "
     "labelled assumptions. Show the monthly revenue needed to cover overhead and, if the CEO "
     "provides a contribution margin, estimate break-even revenue. Prepare recommendations "
-    "for CEO review without changing subscriptions, budgets or making payments."
+    "for CEO review without changing subscriptions, budgets or making payments. "
+    "When asked for a financial plan, give a practical 30/60/90-day action plan with owners "
+    "and review dates. Prioritize essential recurring costs, cash reserve, revenue target "
+    "and a proposed limit for discretionary spending. Use recorded totals or declared assumptions "
+    "for each target. Explain how to check monthly variance and name a threshold for revisiting "
+    "the plan. For each recommendation show expected impact, dependency and the decision needed. "
+    "Distinguish recommended limits from approved budgets."
 )
 
 
