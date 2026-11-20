@@ -122,7 +122,7 @@ def assign(db,proposal_id,staff,automatic=False):
         # Run AI. Execution is driven only by the corresponding COO job.
         task_status="To do"  # Queued is not executing: Live Desk must not show false activity.
         category = {"image": "Creative Image", "canva_produce": "Canva Production",
-                    "canva_review": "Canva Review"}.get(item.get("output"), "General")
+                    "canva_review": "Canva Review", "canva_video": "Canva Video"}.get(item.get("output"), "General")
         db.execute("""INSERT INTO tasks
             (id,title,description,category,assignee,priority,due_date,
              status,recurrence,created,ai_run_started,reference_ids)

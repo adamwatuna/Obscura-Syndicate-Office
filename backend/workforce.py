@@ -117,8 +117,8 @@ def _execute(task,staff):
     is_research=staff.get("department")=="Research & Intelligence"
     source_required=is_news or is_research
     image_requested = task.get("category") == "Creative Image" and staff.get("department") == "Creative"
-    canva_mode = {"Canva Production": "produce", "Canva Review": "review"}.get(task.get("category"))
-    if canva_mode and canva.access(staff) != canva_mode:
+    canva_mode = {"Canva Production": "produce", "Canva Review": "review", "Canva Video": "video"}.get(task.get("category"))
+    if canva_mode and not canva.allowed(staff, canva_mode):
         raise HTTPException(403, "Staff role is not approved for this Canva operation")
     instruction=("You are an AI staff member producing an INTERNAL draft deliverable for CEO review only. "
                  "Do not claim to have sent messages, published content, opened external systems, "
@@ -235,8 +235,21 @@ def _execute(task,staff):
                                             "timezone":"Asia/Kuala_Lumpur"}}]
         payload["tool_choice"]="required"
         payload["include"]=["web_search_call.action.sources"]
-    data=staff_agents.response(staff,payload,operation="workforce",timeout=185 if source_required else 165)
-    answer=ai_provider.text_output(data)
+    video = None
+    if canva_mode == "video":
+        design_id = canva.review_id(task.get("brief") or "")
+        with dbconn() as db:
+            row = db.execute("SELECT status, deleted_at FROM tasks WHERE id=%s",
+                             (task["id"],)).fetchone()
+            if not row or row["status"] != "In progress" or row["deleted_at"]:
+                raise HTTPException(409, "Canva video task is no longer active")
+            token = canva.access_token(db)
+        video = canva.export_asset(token, design_id, "mp4")
+        data = {}
+        answer = f"# {task['title']}\n\nThe Canva MP4 export is attached for review."
+    else:
+        data=staff_agents.response(staff,payload,operation="workforce",timeout=185 if source_required else 165)
+        answer=ai_provider.text_output(data)
     if not answer:
         reason=(data.get("incomplete_details") or {}).get("reason") if data.get("status")=="incomplete" else None
         raise ai_provider.AIProviderError(502,
@@ -293,6 +306,8 @@ def _execute(task,staff):
                  source_required,source_required,Jsonb(sources)))
             if image is not None:
                 deliverables.save_asset(db, ident, "creative-image.png", image)
+            if video is not None:
+                deliverables.save_asset(db, ident, "canva-video.mp4", video)
             if pdf is not None:
                 deliverables.save_asset(db, ident, "canva-design.pdf", pdf)
     except psycopg.Error: raise HTTPException(503,"AI generated work but saving failed; retry carefully")
