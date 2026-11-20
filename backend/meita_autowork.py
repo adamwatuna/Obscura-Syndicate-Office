@@ -121,11 +121,13 @@ def assign(db,proposal_id,staff,automatic=False):
         # Delegated tasks are locked against a concurrent manual Task Centre
         # Run AI. Execution is driven only by the corresponding COO job.
         task_status="To do"  # Queued is not executing: Live Desk must not show false activity.
+        category = {"image": "Creative Image", "canva_produce": "Canva Production",
+                    "canva_review": "Canva Review"}.get(item.get("output"), "General")
         db.execute("""INSERT INTO tasks
             (id,title,description,category,assignee,priority,due_date,
              status,recurrence,created,ai_run_started,reference_ids)
             VALUES (%s,%s,%s,%s,%s,%s,%s,%s,'None',%s,TRUE,%s)""",
-            (task_id,title,brief,"Creative Image" if item.get("output") == "image" else "General",
+            (task_id,title,brief,category,
              person["id"],item.get("priority","Normal"),
              task_schedule.parse_due(item.get("due_date")),task_status,int(time.time()),
              Jsonb(proposal.get('reference_ids') or [])))
