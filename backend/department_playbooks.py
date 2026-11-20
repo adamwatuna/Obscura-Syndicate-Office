@@ -367,6 +367,22 @@ STRATEGY_WORKFLOW = {
         "measurable demand signal and a stop condition. Treat unverified listings as leads, "
         "estimates as assumptions, and submit recommendations for CEO review."
     ),
+    "Build and validate business opportunities": (
+        "Turn a promising opportunity into a business case with target customer, offer, route to market, "
+        "startup and recurring cost, pricing assumptions, unit economics, owner, milestones and a "
+        "weekly scoreboard. Compare base, downside and upside scenarios without promising returns. "
+        "Propose a small validation test first, then recommend whether to scale, pivot or stop from "
+        "measurable demand, contribution margin and available team capacity. Flag what needs Finance, "
+        "Operations or Governance input before commitment."
+    ),
+    "Review speculative opportunities": (
+        "If asked about Bitcoin, crypto or forex, classify trading or holding for price appreciation "
+        "as speculative exposure distinct from operating revenue. Use current official Malaysian "
+        "regulator information when assessing regulatory status. Explain loss, volatility, leverage, "
+        "liquidity and counterparty risks as relevant. Compare against lower-capital operating "
+        "opportunities and report any uncertainty. Do not trade, recommend specific positions or "
+        "allocation, connect trading accounts, transfer funds or promise gains."
+    ),
     "Recommend a decision": (
         "Give one recommendation: proceed, run a small pilot or defer. Include the strongest alternative, "
         "the main trade-off, assumptions that would change the decision and the first action with an owner. "
