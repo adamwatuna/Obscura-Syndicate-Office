@@ -132,9 +132,8 @@ def _execute(task,staff):
     brief = task.get("brief") or ""
     autofill = canva_mode == "produce" and "canva autofill" in brief.casefold()
     template_id = canva.review_id(brief) if autofill else None
-    design_research = canva_mode == "produce" and not autofill
-    source_required = is_news or is_research
-    search_enabled = source_required or design_research
+    source_required = is_news or is_research or task.get("category") == "Opportunity Scan"
+    search_enabled = canva_mode != "video"
     if canva_mode and not canva.allowed(staff, canva_mode):
         raise HTTPException(403, "Staff role is not approved for this Canva operation")
     instruction=("You are an AI staff member producing an INTERNAL draft deliverable for CEO review only. "
@@ -155,6 +154,14 @@ def _execute(task,staff):
                  "recommended next actions. Avoid decorative symbols, filler headings, "
                  "excessive nesting, and invented graphics or visuals.")
     instruction += "\n" + department_playbooks.agent_scope(staff)
+    if search_enabled:
+        instruction += (
+            " Use live web search whenever the task needs public research, current facts, "
+            "source verification or comparisons. Open and cite the public sources used. "
+            "Keep search queries generic and omit internal names, task IDs, files, private "
+            "URLs and confidential data. Respect instructions to work offline or use only "
+            "provided material. Do not browse for tasks that can be completed from the brief."
+        )
     if is_research:
         instruction+=(
             " RESEARCH & INTELLIGENCE REQUIREMENTS: perform current public-source "
@@ -295,7 +302,9 @@ def _execute(task,staff):
                        "required": ["prompt", "size"]},
         }}
     # All roles can inspect a public page explicitly supplied in the CEO brief.
-    browser_url = None if autofill else staff_browser.public_url_from_brief(brief)
+    browser_url = None if autofill or canva_mode in {"video", "review"} else staff_browser.public_url_from_brief(brief)
+    if browser_url and urlsplit(browser_url).hostname in {"canva.com", "www.canva.com"}:
+        browser_url = None
     browser_image = staff_browser.screenshot(browser_url) if browser_url and canva_mode != "video" else None
     if browser_image:
         reference_images.append(staff_browser.image_input(browser_image))
@@ -343,6 +352,15 @@ def _execute(task,staff):
         if source_required and (not sources or not (searched or data.get("agent_session"))):
             raise HTTPException(502,
                 "No verifiable web-search sources returned; source-backed research was not saved")
+    if not browser_url and search_enabled:
+        # Capture a source actually returned by the search tool, never a URL invented in the answer.
+        for source in sources:
+            candidate = staff_browser.public_url_from_brief(source["url"])
+            if candidate != source["url"] or urlsplit(candidate).hostname in {"canva.com", "www.canva.com"}:
+                continue
+            browser_url = candidate
+            browser_image = staff_browser.screenshot(candidate)
+            break
     image = None
     if image_requested:
         try:
@@ -415,7 +433,7 @@ def _execute(task,staff):
                 answer += f"\n- [Sumber rujukan]({source['url']})"
     if browser_url and canva_mode != "video":
         if browser_image:
-            answer += "\n\nCloud browser captured the public reference. See the attached screenshot."
+            answer += "\n\nCloud browser captured a public reference. See the attached screenshot."
         else:
             answer += "\n\nCloud browser did not return a screenshot for the public reference."
     ident=secrets.token_hex(12)
