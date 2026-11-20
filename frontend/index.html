@@ -319,6 +319,8 @@
 <div class="meita-thread-layout">
 <aside class="card" aria-label="Meita chat history">
  <button class="secondary" type="button" id="meitaNewChat" onclick="openMeitaThread()">+ New chat</button>
+ <button class="secondary" type="button" onclick="resetMeitaChats(this)">Reset old chats</button>
+ <label><input type="checkbox" id="meitaShowArchivedChats" onchange="loadMeita()"> Show archived chats</label>
  <h3 style="margin-top:14px">Recent chats</h3>
  <div id="meitaThreadList" style="max-height:440px;overflow:auto;display:grid;gap:6px"></div>
 </aside>
@@ -1576,25 +1578,40 @@ async function loadMeitaTaskHistory(){
 let activeMeitaThread=crypto.randomUUID().replaceAll('-','');
 let meitaThreadLoad=0;
 let meitaSending=false;
+let meitaArchivedThread=false;
 
 function openMeitaThread(id){
   if(meitaSending||meitaUploadBusy)return;
+  meitaArchivedThread=false;
   activeMeitaThread=id||crypto.randomUUID().replaceAll('-','');
   pendingMeitaReferences=[];renderMeitaReferences();
   $('meitaInput').value='';
   loadMeita();
 }
 
+async function resetMeitaChats(button){
+ if(meitaSending||meitaUploadBusy)return;
+ if(!confirm('Reset Meita chat history? Existing messages will be archived and a fresh chat will open.'))return;
+ button.disabled=true;
+ try{
+  await api('meita/threads/archive-all',{method:'POST'});
+  $('meitaShowArchivedChats').checked=false;
+  openMeitaThread();
+  msg('Meita chats archived');
+ }catch(error){msg(error.message)}
+ finally{button.disabled=false}
+}
 async function loadMeita(){
   try{
     const request=++meitaThreadLoad,thread=activeMeitaThread;
+    const archived=$('meitaShowArchivedChats').checked;
     const [r,history]=await Promise.all([
-      api('meita/history?thread_id='+encodeURIComponent(thread)),api('meita/threads')
+      api('meita/history?thread_id='+encodeURIComponent(thread)+'&include_archived='+archived),api('meita/threads?include_archived='+archived)
     ]);
     if(request!==meitaThreadLoad||thread!==activeMeitaThread)return;
     $('meitaThreadList').replaceChildren();
     for(const saved of history.threads){
-      const button=meitaNode('button',saved.title,'secondary');
+      const button=meitaNode('button',saved.title+(saved.archived?' · Archived':''),'secondary');
       button.type='button';
       button.style.textAlign='left';
       button.style.overflowWrap='anywhere';
@@ -1603,7 +1620,8 @@ async function loadMeita(){
       $('meitaThreadList').append(button);
     }
     $('meitaChat').textContent='';
-    r.messages.forEach(m=>{addMeita(m.role,m.content,m.proposal||null,m.id);if(m.reference_ids?.length)$('meitaChat').lastElementChild.append(meitaNode('p',m.reference_ids.length+' attached reference(s)','muted'));});
+    meitaArchivedThread=history.threads.some(saved=>saved.id===thread&&saved.archived);
+    r.messages.forEach(m=>{addMeita(m.role,m.content,meitaArchivedThread?null:m.proposal||null,meitaArchivedThread?null:m.id);if(m.reference_ids?.length)$('meitaChat').lastElementChild.append(meitaNode('p',m.reference_ids.length+' attached reference(s)','muted'));});
     if(!r.messages.length)addMeita('assistant','Hello CEO. Tell me what work to assign to our AI team.');
   }catch(e){msg(e.message)}
 }
@@ -1960,6 +1978,7 @@ $('meitaForm').addEventListener('submit',async e=>{
   e.preventDefault();
   const input=$('meitaInput'),typed=input.value.trim();
   if(meitaUploadBusy||meitaSending)return;
+  if(meitaArchivedThread){msg("Open a new chat to send an instruction.");return;}
   const message=typed||(pendingMeitaReferences.length?'Please review the attached CEO reference materials, describe their relevant creative direction and preserve them in Learning Academy for future team work.':'');
   if(!message){meitaUploadStatus('Write an instruction or attach at least one reference.',true);return;}
   const refs=[...pendingMeitaReferences];
