@@ -11,7 +11,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from backend import memory as office_memory
 from backend import workforce as office_workforce
 from backend import delegation as office_delegation
-from backend import office_db
+from backend import office_db, it_workspace
 from backend import organization as org
 from backend import monthly
 from backend import task_schedule
@@ -622,6 +622,55 @@ def meita_live_activity():
     combined=[dict(r) for r in rows]+[dict(r) for r in director_rows]
     combined.sort(key=lambda r:r["updated_at"] or "",reverse=True)
     return {'jobs':combined[:400]}
+
+class ITChatMessage(BaseModel):
+    thread_id: str = Field(pattern=r"^[a-f0-9]{32}$")
+    message: str = Field(min_length=1, max_length=6000)
+    source_file: str = Field(default="", max_length=160)
+    prepare_change: bool = False
+
+
+@app.get('/api/it/chat', dependencies=[Depends(guard)])
+def it_chat_history(thread_id: str = ""):
+    with connect() as db:
+        return {"threads": it_workspace.threads(db),
+                "turns": it_workspace.history(db, thread_id) if thread_id else []}
+
+
+@app.post('/api/it/chat', dependencies=[Depends(guard)])
+def it_chat_send(body: ITChatMessage):
+    message = body.message.strip()
+    if not message:
+        raise HTTPException(400, "Write a message to Daniel.")
+    with connect() as db:
+        previous = it_workspace.history(db, body.thread_id, 8)
+        director = db.execute("""SELECT id,name,department FROM staff
+            WHERE department='Technology & AI Systems' AND org_role='Director'
+            ORDER BY id LIMIT 1""").fetchone()
+        guidance = office_academy.relevant(db, message, staff=dict(director) if director else None,
+                                          limit=2, include_visual=False)["context"]
+    answer, proposal = it_workspace.reply(message, previous, body.source_file.strip(),
+                                          body.prepare_change, guidance)
+    with connect() as db:
+        db.execute("INSERT INTO it_chat_turns(thread_id,message,reply,proposal) VALUES(%s,%s,%s,%s)",
+                   (body.thread_id,message,answer,Jsonb(proposal) if proposal else None))
+    return {"reply": answer}
+
+
+@app.post('/api/it/chat/{ident}/draft-pr', dependencies=[Depends(guard)])
+def it_chat_draft_pr(ident: int):
+    with connect() as db:
+        turn = db.execute("SELECT proposal,pull_request_url FROM it_chat_turns WHERE id=%s FOR UPDATE",
+                          (ident,)).fetchone()
+        if not turn or not turn["proposal"]:
+            raise HTTPException(404, "IT change proposal not found.")
+        url = turn["pull_request_url"]
+        if not url:
+            url = it_workspace.draft_pull_request(ident, turn["proposal"])
+            db.execute("UPDATE it_chat_turns SET pull_request_url=%s WHERE id=%s", (url,ident))
+            audit(db, "it.draft_pr.created", str(ident))
+    return {"url": url}
+
 
 @app.get('/api/meita/threads', dependencies=[Depends(guard)])
 def meita_threads(include_archived:bool=False):
