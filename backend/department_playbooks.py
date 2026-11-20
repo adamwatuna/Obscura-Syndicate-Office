@@ -356,6 +356,33 @@ STRATEGY_WORKFLOW = {
         "by Finance. For a partnership, identify what each party contributes, key dependencies and "
         "any rights questions. Draft outreach for CEO review and keep commitments pending approval."
     ),
+    "Plan new revenue streams": (
+        "Build an Obscura growth roadmap beyond film and video production. Consider complementary "
+        "client opportunities such as public Behance listings where accessible, recurring service "
+        "packages, reusable digital products and licensing where rights permit. Separate active "
+        "client work, recurring services and low-maintenance income. State the initial effort "
+        "and ongoing support each requires. Compare each opportunity with the supplied staff capacity "
+        "and approved portfolio. Flag gaps in skills, tools or evidence. Propose a practical "
+        "30/60/90-day plan with one small validation experiment, proposed owner, expected costs, "
+        "measurable demand signal and a stop condition. Treat unverified listings as leads, "
+        "estimates as assumptions, and submit recommendations for CEO review."
+    ),
+    "Build and validate business opportunities": (
+        "Turn a promising opportunity into a business case with target customer, offer, route to market, "
+        "startup and recurring cost, pricing assumptions, unit economics, owner, milestones and a "
+        "weekly scoreboard. Compare base, downside and upside scenarios without promising returns. "
+        "Propose a small validation test first, then recommend whether to scale, pivot or stop from "
+        "measurable demand, contribution margin and available team capacity. Flag what needs Finance, "
+        "Operations or Governance input before commitment."
+    ),
+    "Review speculative opportunities": (
+        "If asked about Bitcoin, crypto or forex, classify trading or holding for price appreciation "
+        "as speculative exposure distinct from operating revenue. Use current official Malaysian "
+        "regulator information when assessing regulatory status. Explain loss, volatility, leverage, "
+        "liquidity and counterparty risks as relevant. Compare against lower-capital operating "
+        "opportunities and report any uncertainty. Do not trade, recommend specific positions or "
+        "allocation, connect trading accounts, transfer funds or promise gains."
+    ),
     "Recommend a decision": (
         "Give one recommendation: proceed, run a small pilot or defer. Include the strongest alternative, "
         "the main trade-off, assumptions that would change the decision and the first action with an owner. "
