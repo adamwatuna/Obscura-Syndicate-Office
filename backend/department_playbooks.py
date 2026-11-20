@@ -344,6 +344,26 @@ def operations_ai_research_requested(title, brief):
     ))
 
 
+STRATEGY_WORKFLOW = {
+    "Compare opportunities": (
+        "Compare eligible client work, grants, private funding and original films using the same "
+        "criteria: portfolio fit, potential revenue or funding, costs, timing, capacity and key risks. "
+        "Use approved Academy positioning and portfolio, verified Research findings, Finance estimates "
+        "and Operations capacity when available. Date the evidence and mark material gaps."
+    ),
+    "Shape offers and partnerships": (
+        "Propose service packages with scope, deliverables, schedule, assumptions and price supported "
+        "by Finance. For a partnership, identify what each party contributes, key dependencies and "
+        "any rights questions. Draft outreach for CEO review and keep commitments pending approval."
+    ),
+    "Recommend a decision": (
+        "Give one recommendation: proceed, run a small pilot or defer. Include the strongest alternative, "
+        "the main trade-off, assumptions that would change the decision and the first action with an owner. "
+        "For a pilot define a measurable success criterion and a stop condition."
+    ),
+}
+
+
 def role_deliverable(staff):
     department = staff["department"]
     if department == "Research & Intelligence":
@@ -388,6 +408,8 @@ def work_tree(staff, outputs):
     if department == "Operations & Project Management":
         steps.insert(-1, {"label": "Project records and improvements", "detail": OPERATIONS_REVIEW})
         steps.insert(-1, {"label": "AI updates and app research", "detail": OPERATIONS_AI_RESEARCH})
+    if department == "Strategy & Business Development":
+        steps[-1:-1] = [{"label": name, "detail": detail} for name, detail in STRATEGY_WORKFLOW.items()]
     return steps
 
 
@@ -421,6 +443,8 @@ def agent_scope(staff):
         "If no relevant material is available, work from the brief and state any material gaps. "
         "Before submission compare the actual result with the brief and report unmet acceptance criteria."
     )
+    if department == "Strategy & Business Development":
+        scope += " Follow the relevant Strategy workflow: " + " ".join(STRATEGY_WORKFLOW.values())
     if department == "Operations & Project Management":
         scope += " " + OPERATIONS_REVIEW + " " + OPERATIONS_AI_RESEARCH
     if department == "Finance & Treasury":
