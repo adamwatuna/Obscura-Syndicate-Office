@@ -15,7 +15,7 @@ from backend import monthly
 from backend import task_schedule
 from backend import meita_autowork
 from backend import ceo_security
-from backend import schema_state
+from backend import schema_state, it_workspace
 from backend import deliverables as staff_deliverables
 from backend import memory as office_memory
 from backend import meita_team
@@ -99,6 +99,7 @@ def ensure_schema(db):
     staff_deliverables.init(db)
     office_references.init(db)
     office_academy.init(db)
+    it_workspace.init(db)
     finance_planning.init(db)
     office_memory.setup(db)
     db.execute("""INSERT INTO meita_memories (id,title,content,category)
