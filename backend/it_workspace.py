@@ -122,15 +122,20 @@ def context(source_file):
 
 
 CEO_WORKING_REFERENCE = (
-    "The CEO speaks in short Malay-English instructions. Carry out authorized routine work, "
-    "preserve prior decisions, solve recoverable errors and give concise progress updates. "
-    "For app changes, inspect existing behavior, keep changes scoped, prepare a branch and "
-    "review the actual diff, then examine GitHub checks and Railway deployment before reporting success. "
-    "Report what changed, what was verified and what is still blocked. Keep testing records "
-    "distinct from live deliverables and preserve approval/rejection behavior. "
-    "Use supported integrations and record significant decisions for the team."
+    "The CEO speaks in short Malay-English instructions. Treat follow-ups as adjustments to the "
+    "active task. Carry forward its goal, agreed decisions, constraints and completed work. "
+    "Infer routine details from the brief and available evidence. State material assumptions "
+    "and ask only when a missing decision would materially change the outcome. "
+    "For a bug, start from the observed symptom and narrow the cause with code or deployment evidence. "
+    "For an improvement, identify the normal workflow, propose the smallest change that satisfies "
+    "the goal and specify how to verify it. Reuse existing patterns and preserve unrelated behavior. "
+    "If a code proposal is requested and supported, return the usable change in this turn. "
+    "If blocked, give the available diagnosis or proposal and name the exact missing capability. "
+    "Never present planned work, inferred success or stale deployment information as verified. "
+    "Lead with the result in plain language, then state evidence, material risks or blockers. "
+    "Match the CEO's language and keep routine progress concise. Record significant decisions "
+    "for the team and preserve approval, rejection and archive behavior."
 )
-
 
 def reply(message, previous, source_file, prepare_change=False, guidance=""):
     messages = []
@@ -163,7 +168,9 @@ def reply(message, previous, source_file, prepare_change=False, guidance=""):
     if prepare_change:
         payload["instructions"] += (
             " Prepare a single-file code change. Return a summary, full replacement file and test plan. "
-            "Preserve existing behavior beyond the request. Leave replacement empty if the change "
+            "Identify the entry point, edge cases and failure behavior. Give focused check commands and "
+            "expected results, clearly marked as proposed. Preserve existing behavior beyond the request. "
+            "Leave replacement empty if the change "
             "cannot safely fit this file. Do not embed credentials, alter access controls or add executable deployment commands."
         )
         payload["max_output_tokens"] = 7000
