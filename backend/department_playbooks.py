@@ -178,6 +178,17 @@ def research_role_steps(staff):
     return RESEARCH_ROLE_STEPS.get(staff["role"].casefold().removeprefix("ai "), "")
 
 
+BRAND_MONITORING = (
+    "For brand monitoring or dark-web exposure checks, use the supplied official brand names "
+    "and domains. Search public advisories, publisher reports and official notices for named "
+    "mentions, impersonation or reported exposure. Record the original source, published date, "
+    "observed evidence, confidence and a suggested internal follow-up. Separate a confirmed "
+    "brand match from a similar name or an uncorroborated claim. Do not infer a breach from "
+    "a mention or absence of results. Use only enabled public sources. Do not retrieve or "
+    "reproduce leaked records, credentials or personal data. State the monitoring coverage."
+)
+
+
 def work_tree(staff, outputs):
     department = staff["department"]
     steps = [
@@ -195,6 +206,8 @@ def work_tree(staff, outputs):
         role_steps = research_role_steps(staff)
         if role_steps:
             steps.insert(-1, {"label": "Complete role deliverable", "detail": role_steps})
+        if staff.get("org_role") == "Director" or staff["role"].casefold() == "ai osint researcher":
+            steps.insert(-1, {"label": "Brand monitoring", "detail": BRAND_MONITORING})
     return steps
 
 
@@ -231,6 +244,8 @@ def agent_scope(staff):
             "finding has an actual source and its verification status. If an original listing is "
             "inaccessible, exclude it from the verified shortlist."
         )
+    if department == "Research & Intelligence":
+        scope += " " + BRAND_MONITORING
     if staff.get("org_role") == "Director":
         scope += (
             " As Director, own departmental planning, coordination and quality review. "
