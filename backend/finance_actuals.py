@@ -49,16 +49,16 @@ def record(db, entry):
 def usd_rates(cache_period):
     """Cache the public BNM noon midpoint feed for one hour per process."""
     url = "https://storage.data.gov.my/finsector/exr/daily_1200.csv"
-    with urllib.request.urlopen(url, timeout=6) as stream:
+    with urllib.request.urlopen(url, timeout=12) as stream:
         raw = stream.read(8_000_001)
     if len(raw) > 8_000_000:
         raise ValueError("Unexpected BNM dataset size")
     rows = csv.DictReader(io.StringIO(raw.decode("utf-8-sig")))
     rates = {}
     for row in rows:
-        if row.get("rate_type") != "middle" or not row.get("usd"):
+        if row.get("rate_type") != "middle" or not row.get("USD"):
             continue
-        rate = Decimal(row["usd"])
+        rate = Decimal(row["USD"])
         if rate.is_finite() and rate > 0:
             rates[date.fromisoformat(row["date"])] = rate
     if not rates:
