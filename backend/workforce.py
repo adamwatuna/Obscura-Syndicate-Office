@@ -49,8 +49,9 @@ def _queue_opportunity_handoff(db, run):
     assignments = {
         "creative copywriter": (
             "Draft freelance pitches",
-            "Draft a tailored pitch for each of the two best verified leads. Include a subject, "
-            "a short opening and a specific next step. Do not send applications.",
+            "Draft tailored pitch copy for the two best verified leads. For a grant or fund, "
+            "draft a short project case aligned to the published criteria and list the required materials. "
+            "For a job, include a subject, a short opening and a next step. Do not send applications.",
         ),
         "art director": (
             "Select portfolio examples",
@@ -227,10 +228,11 @@ def _execute(task,staff):
     if task.get("category") == "Opportunity Scan":
         instruction += (
             " JOB RADAR: Search public original listings, including Behance where accessible. "
-            "Prioritize relevant freelance or studio contracts in Malaysia or remote. Deduplicate "
+            "Follow the requested opportunity types, including grants or private funding when in scope. "
+            "For job searches, prioritize relevant freelance or studio contracts in Malaysia or remote. Deduplicate "
             "and rank up to five by fit, deadline and evidence. For each provide client, service, "
             "scope, budget and deadline if stated, and the original URL. Keep unconfirmed leads "
-            "out of the shortlist. Draft tailored pitches for up to two verified leads, with "
+            "out of the shortlist. When pitching is requested, draft tailored pitches for up to two verified leads, with "
             "a suggested portfolio sample described by type unless a real approved link is supplied. "
             "Keep the pitches ready for CEO review and do not claim to have applied."
         )
