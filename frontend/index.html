@@ -234,10 +234,19 @@
 .research-headline h4{font:700 clamp(1.12rem,2vw,1.55rem)/1.2 Georgia,serif;margin:.5em 0}
 .research-headline a{text-decoration:underline;text-underline-offset:.18em}
 </style>
+<style>
+.office-split{display:grid;grid-template-columns:minmax(180px,1fr) minmax(0,2fr);gap:14px}
+.office-metrics{display:grid;gap:8px;margin-top:12px}
+.office-desk{border:1px solid var(--line,#d7dee7);padding:12px 15px;border-radius:9px}
+.office-desk summary,#assignedTasks summary{cursor:pointer;font-weight:650}
+.office-roster{margin-top:12px}
+[hidden]{display:none!important}
+@media(max-width:680px){.office-split{grid-template-columns:minmax(0,1fr)}}
+</style>
 </head><body><div id="login" class="login"><div class="panel"><div class="eyebrow">PRIVATE EXECUTIVE WORKSPACE</div><h1>AI Private Office</h1><p>Welcome back. Sign in to access your executive workspace.</p><form id="loginForm"><label for="password">CEO password</label><input id="password" type="password" autocomplete="current-password" required>
  <div id="loginMfaWrap" class="hidden" style="margin-top:14px"><label for="loginMfaCode">Authenticator or recovery code</label><input id="loginMfaCode" type="text" autocomplete="one-time-code" inputmode="text" maxlength="32" placeholder="6-digit code or saved recovery code"><p class="muted">Enter the code from your authenticator app. Recovery codes work once.</p></div>
  <div style="height:18px"></div><button class="primary" style="width:100%">Sign in securely</button><p id="loginError" class="err"></p></form><p style="font-size:11px">Authorized access only.</p></div></div>
-<div id="app" class="shell hidden"><aside><div class="brand">AI Private Office<small>EXECUTIVE WORKSPACE</small></div><div class="nav" id="nav"><button data-view="hq" class="active">◫ &nbsp; Executive HQ</button><button data-view="meita">✦ &nbsp; Meita AI</button><button data-view="memory">◈ &nbsp; Memory Centre</button><button data-view="workforce">♙ &nbsp; AI Workforce</button><button data-view="desks">▦ &nbsp; Live Desks</button><button data-view="tasks">☑ &nbsp; Task Centre</button><button data-view="deliverables">▧ &nbsp; Submitted Work</button><button data-view="monthly">▣ &nbsp; Monthly Workplan</button><button data-view="academy">▤ &nbsp; Learning Academy</button><button data-view="research">⌕ &nbsp; Research Intelligence</button><button data-view="finance">◈ &nbsp; Finance & Audit</button><button data-view="integrations">⌘ &nbsp; Integration Centre</button><button data-view="governance">◇ &nbsp; Governance</button></div><div class="bottom"><button class="secondary" id="logout">Sign out</button><p>Private office environment</p></div></aside><main><header class="top"><div><div class="eyebrow">YOUR EXECUTIVE WORKSPACE</div><h1 id="pageTitle">Executive HQ</h1><div class="muted" id="today"></div></div><span class="pill">● Private workspace</span></header>
+<div id="app" class="shell hidden"><aside><div class="brand">AI Private Office<small>EXECUTIVE WORKSPACE</small></div><div class="nav" id="nav"><button data-view="hq" class="active">◫ &nbsp; Executive HQ</button><button data-view="meita">✦ &nbsp; Meita AI</button><button data-view="workforce">♙ &nbsp; AI Workforce</button><button data-view="desks">▦ &nbsp; Live Desks</button><button data-view="deliverables">▣ &nbsp; Task Centre</button><button data-view="monthly">▣ &nbsp; Monthly Workplan</button><button data-view="academy">▤ &nbsp; Learning Academy</button><button data-view="research">⌕ &nbsp; Research Intelligence</button><button data-view="finance">◈ &nbsp; Finance & Audit</button><button data-view="integrations">⌘ &nbsp; Integration Centre</button><button data-view="governance">◇ &nbsp; Governance</button></div><div class="bottom"><button class="secondary" id="logout">Sign out</button><p>Private office environment</p></div></aside><main><header class="top"><div><div class="eyebrow">YOUR EXECUTIVE WORKSPACE</div><h1 id="pageTitle">Executive HQ</h1><div class="muted" id="today"></div></div><span class="pill">● Private workspace</span></header>
 <section class="view active" id="hq">
 <div class="hq-hero">
  <div><div class="hq-kicker">OBSCURA · EXECUTIVE COMMAND DESK</div>
@@ -287,8 +296,7 @@
  <div id="hqNewsList"><p class="muted">Loading staff news briefings…</p></div>
  <p class="muted" style="font-size:11px">Briefings are generated only when CEO selects Run AI. Drafts require CEO approval and may incur web-search API charges. News may become outdated after the research time.</p>
 </div><div class="notice">Manage departments through Meita and your Directors. Authorized AI staff can generate internal deliverables for CEO review; external application access, publishing and payments are not connected.</div></section>
-<section class="view" id="memory"><div class="toolbar"><div><p>CEO-approved instructions and automatically saved AI delivery notes. AI outputs are labelled as unverified until reviewed.</p></div><button class="secondary" onclick="loadMemory()">Refresh</button></div><div class="notice" style="margin-bottom:16px">Meita automatically stores concise, clearly labelled AI delivery excerpts here. For charts and presentation slides, open <button type="button" class="secondary" onclick="show('meita');document.getElementById('meitaDeliverables').scrollIntoView({behavior:'smooth',block:'start'})">Meita Deliverables</button>.</div>
-<div class="card"><h3 id="memoryHeading">Save a memory</h3><form id="memoryForm"><label>Title</label><input id="memoryTitle" maxlength="120" required placeholder="CEO's communication style"><label>Category</label><select id="memoryCategory"><option>CEO instruction</option><option>CEO preference</option><option>Company knowledge</option><option>Task decision</option></select><label>Content</label><textarea id="memoryContent" rows="5" maxlength="3000" required placeholder="Approved information for Meita to remember"></textarea><div style="height:12px"></div><button class="primary" id="memorySave">Save memory</button> <button type="button" class="secondary" onclick="resetMemory()">Cancel edit</button></form></div><div class="card" style="margin-top:20px"><h3>Saved memories</h3><div id="memoryList"><p>Loading…</p></div></div><div class="notice">CEO approval is required to create or change memory. Memory access is currently limited to Meita. Do not store passwords or API keys.</div></section><section class="view" id="meita">
+<section class="view" id="meita">
 <div class="toolbar"><div>
 <p>CEO speaks once. Meita coordinates the AI team, assigns internal work and delivers the results.</p></div>
 <button class="secondary" type="button" onclick="refreshMeitaOffice()">Refresh progress</button></div>
@@ -333,66 +341,10 @@
  </form>
 </div>
 </div>
-<div class="card" style="margin-top:20px" id="meitaAiHealth">
- <div class="toolbar"><div><h3>AI Engine Health &amp; Queue</h3>
- <p>See real provider errors, available credits diagnosis and worker activity before retrying failed tasks.</p></div>
- <button type="button" class="secondary" onclick="loadAiDiagnostics()">Refresh status</button></div>
- <div id="meitaAiHealthStatus" class="notice">Checking AI engine and queue…</div>
- <div class="task-actions" style="margin-top:12px">
- <button type="button" class="secondary" id="aiCheckConnection" onclick="checkAiConnection()">Check API key &amp; model (no generation charge)</button>
- <button type="button" class="secondary" id="aiTestGeneration" onclick="testAiGeneration()">Test real AI generation (uses small API credits)</button>
- <button type="button" class="primary hidden" id="aiResumeQueue" onclick="resumeAiQueue()">Resume queued AI jobs</button>
- </div>
- <div id="meitaAiTestFeedback" class="muted" role="status" aria-live="polite" style="margin-top:8px"></div>
- <div id="meitaRecentAiFailures" style="margin-top:12px"></div>
-</div>
 <div class="card" style="margin-top:20px" id="meitaTaskHistory">
  <div class="toolbar"><div><h3>Task History</h3><p>Every CEO-requested task, assigned staff and live execution status.</p></div>
  <button type="button" class="secondary" onclick="loadMeitaTaskHistory()">Refresh tasks</button></div>
- <div id="meitaTaskList"><p class="muted">No Meita task requests yet.</p></div>
-</div>
-<div class="card" style="margin-top:20px" id="meitaDeliverables">
- <div class="toolbar"><div><h3>Meita Presents · Executive Deliverables</h3>
- <p>Real 16:9 presentation slides summarizing work the AI team actually produced, with task-progress charts and an editable PowerPoint download.</p></div></div>
- <label for="meitaDeckSelect">Choose a CEO assignment</label>
- <div class="formgrid"><div><select id="meitaDeckSelect"><option value="">Select a project delivery</option></select></div>
- <div style="align-self:end"><button type="button" class="secondary" onclick="loadMeitaDeck()">Refresh presentation</button></div></div>
- <div id="meitaDeckEmpty" class="notice" style="margin-top:12px">Once Meita assigns your first project, its presentation will be available here. Slides update as staff reports arrive.</div>
- <div id="meitaDeckArea" class="hidden">
-   <div class="meita-deck" id="meitaSlideSurface">
-     <div class="meita-deck-top"><span>OBSCURA / MEITA</span><span id="meitaSlideCount">01 / 01</span></div>
-     <div id="meitaSlideContent"></div>
-     <div class="meita-deck-foot">AI-GENERATED · INTERNAL DRAFT · VERIFY FACTS BEFORE EXTERNAL USE</div>
-   </div>
-   <div class="task-actions" style="justify-content:space-between;margin-top:14px">
-     <div class="task-actions">
-       <button class="secondary" type="button" onclick="stepMeitaSlide(-1)">Previous slide</button>
-       <button class="secondary" type="button" onclick="stepMeitaSlide(1)">Next slide</button>
-     </div>
-     <button type="button" class="primary" onclick="downloadMeitaPptx()">↓ Download PowerPoint</button>
-   </div>
-   <p id="meitaDeckProgress" class="muted" style="margin-top:12px"></p>
-   <details style="margin-top:18px"><summary>Read the full original AI staff reports</summary><div id="meitaFullReports" style="margin-top:12px"></div></details>
- </div>
-</div>
-<div class="card" style="margin-top:20px" id="meitaConfiguration">
- <div class="toolbar"><div><h3>Meita Configuration</h3>
- <p>Control internal autonomy, delegation scope and limits. External publishing and financial permissions remain separate.</p></div>
- <button class="secondary" type="button" onclick="loadMeitaConfiguration()">Refresh</button></div>
- <form id="meitaSettingsForm">
-   <div class="formgrid">
-     <div><label for="meitaDelegationScope">Team access</label>
-      <select id="meitaDelegationScope"><option value="all_staff">All Directors & AI Specialists</option><option value="directors_only">Directors only</option></select></div>
-     <div><label for="meitaJobLimit">Max assignments per CEO instruction</label>
-      <input id="meitaJobLimit" type="number" min="1" max="9" required value="9"></div>
-     <div><label for="meitaAutoExecute">Automatic internal execution</label>
-      <select id="meitaAutoExecute"><option value="true">ON — Assign & run AI after CEO instruction</option>
-      <option value="false">OFF — Proposal needs separate approval</option></select></div>
-   </div>
-   <div class="task-actions" style="margin-top:14px"><button class="primary" type="submit" id="meitaSettingsSave">Save Configuration</button></div>
- </form>
- <p class="muted" style="margin-top:15px">Automation applies only to internal AI writing, planning, analysis and drafts. No social publishing, purchases, payouts, outside messages or system deployment without specific permission. Every AI task uses your API credits.</p>
- <div id="meitaTeamRoster" style="margin-top:12px"></div>
+ <div class="office-split"><div id="meitaTaskList" class="delivery-list" aria-label="Meita task requests"></div><article id="meitaTaskDetail" class="delivery-detail">Select a task request to see its details.</article></div>
 </div>
 </section><section class="view" id="workforce"><div class="toolbar"><div><p>Manage AI staff agents, departments and access.</p></div><button class="primary" onclick="newStaff()">+ Hire AI staff</button></div><div id="staffForm" class="card hidden"><div class="toolbar"><h3 id="staffFormHeading">New AI staff configuration</h3><button type="button" class="secondary" onclick="cancelStaffForm()">Close</button></div><p class="muted">Configuration is stored privately. Staff cards show only public profile details.</p><form id="hireForm" class="formgrid"><div><label>Name</label><input name="name" required></div><div><label>Job title</label><input name="role" placeholder="Video Editor, Social Media Specialist..." required></div><div><label>Department</label><select name="department" id="staffDepartment"><option>Executive Office</option><option>Research &amp; Intelligence</option><option>Marketing &amp; Growth</option><option>Creative</option><option>Finance &amp; Treasury</option><option>Operations &amp; Project Management</option><option>Technology &amp; AI Systems</option><option>Strategy &amp; Business Development</option><option>Knowledge &amp; Learning Academy</option><option>Governance, Risk &amp; Compliance</option><option>Independent Audit</option></select></div><div><label>Organizational position</label><select name="org_role" id="staffOrgRole"><option value="Specialist">AI Specialist (reports to Director)</option><option value="Director">Department Director (reports to Meita)</option><option value="Independent Auditor">Independent Auditor (direct CEO)</option></select></div><div id="staffManagerArea"><label>Reports to (Director)</label><select name="manager_id" id="staffManager"><option value="">Unassigned until Director is hired</option></select></div><div id="staffPermissionArea" class="hidden"><label>Director delegation authority</label><select name="delegation_permission" id="staffPermission"><option value="approval_required">CEO approves department assignments</option><option value="department_internal">Delegate routine internal work within department</option></select></div><div><label>Autonomy</label><select name="autonomy"><option>Approval required</option><option>Advisory only</option><option>Routine internal tasks only</option></select></div><div class="wide"><p class="muted" id="staffPolicyNote">Directors can assign only their own department specialists. External actions always require CEO approval.</p></div><div class="wide hidden" id="staffAgentControls"><label for="staffAgentId">OpenAI Agent ID</label><input id="staffAgentId" maxlength="64" placeholder="agent_…"><button type="button" class="secondary" id="staffAgentLink" onclick="linkStaffAgent()">Link saved agent</button></div><div class="wide"><label>Agent job scope &amp; internal instructions</label><textarea name="expertise" rows="7" maxlength="16000" placeholder="Role expertise, reporting line, workflow and CEO-approved instructions..."></textarea></div><div class="wide"><label>Requested tools (not connected)</label><textarea name="tools" rows="3" maxlength="2000" placeholder="CapCut, Instagram, Canva..."></textarea></div><div class="wide"><button class="primary" id="staffSave">Save staff configuration</button> <button type="button" class="secondary" onclick="cancelStaffForm()">Cancel</button></div></form></div><div class="workforce-hierarchy" id="staffList" style="margin-top:22px"></div>
 <div class="notice" style="margin-top:16px">Reporting route: CEO → Meita → Nine Department Directors → their Specialists. Independent Internal Audit reports directly to CEO. Finance is budget-planning only; no bank account integration.</div>
@@ -402,9 +354,11 @@
 <div class="notice">Routine internal delegation is allowed only for Directors authorized by the CEO. Finance, Technology, Strategy and Compliance plans always require CEO approval. No publishing, spending or external actions.</div>
 <div id="directorPlanList"><p>No Director plans yet.</p></div></div>
 </section>
-<section class="view" id="desks"><p>Clean interactive desk view. Each workstation reflects recorded tasks, not fictional activity.</p><div class="deskgrid" id="deskList"></div></section>
-<section class="view" id="tasks"><div class="toolbar"><div><p>Create detailed AI assignments, prioritize deadlines, manage recurrence and review deliverables.</p></div><button class="primary" onclick="newOfficeTask()">+ New task</button></div>
-<div id="taskForm" class="card hidden" style="margin-top:18px"><div class="toolbar"><h3 id="taskFormHeading">New AI assignment</h3><button class="secondary" type="button" onclick="cancelOfficeTask()">Close</button></div>
+<section class="view" id="desks"><div class="card"><h3>Workload by department</h3><div id="deskList" class="office-metrics"></div></div></section>
+<section class="view" id="deliverables">
+ <div class="toolbar"><h2>Work overview</h2><div class="task-actions"><button class="primary" onclick="newOfficeTask()">+ New task</button><button class="secondary" onclick="refresh();loadDeliveryInbox()">Refresh</button></div></div>
+ <div class="card"><h3>Task status</h3><div id="taskWorkload" class="office-metrics"></div></div>
+ <div id="taskForm" class="card hidden" style="margin-top:18px"><div class="toolbar"><h3 id="taskFormHeading">New AI assignment</h3><button class="secondary" type="button" onclick="cancelOfficeTask()">Close</button></div>
 <form id="newTaskForm"><label>Task title</label><input name="title" maxlength="250" required placeholder="Prepare November market intelligence briefing">
 <label>Task description / AI instructions</label><textarea name="description" rows="5" maxlength="3000" required placeholder="Define scope, deliverables, references, quality expectations and what the AI must not do."></textarea>
 <div class="formgrid"><div><label>Task category</label><select name="category" id="taskCategory"><option value="General">General Task</option><option value="News Update">News Update · Executive Briefing</option><option value="Opportunity Scan">Opportunity Scan</option></select></div><div><label>Assign to AI staff</label><select name="assignee" id="assignee"><option value="">Unassigned</option></select></div>
@@ -414,10 +368,12 @@
 <div class="notice">Recurring tasks create future assignments at the selected frequency. Generating a task does not automatically run AI. News Update tasks use cited web search when CEO selects Run AI, which may incur extra API charges.</div>
 <button class="primary" id="taskSave" type="submit">Create task</button><button type="button" class="secondary" onclick="cancelOfficeTask()">Cancel</button>
 </form></div>
-<div class="card" style="margin-top:20px"><div class="toolbar"><div><h3>Assigned Tasks</h3><p>Edit a task before Run AI. Sort by priority and nearest deadline.</p></div><button class="secondary" onclick="refresh()">Refresh tasks</button></div><div id="taskList"></div></div>
-<div class="card" style="margin-top:20px"><div class="toolbar"><div><h3>Staff submissions &amp; completed work</h3><p>All AI reports, CEO approvals and genuine files now live together in Submitted Work.</p></div><button class="primary" type="button" onclick="show('deliverables');loadDeliveryInbox()">Open Submitted Work</button></div><div id="runList" class="muted" style="font-size:12px">Review AI output and download files from Submitted Work.</div></div></section>
-<section class="view" id="deliverables">
- <div class="toolbar"><div><p>One inbox for all completed and submitted AI staff work, across every department. Reports are real saved outputs; media appears only if actual files exist.</p></div><button type="button" class="secondary" onclick="loadDeliveryInbox()">Refresh submissions</button></div>
+
+ <details id="assignedTasks" class="card" style="margin-top:16px"><summary>Assigned tasks</summary>
+ <div class="toolbar"><input id="assignedTaskSearch" aria-label="Search assigned tasks" placeholder="Search assigned tasks…" oninput="changeAssignedFilter()">
+ <select id="assignedTaskStatus" aria-label="Filter assigned tasks" onchange="changeAssignedFilter()"><option value="open">Open tasks</option><option value="all">All statuses</option><option>To do</option><option>In progress</option><option>For approval</option><option>Completed</option><option>Abandoned</option></select></div>
+ <div id="taskList"></div><div class="task-actions"><button type="button" class="secondary" onclick="pageAssignedTasks(-1)" id="assignedPrev">Previous</button><span id="assignedPage"></span><button type="button" class="secondary" onclick="pageAssignedTasks(1)" id="assignedNext">Next</button></div></details>
+ <h3 style="margin-top:22px">Submitted work</h3>
  <div class="delivery-summary" id="deliveryStats">
   <div><strong id="deliveryCountAll">0</strong><span>All submissions</span></div>
   <div><strong id="deliveryCountReview">0</strong><span>For CEO approval</span></div>
@@ -467,10 +423,18 @@
   <div>
    <p>Meita references, CEO visions and internal knowledge for the AI team — all connected.</p></div>
   <div class="task-actions"><button class="secondary" type="button" onclick="loadAcademyLibrary()">Refresh library</button>
-   <button class="primary" onclick="show('meita');$('meitaReferenceInput').click()">＋ Upload new reference</button>
+   <button class="primary" type="button" onclick="openAcademyUpload()">＋ Upload training reference</button>
    <button class="secondary" onclick="toggle('lessonForm')">＋ Add note or link</button></div>
  </div>
- <div class="notice">Files and website links shared with Meita automatically appear here. Delegated project briefs are indexed as CEO Vision. Relevant, permitted material is supplied to AI Staff during task execution, not used for permanent model training. YouTube links are only saved unless separately processed.</div>
+ <p class="muted">Staff apply relevant examples and CEO guidance while doing their work. Give each example a scope and topic tags so it reaches the right staff.</p>
+ <form class="card formgrid hidden" id="academyUploadForm">
+  <div><label for="academyTrainingFile">Reference file · up to 20 MB</label><input id="academyTrainingFile" name="file" type="file" required></div>
+  <div><label for="academyTrainingScope">Use this reference for</label><select id="academyTrainingScope" name="academy_scope"></select></div>
+  <div><label for="academyTrainingTags">Topic tags</label><input id="academyTrainingTags" name="academy_tags" maxlength="240" placeholder="e.g. screenplay, dialogue, film"></div>
+  <div class="wide"><label for="academyTrainingGuidance">What staff should apply</label><textarea id="academyTrainingGuidance" name="academy_guidance" rows="3" maxlength="3000" placeholder="e.g. Use this pacing and formatting for new scripts."></textarea></div>
+  <div class="wide"><button class="primary" type="submit">Save reference</button> <button class="secondary" type="button" onclick="toggle('academyUploadForm')">Close</button></div>
+  <p class="muted wide" id="academyUploadFeedback" role="status"></p>
+ </form>
  <div class="card" style="margin-top:20px">
   <div class="toolbar"><div><h3>Reference & Vision Library</h3><p class="muted">Search, annotate, scope and reuse existing CEO knowledge.</p></div><span class="tag" id="academyLibraryCount">Loading library</span></div>
   <div class="formgrid">
@@ -581,6 +545,22 @@
 <div id="socialPostList"><p class="muted">No social post drafts yet.</p></div></div>
 </section>
 <section class="view" id="governance">
+ <div class="card"><h3>Audit activity</h3><div id="auditChart" class="office-metrics"></div></div>
+ <div class="card" style="margin-top:20px" id="meitaAiHealth">
+  <div class="toolbar"><p id="officeAutomationStatus" aria-live="polite">Checking MEITA automation…</p><button type="button" class="secondary hidden" id="officeAutomationEnable" onclick="enableOfficeAutomation()">Enable Auto Execute</button></div>
+ <div class="toolbar"><div><h3>AI Engine Health &amp; Queue</h3>
+ <p>See real provider errors, available credits diagnosis and worker activity before retrying failed tasks.</p></div>
+ <button type="button" class="secondary" onclick="loadAiDiagnostics()">Refresh status</button></div>
+ <div id="meitaAiHealthStatus" class="notice">Checking AI engine and queue…</div>
+ <div class="task-actions" style="margin-top:12px">
+ <button type="button" class="secondary" id="aiCheckConnection" onclick="checkAiConnection()">Check API key &amp; model (no generation charge)</button>
+ <button type="button" class="secondary" id="aiTestGeneration" onclick="testAiGeneration()">Test real AI generation (uses small API credits)</button>
+ <button type="button" class="primary hidden" id="aiResumeQueue" onclick="resumeAiQueue()">Resume queued AI jobs</button>
+ </div>
+ <div id="meitaAiTestFeedback" class="muted" role="status" aria-live="polite" style="margin-top:8px"></div>
+ <div id="meitaRecentAiFailures" style="margin-top:12px"></div>
+</div>
+
  <div class="card" id="ceoSecurityCard">
   <div class="toolbar"><div><h3>CEO Security</h3><p>Protect this personal executive workspace with an authenticator app and one-time recovery codes.</p></div><button type="button" class="secondary" onclick="loadCEOSecurityStatus()">Refresh</button></div>
   <div id="ceoMfaStatus" class="notice" aria-live="polite">Loading security status…</div>
@@ -687,7 +667,7 @@ async function copyCEORecoveryCodes(){
 async function api(path,options={}){const r=await fetch('/api/'+path,{credentials:'same-origin',headers:{'Content-Type':'application/json'},...options});if(r.status===401){$('app').classList.add('hidden');$('login').classList.remove('hidden');throw Error('Session expired. Please sign in.')}if(!r.ok){let j=await r.json().catch(()=>({}));throw Error(j.detail||'Request failed')}return r.json()}
 function msg(s){$('toast').textContent=s;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',3000)}
 function toggle(id){$(id).classList.toggle('hidden')}
-function show(id){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('active',e.id===id));document.querySelectorAll('[data-view]').forEach(e=>e.classList.toggle('active',e.dataset.view===id));$('pageTitle').textContent=({hq:'Executive HQ',meita:'Meita · Acting COO',memory:'Memory Centre',workforce:'Your AI Workforce',desks:'Live Desks',tasks:'Task Centre',monthly:'Monthly Workplan',academy:'Learning Academy',research:'Research Intelligence',finance:'Finance & Audit',deliverables:'Submitted Work',integrations:'Integration Centre',governance:'Governance'})[id];window.scrollTo(0,0)}
+function show(id){if(id==='tasks'){id='deliverables';$('assignedTasks').open=true} document.querySelectorAll('.view').forEach(e=>e.classList.toggle('active',e.id===id));document.querySelectorAll('[data-view]').forEach(e=>e.classList.toggle('active',e.dataset.view===id));$('pageTitle').textContent=({hq:'Executive HQ',meita:'Meita · Acting COO',workforce:'Your AI Workforce',desks:'Live Desks',monthly:'Monthly Workplan',academy:'Learning Academy',research:'Research Intelligence',finance:'Finance & Audit',deliverables:'Task Centre',integrations:'Integration Centre',governance:'Governance'})[id];window.scrollTo(0,0)}
 function staffPortrait(s){
   const slot=Number(s.portrait_slot);
   if(s.portrait_slot!==null && s.portrait_slot!==undefined && Number.isInteger(slot)&&slot>=0&&slot<9){
@@ -718,12 +698,11 @@ function newNewsTask(){
   form.elements.title.focus();
 }
 function openStaffNewsReport(id){
-  show('tasks');
-  loadRuns().then(()=>{
-    const match=[...document.querySelectorAll('#runList [data-run-id]')]
-      .find(x=>x.dataset.runId===id);
-    (match||$('runList')).scrollIntoView({behavior:'smooth',block:'center'});
-  });
+  show('deliverables');
+  selectedSubmission=id;
+  $('deliverySearch').value='';
+  $('deliveryFilter').value='all';
+  loadDeliveryInbox().then(()=>$('deliveryDetail').scrollIntoView({behavior:'smooth',block:'start'}));
 }
 function newsNode(tag,text,cls){
   const n=document.createElement(tag);
@@ -890,14 +869,26 @@ document.addEventListener('keydown',event=>{
  if(event.key==='Escape')document.querySelectorAll('.task-more[open]').forEach(menu=>menu.open=false);
 });
 
+let assignedTaskPage=0;
+function pageAssignedTasks(step){assignedTaskPage+=step;renderOfficeTasks(state.tasks,state.staff)}
+function changeAssignedFilter(){assignedTaskPage=0;renderOfficeTasks(state.tasks,state.staff)}
 function renderOfficeTasks(tasks,staff){
   const box=$('taskList');
   const urgency={Urgent:0,High:1,Normal:2,Low:3};
-  const sorted=[...tasks].sort((a,b)=>(urgency[a.priority]??2)-(urgency[b.priority]??2)
+  const search=$('assignedTaskSearch').value.trim().toLowerCase();
+  const filter=$('assignedTaskStatus').value;
+  const matches=tasks.filter(task=>(filter==='all'||(filter==='open'?!['Completed','Abandoned'].includes(task.status):task.status===filter))&&
+    (task.title+' '+(staff.find(person=>person.id===task.assignee)?.name||'')).toLowerCase().includes(search));
+  const sorted=matches.sort((a,b)=>(urgency[a.priority]??2)-(urgency[b.priority]??2)
       ||(a.due_date||'9999').localeCompare(b.due_date||'9999')
       ||(b.created||0)-(a.created||0));
   const today=malaysiaDate(),tomorrow=malaysiaDate(1);
-  box.innerHTML=sorted.map(t=>{
+  const pages=Math.max(1,Math.ceil(sorted.length/8));
+  assignedTaskPage=Math.max(0,Math.min(assignedTaskPage,pages-1));
+  $('assignedPrev').disabled=assignedTaskPage===0;
+  $('assignedNext').disabled=assignedTaskPage+1>=pages;
+  $('assignedPage').textContent=(assignedTaskPage+1)+' / '+pages;
+  box.innerHTML=sorted.slice(assignedTaskPage*8,assignedTaskPage*8+8).map(t=>{
     const canEdit=!t.ai_run_started&&!['For approval','Completed'].includes(t.status);
     const liveJob=liveActivity.find(j=>j.task_id===t.id);
     const activity=liveJob?meitaStatus(liveJob.status):null;
@@ -1135,6 +1126,61 @@ function renderExecutivePulse(tasks,jobs){
  }
 }
 
+const workStates=[['Pending','To do','#657fde'],['In progress','In progress','#be7be5'],
+ ['Waiting approval','For approval','#c89347'],['Done','Completed','#38a397']];
+function workBuckets(tasks){
+ return workStates.map(([label,status,color])=>[label,tasks.filter(task=>task.status===status).length,color]);
+}
+function officeBars(root,values){
+ const maximum=Math.max(1,...values.map(([,count])=>count));
+ for(const [label,count,color] of values){
+  const row=meitaNode('div',undefined,'hq-bar-row');
+  const track=meitaNode('div',undefined,'hq-bar-track');
+  const bar=meitaNode('div',undefined,'hq-bar-fill');
+  bar.style.width=(count/maximum*100)+'%';bar.style.setProperty('--bar-color',color||'#657fde');
+  track.append(bar);row.append(meitaNode('span',label,'name'),track,meitaNode('strong',String(count)));
+  root.append(row);
+ }
+}
+function renderWorkSurfaces(staff,tasks){
+ const workload=$('taskWorkload');workload.replaceChildren();officeBars(workload,workBuckets(tasks));
+ const desks=$('deskList');
+ const open=new Set([...desks.querySelectorAll('details[open]')].map(node=>node.dataset.department));
+ desks.replaceChildren();
+ for(const department of OFFICE_DEPARTMENTS){
+  const members=staff.filter(person=>person.department===department);
+  if(!members.length)continue;
+  const ids=new Set(members.map(person=>person.id));
+  const assigned=tasks.filter(task=>ids.has(task.assignee));
+  const panel=meitaNode('details',undefined,'office-desk');
+  panel.dataset.department=department;panel.open=open.has(department);
+  const director=members.find(person=>person.org_role==='Director');
+  panel.append(meitaNode('summary',department+(director?' · '+director.name:'')));
+  const chart=meitaNode('div',undefined,'office-metrics');officeBars(chart,workBuckets(assigned));
+  panel.append(chart);
+  const roster=meitaNode('div',undefined,'office-roster');
+  for(const person of members){
+   const work=workBuckets(assigned.filter(task=>task.assignee===person.id));
+   const row=meitaNode('div',undefined,'item');
+   row.append(meitaNode('strong',person.name),meitaNode('small',person.role+' · '+work.map(([label,count])=>label+' '+count).join(' · ')));
+   roster.append(row);
+  }
+  panel.append(roster);desks.append(panel);
+ }
+ const grouped=new Map();
+ const today=malaysiaDate();
+ const start=malaysiaDate(-29);
+ for(const entry of state.audit){
+  const day=new Date(Number(entry.created)*1000+8*3600000).toISOString().slice(0,10);
+  if(day<start||day>today)continue;
+  const category=String(entry.action||'other').split('.')[0];
+  grouped.set(category,(grouped.get(category)||0)+1);
+ }
+ const audit=$('auditChart');audit.replaceChildren();
+ audit.append(meitaNode('p','Last 30 days · audit events by category','muted'));
+ if(grouped.size)officeBars(audit,[...grouped].sort((a,b)=>b[1]-a[1]));
+ else audit.append(meitaNode('p','No audit events in this period.','muted'));
+}
 function render(){const s=state.staff,t=state.tasks,l=state.lessons;$('kStaff').textContent=s.length;$('kOpen').textContent=t.filter(x=>!['Completed','Abandoned'].includes(x.status)).length;$('kApproval').textContent=t.filter(x=>x.status==='For approval').length;$('kLessons').textContent=academyTotal===null?l.length:academyTotal;renderLeadershipSpotlight(s);renderOfficeCharts(s,t);renderExecutivePulse(t,liveActivity);renderWorkforceHierarchy(s);
 const taskrow=x=>`<div class="item"><div><strong>${esc(x.title)}</strong><small>${esc(s.find(z=>z.id===x.assignee)?.name||'Unassigned')} · ${esc(x.status)}</small></div></div>`;$('hqTasks').innerHTML=t.length?t.slice(0,5).map(taskrow).join(''):'<p>No tasks yet.</p>';
 const assigneeSelect=$('assignee'),currentAssignee=assigneeSelect.value;
@@ -1156,17 +1202,7 @@ for(const department of OFFICE_DEPARTMENTS){
 }
 if([...assigneeSelect.options].some(option=>option.value===currentAssignee))assigneeSelect.value=currentAssignee;
 renderOfficeTasks(t,s);renderResearchRoster();
-$('deskList').innerHTML=s.length?s.map(x=>{
- const jobs=liveActivity.filter(j=>j.staff_id===x.id);
- const running=jobs.find(j=>j.status==='Running'),queued=jobs.filter(j=>j.status==='Queued').length;
- const blocked=jobs.filter(j=>['Retry available','Needs verification'].includes(j.status)).length;
- const review=jobs.filter(j=>['Delivered','For approval'].includes(j.status)).length;
- const manual=t.filter(y=>y.assignee===x.id&&!jobs.some(j=>j.task_id===y.id));
- const manualRunning=manual.filter(y=>y.status==='In progress'&&y.ai_run_started).length;
- const status=running?'Working · AI executing':manualRunning?'Working · manual AI run':queued?'Queued · waiting for execution':blocked?'Needs attention':review?'Review / delivered':'Idle';
- const detail=running?running.title:queued?queued+' queued job(s)':blocked?blocked+' blocked job(s)':review?review+' delivered report(s)':manual.filter(y=>y.status==='To do').length+' assigned task(s)';
- return `<div class="desk">${staffPortrait(x)}<strong>${esc(x.name)}</strong><div class="muted">${esc(x.role)}</div><div class="surface"></div><span class="tag">${esc(status)}</span><p class="muted">${esc(detail)}</p></div>`;
- }).join(''):'<div class="notice">Hire AI staff to create workstations.</div>';
+renderWorkSurfaces(s,t);
 renderOrganization();$('lessonList').innerHTML=l.filter(x=>x.kind!=='CEO Vision').length?l.filter(x=>x.kind!=='CEO Vision').map(x=>`<div class="item"><div><strong>${esc(x.title)}</strong><small>${esc(x.kind)} · ${esc(x.assigned||'Not assigned')} · ${esc(x.status)}</small></div></div>`).join(''):'<p>No learning sources registered.</p>';$('auditList').innerHTML=state.audit.slice(0,12).map(x=>`<div class="item"><strong>${esc(x.action)}</strong><small>${esc(x.detail)}</small></div>`).join('')||'<p>No activity recorded.</p>'}
 function addMeita(role,content,proposal=null,messageId=null){
   const container=$('meitaChat');
@@ -1262,52 +1298,33 @@ async function decideMeitaChatProposal(id,action,button){
   }catch(err){button.disabled=false;msg(err.message)}
 }
 
-let meitaTeamSettings=null;
 let meitaRequests=[];
-let meitaDeckData=null;
-let meitaSlideIndex=0;
 function meitaNode(tag,content,cls){
   const n=document.createElement(tag);
   if(content!==undefined)n.textContent=content;
   if(cls)n.className=cls;
   return n;
 }
-async function loadMeitaConfiguration(){
-  try{
-    const data=await api('meita/configuration');
-    meitaTeamSettings=data.settings;
-    $('meitaDelegationScope').value=data.settings.delegation_scope;
-    $('meitaJobLimit').value=data.settings.max_delegation_jobs;
-    $('meitaAutoExecute').value=String(data.settings.auto_execute_internal);
-    const root=$('meitaTeamRoster');root.textContent='';
-    const directors=data.team.filter(p=>p.org_role==='Director').length;
-    const specialists=data.team.filter(p=>p.org_role!=='Director').length;
-    root.append(meitaNode('p','AI workforce: '+directors+' Directors · '+specialists+
-      ' Specialists · '+data.team.length+' total','muted'));
-  }catch(err){$('meitaTeamRoster').textContent='Could not load settings: '+err.message}
+async function loadOfficeAutomation(){
+ const stateLabel=$('officeAutomationStatus');
+ try{
+  const {settings}=await api('meita/configuration');
+  stateLabel.textContent=settings.auto_execute_internal?'MEITA Auto Execute is on':'MEITA Auto Execute is off';
+  $('officeAutomationEnable').classList.toggle('hidden',settings.auto_execute_internal);
+ }catch(error){stateLabel.textContent='Automation status unavailable: '+error.message}
 }
-$('meitaSettingsForm').addEventListener('submit',async e=>{
-  e.preventDefault();
-  const prior=meitaTeamSettings||{};
-  const body={
-    delegation_scope:$('meitaDelegationScope').value,
-    max_delegation_jobs:Number($('meitaJobLimit').value),
-    auto_execute_internal:$('meitaAutoExecute').value==='true',
-    discussion_scope:prior.discussion_scope||'all_staff',
-    max_meeting_participants:prior.max_meeting_participants||20
-  };
-  if(body.auto_execute_internal&&!prior.auto_execute_internal&&
-    !confirm('Allow Meita to run internal AI work automatically after direct CEO chat instructions? Each job uses OpenAI API credits.'))return;
-  const btn=$('meitaSettingsSave');btn.disabled=true;
-  try{
-    await api('meita/configuration',{method:'PUT',body:JSON.stringify(body)});
-    await loadMeitaConfiguration();
-    msg('Meita configuration saved');
-  }catch(err){msg(err.message)}finally{btn.disabled=false}
-});
+async function enableOfficeAutomation(){
+ const button=$('officeAutomationEnable');
+ button.disabled=true;
+ try{
+  const {settings}=await api('meita/configuration');
+  await api('meita/configuration',{method:'PUT',body:JSON.stringify({...settings,auto_execute_internal:true})});
+  await loadOfficeAutomation();
+ }catch(error){msg(error.message)}
+ finally{button.disabled=false}
+}
 async function refreshMeitaOffice(){
-  await Promise.all([loadMeita(),loadMeitaTaskHistory(),loadMeitaConfiguration(),refreshLiveActivity()]);
-  if($('meitaDeckSelect').value)await loadMeitaDeck();
+  await Promise.all([loadMeita(),loadMeitaTaskHistory(),refreshLiveActivity()]);
 }
 function meitaStatus(raw){
   return ({
@@ -1382,20 +1399,25 @@ async function resumeAiQueue(){
  finally{button.disabled=false}
 }
 
+let selectedMeitaRequest=null;
 async function loadMeitaTaskHistory(){
   const root=$('meitaTaskList');
   try{
     const response=await api('meita/task-history');
     meitaRequests=response.requests||[];
     root.textContent='';
-    const select=$('meitaDeckSelect');
-    const previous=select.value;
-    select.textContent='';
-    const empty=meitaNode('option','Select a project delivery');empty.value='';
-    select.append(empty);
+    const detail=$('meitaTaskDetail');
+    if(selectedMeitaRequest&&!meitaRequests.some(request=>request.id===selectedMeitaRequest))selectedMeitaRequest=null;
+    detail.textContent='Select a task request to see its details.';
     for(const request of meitaRequests){
-      const opt=meitaNode('option',request.title+' · '+request.jobs.length+' task(s)');
-      opt.value=request.id;select.append(opt);
+      const selected=selectedMeitaRequest===request.id;
+      const entry=meitaNode('button',request.title,'delivery-item'+(selected?' active':''));
+      entry.type='button';
+      entry.setAttribute('aria-pressed',String(selected));
+      entry.onclick=()=>{selectedMeitaRequest=request.id;loadMeitaTaskHistory()};
+      root.append(entry);
+      if(!selected)continue;
+      detail.textContent='';
       const item=meitaNode('div',undefined,'meita-task-card');
       item.append(meitaNode('strong',request.title));
       const delivered=request.jobs.filter(j=>j.has_output).length;
@@ -1445,131 +1467,13 @@ async function loadMeitaTaskHistory(){
       if(request.reference_ids?.length)item.append(meitaNode('p',request.reference_ids.length+' CEO reference(s) linked','muted'));
       item.append(tasks);
       const actions=meitaNode('div',undefined,'task-actions');
-      const deck=meitaNode('button','View presentation','secondary');
-      deck.type='button';deck.onclick=()=>openMeitaDeck(request.id);
       const centre=meitaNode('button','View Task Centre','secondary');
-      centre.type='button';centre.onclick=()=>show('tasks');
-      actions.append(deck,centre);item.append(actions);root.append(item);
+      centre.type='button';centre.onclick=()=>{show('deliverables');loadDeliveryInbox()};
+      actions.append(centre);item.append(actions);detail.append(item);
     }
-    if(!meitaRequests.length)root.append(meitaNode('p',
-      'No assignments yet. Ask Meita in chat to assign a project to the AI team.','muted'));
-    if(meitaRequests.some(x=>x.id===previous))select.value=previous;
-    else if(meitaRequests.length&&!previous)select.value=meitaRequests[0].id;
-    else if(meitaRequests.length)select.value=meitaRequests[0].id;
+    if(!meitaRequests.length)root.append(meitaNode('p','No task requests yet.','muted'));
   }catch(err){root.textContent='Task History could not load: '+err.message}
 }
-$('meitaDeckSelect').addEventListener('change',()=>loadMeitaDeck());
-async function openMeitaDeck(id){
-  $('meitaDeckSelect').value=id;
-  await loadMeitaDeck();
-  $('meitaDeliverables').scrollIntoView({behavior:'smooth',block:'start'});
-}
-async function loadMeitaDeck(){
-  const id=$('meitaDeckSelect').value;
-  if(!id){
-    meitaDeckData=null;
-    $('meitaDeckArea').classList.add('hidden');
-    $('meitaDeckEmpty').classList.remove('hidden');
-    return;
-  }
-  try{
-    const fresh=await api('meita/deliverables/'+encodeURIComponent(id));
-    const changed=!meitaDeckData||meitaDeckData.proposal_id!==id;
-    meitaDeckData=fresh;
-    if(changed)meitaSlideIndex=0;
-    $('meitaDeckEmpty').classList.add('hidden');
-    $('meitaDeckArea').classList.remove('hidden');
-    $('meitaDeckProgress').textContent=
-      fresh.metrics.delivered+' / '+fresh.metrics.assigned+
-      ' deliverables ready · '+fresh.metrics.needs_attention+' need attention. '+
-      'Charts show real AI task progress, not invented business performance.';
-    renderMeitaSlide();
-    const full=$('meitaFullReports');full.textContent='';
-    for(const report of fresh.reports){
-      const card=meitaNode('div',undefined,'person');
-      card.style.marginTop='10px';
-      card.append(meitaNode('strong',report.title+' · '+report.owner));
-      card.append(meitaNode('p',report.status+' · '+report.department,'muted'));
-      const text=meitaNode('div',undefined,'delivery-report');
-      text.style.cssText='max-height:450px;overflow:auto;margin-top:12px';
-      text.append(staffReportRender(report.content||'Report not yet available.'));
-      card.append(text);
-      for(const source of report.sources||[]){
-        if(!source||!source.url)continue;
-        try{
-          const u=new URL(source.url);
-          if(!['https:','http:'].includes(u.protocol))continue;
-          const link=meitaNode('a',source.title||u.hostname);
-          link.href=u.href;link.target='_blank';link.rel='noopener noreferrer';
-          card.append(link);
-        }catch(err){}
-      }
-      full.append(card);
-    }
-  }catch(err){$('meitaDeckEmpty').textContent='Could not load presentation: '+err.message}
-}
-function renderMeitaSlide(){
-  if(!meitaDeckData)return;
-  const slide=meitaDeckData.slides[meitaSlideIndex];
-  if(!slide)return;
-  const root=$('meitaSlideContent');root.textContent='';
-  const holder=meitaNode('div',undefined,'meita-deck-content');
-  if(slide.kind==='cover'){
-    holder.append(meitaNode('p','MEITA · EXECUTIVE DELIVERY','sub'));
-    holder.append(meitaNode('h3',slide.title));
-    holder.append(meitaNode('p','Produced from real AI staff assignments.','sub'));
-    const art=meitaNode('div','◆  ◆  ◆');art.style.cssText=
-      'font-size:clamp(30px,5vw,62px);letter-spacing:.12em;color:#4bcfb2;margin:25px 0';
-    holder.append(art);
-  }else{
-    holder.append(meitaNode('h3',slide.title));
-    holder.append(meitaNode('p',slide.subtitle||'','sub'));
-    if(slide.kind==='work'){
-      holder.append(meitaNode('span',(slide.owner||'AI staff')+' · '+slide.status,'deck-chip'));
-    }
-    if(slide.metrics){
-      const wrap=meitaNode('div',undefined,'deck-metrics');
-      for(const item of slide.metrics){
-        const card=meitaNode('div',undefined,'deck-metric');
-        card.append(meitaNode('strong',String(item.value)));
-        card.append(meitaNode('span',item.label));wrap.append(card);
-      }
-      holder.append(wrap);
-    }
-    if(slide.bars){
-      for(const bar of slide.bars){
-        const line=meitaNode('div',undefined,'deck-bar-row');
-        line.append(meitaNode('span',bar.name));
-        const track=meitaNode('div',undefined,'deck-bar-bg');
-        const fill=meitaNode('div',undefined,'deck-bar-done');
-        fill.style.width=(bar.total?Math.min(100,100*bar.delivered/bar.total):0)+'%';
-        track.append(fill);
-        line.append(track,meitaNode('span',bar.delivered+'/'+bar.total));
-        holder.append(line);
-      }
-    }
-    if(slide.bullets&&slide.bullets.length){
-      const ul=meitaNode('ul',undefined,'deck-list');
-      for(const bullet of slide.bullets)ul.append(meitaNode('li',bullet));
-      holder.append(ul);
-    }
-  }
-  root.append(holder);
-  $('meitaSlideCount').textContent=String(meitaSlideIndex+1).padStart(2,'0')+
-    ' / '+String(meitaDeckData.slides.length).padStart(2,'0');
-}
-function stepMeitaSlide(change){
-  if(!meitaDeckData)return;
-  const size=meitaDeckData.slides.length;
-  meitaSlideIndex=(meitaSlideIndex+change+size)%size;
-  renderMeitaSlide();
-}
-function downloadMeitaPptx(){
-  if(!meitaDeckData)return;
-  window.location.assign('/api/meita/deliverables/'+
-    encodeURIComponent(meitaDeckData.proposal_id)+'/powerpoint');
-}
-
 let activeMeitaThread=crypto.randomUUID().replaceAll('-','');
 let meitaThreadLoad=0;
 let meitaSending=false;
@@ -1624,6 +1528,28 @@ function academyScopeOptions(selected){
  }
  return items;
 }
+function openAcademyUpload(){
+ const scope=$('academyTrainingScope');
+ scope.replaceChildren(new Option('Choose staff or department',''));
+ scope.required=true;
+ for(const option of academyScopeOptions(''))scope.add(new Option(option.label,option.value));
+ $('academyUploadForm').classList.remove('hidden');
+}
+$('academyUploadForm').addEventListener('submit',async event=>{
+ event.preventDefault();
+ const form=event.currentTarget,button=form.querySelector('[type="submit"]');
+ const status=$('academyUploadFeedback');
+ button.disabled=true;
+ status.textContent='Saving reference…';
+ try{
+  const result=await fetch('/api/meita/references/upload',{method:'POST',body:new FormData(form),credentials:'same-origin'});
+  if(!result.ok){const body=await result.json().catch(()=>null);throw Error(typeof body?.detail==='string'?body.detail:'Reference upload failed')}
+  form.reset();
+  status.textContent='Saved for use in relevant staff tasks.';
+  await loadAcademyLibrary();
+ }catch(error){status.textContent=error.message}
+ finally{button.disabled=false}
+});
 function academyEditReference(item,container){
  container.textContent='';
  const form=document.createElement('form');form.className='card';form.style.marginTop='12px';
@@ -1709,7 +1635,7 @@ function academyRenderItem(item){
   actions.append(archived);card.append(actions,editor);
  }else if(item.type==='project'){
   const open=academyNode('button','Open Meita project','secondary');open.type='button';
-  open.onclick=async()=>{show('meita');await loadMeitaTaskHistory();await openMeitaDeck(item.id)};
+  open.onclick=()=>{show('meita');selectedMeitaRequest=item.id;loadMeitaTaskHistory();$('meitaTaskHistory').scrollIntoView({block:'start'})};
   actions.append(open);
   card.append(actions);
  }else if(item.type==='lesson'){
@@ -1947,10 +1873,6 @@ $('meitaForm').addEventListener('submit',async e=>{
   }finally{meitaSending=false;btn.disabled=false;btn.textContent='Send to Meita'}
 });
 
-let memoryItems=[],editingMemory=null;
-function resetMemory(){editingMemory=null;$('memoryForm').reset();$('memoryHeading').textContent='Save a memory';$('memorySave').textContent='Save memory'}
-async function loadMemory(){try{const r=await api('memory');memoryItems=r.memories||[];const out=$('memoryList');out.textContent='';if(!memoryItems.length){out.textContent='No memories saved yet.';return}for(const m of memoryItems){const d=document.createElement('div');d.className='item';const details=document.createElement('div');const strong=document.createElement('strong');strong.textContent=m.title;const small=document.createElement('small');small.textContent=m.category;const p=document.createElement('p');p.textContent=m.content;details.append(strong,small,p);const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px;flex-wrap:wrap';const edit=document.createElement('button');edit.className='secondary';edit.textContent='Edit';edit.onclick=()=>{editingMemory=m.id;$('memoryTitle').value=m.title;$('memoryContent').value=m.content;$('memoryCategory').value=m.category;$('memoryHeading').textContent='Edit memory';$('memorySave').textContent='Update memory';show('memory');$('memoryTitle').focus()};const del=document.createElement('button');del.className='secondary';del.textContent='Delete';del.onclick=async()=>{if(!confirm('Delete this memory permanently?'))return;try{await api('memory/'+encodeURIComponent(m.id),{method:'DELETE'});if(editingMemory===m.id)resetMemory();await loadMemory();msg('Memory deleted')}catch(e){msg(e.message)}};actions.append(edit,del);d.append(details,actions);out.appendChild(d)}}catch(e){$('memoryList').textContent=e.message}}
-$('memoryForm').addEventListener('submit',async e=>{e.preventDefault();const body={title:$('memoryTitle').value.trim(),category:$('memoryCategory').value,content:$('memoryContent').value.trim()};if(!body.title||!body.content)return;const btn=$('memorySave');btn.disabled=true;try{await api(editingMemory?'memory/'+encodeURIComponent(editingMemory):'memory',{method:editingMemory?'PUT':'POST',body:JSON.stringify(body)});resetMemory();await loadMemory();msg('Memory saved')}catch(err){msg(err.message)}finally{btn.disabled=false}});
 let runItems=[];
 async function runStaffTask(id,button){if(!confirm('Generate an AI deliverable for this assigned task? This uses your OpenAI API account.'))return;button.disabled=true;const old=button.textContent;button.textContent='Generating…';try{const result=await api('workforce/run/'+encodeURIComponent(id),{method:'POST'});await refresh();await loadRuns();await loadNewsBriefings();msg('AI draft created for CEO review')}catch(e){msg(e.message)}finally{button.disabled=false;button.textContent=old}}
 async function loadRuns(){return loadDeliveryInbox()}
@@ -2093,11 +2015,14 @@ function deliveryLink(label,url){
  const link=deliveryText('a',label);
  link.href=url;link.rel='noopener';return link;
 }
-async function loadDeliveryInbox(){
+async function loadDeliveryInbox(background=false){
  const root=$('deliveryInbox');
  try{
   const data=await api('deliverables');
-  submittedWork=data.items||[];
+  const items=data.items||[];
+  const signature=rows=>JSON.stringify(rows.map(item=>[item.id,item.status,item.reviewed_at,item.assets?.length]));
+  if(background&&signature(submittedWork)===signature(items))return;
+  submittedWork=items;
   $('deliveryCountAll').textContent=String(submittedWork.length);
   $('deliveryCountReview').textContent=String(submittedWork.filter(x=>x.status==='For approval').length);
   $('deliveryCountApproved').textContent=String(submittedWork.filter(x=>x.status==='Approved').length);
@@ -2780,13 +2705,6 @@ async function createSocialFromRun(){
   }catch(err){msg(err.message)}
 }
 
-setInterval(async()=>{
-  if(!$('app').classList.contains('hidden') && $('meita').classList.contains('active')){
-    try{await loadMeitaTaskHistory();if($('meitaDeckSelect').value)await loadMeitaDeck()}
-    catch(e){}
-  }
-},15000);
-
 async function loadFinancePlanning(){
  const root=$('budgetDraftList'),status=$('budgetSummary');if(!root)return;
  try{
@@ -2938,9 +2856,9 @@ function renderResearchRoster(){
 }
 async function refresh(){state=await api('office');render();renderDirectorSelect()}
 async function updateTask(id,status){try{await api('tasks/'+id,{method:'PATCH',body:JSON.stringify({status})});await refresh();msg('Task updated')}catch(e){msg(e.message);await refresh()}}
-$('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){show(b.dataset.view);if(b.dataset.view==='hq')loadNewsBriefings();if(b.dataset.view==='integrations')loadSocial();if(b.dataset.view==='academy')loadAcademyLibrary();if(b.dataset.view==='finance')loadFinancePlanning();if(b.dataset.view==='deliverables')loadDeliveryInbox();if(b.dataset.view==='research')loadResearchReports();if(b.dataset.view==='meita')loadAiDiagnostics();if(b.dataset.view==='governance')loadCEOSecurityStatus()}});
+$('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){show(b.dataset.view);if(b.dataset.view==='hq')loadNewsBriefings();if(b.dataset.view==='integrations')loadSocial();if(b.dataset.view==='academy')loadAcademyLibrary();if(b.dataset.view==='finance')loadFinancePlanning();if(b.dataset.view==='deliverables')loadDeliveryInbox();if(b.dataset.view==='research')loadResearchReports();if(b.dataset.view==='meita')loadAiDiagnostics();if(b.dataset.view==='governance'){loadCEOSecurityStatus();loadAiDiagnostics();loadOfficeAutomation()}}});
 $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').textContent='';try{await api('login',{method:'POST',body:JSON.stringify({password:$('password').value,otp:$('loginMfaCode').value.trim()})});$('password').value='';$('loginMfaCode').value='';await enter()}catch(err){$('loginError').textContent=err.message}});
-async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await refreshLiveActivity();await loadMeita();await loadMeitaConfiguration();await loadMeitaTaskHistory();await loadAiDiagnostics();await loadCEOSecurityStatus();await loadMeitaDeck();await loadMemory();await loadAcademyLibrary();await loadFinancePlanning();await loadDeliveryInbox();await loadRuns();await loadDirectorPlans();$('monthlyPeriod').value=malaysiaPeriod();await loadMonthly();await loadNewsBriefings();await loadSocial();const oauthParams=new URLSearchParams(window.location.search);
+async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await refreshLiveActivity();await loadMeita();await loadMeitaTaskHistory();await loadAcademyLibrary();await loadFinancePlanning();await loadDeliveryInbox();await loadRuns();await loadDirectorPlans();$('monthlyPeriod').value=malaysiaPeriod();await loadMonthly();await loadNewsBriefings();await loadSocial();const oauthParams=new URLSearchParams(window.location.search);
 const integ=oauthParams.get('integration');
 if(integ){
   const reasons={
@@ -2961,7 +2879,7 @@ if(integ){
 $('logout').onclick=async()=>{await api('logout',{method:'POST'});location.reload()};
 for(const [form,path] of [['newLessonForm','lessons']])$(form).addEventListener('submit',async e=>{e.preventDefault();const body=Object.fromEntries(new FormData(e.target));try{await api(path,{method:'POST',body:JSON.stringify(body)});e.target.reset();e.target.closest('.card').classList.add('hidden');await refresh();await loadAcademyLibrary();msg('Saved successfully')}catch(err){msg(err.message)}});
 $('today').textContent=new Date().toLocaleDateString('en-MY',{weekday:'long',day:'numeric',month:'long',year:'numeric'});api('me').then(x=>{if(x.authenticated)enter();else loadLoginSecurityOptions()}).catch(()=>loadLoginSecurityOptions());
-setInterval(()=>{if(!$('app').classList.contains('hidden')&&['meita','tasks','desks','hq'].some(x=>$(x).classList.contains('active'))){Promise.all([refresh(),refreshLiveActivity(),loadMeitaTaskHistory()]).catch(()=>{})}},10000);
+setInterval(()=>{if(!$('app').classList.contains('hidden')&&['meita','deliverables','desks','hq'].some(x=>$(x).classList.contains('active'))){Promise.all([refresh(),refreshLiveActivity(),...($('meita').classList.contains('active')?[loadMeitaTaskHistory()]:[]),...($('deliverables').classList.contains('active')?[loadDeliveryInbox(true)]:[])]).catch(()=>{})}},10000);
 setInterval(()=>{if($('research').classList.contains('active')&&!$('app').classList.contains('hidden'))loadResearchReports()},30000);
 setInterval(()=>{if($('hq').classList.contains('active')
      &&!$('app').classList.contains('hidden'))loadNewsBriefings()},60000);

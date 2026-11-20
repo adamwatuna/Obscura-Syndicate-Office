@@ -72,6 +72,25 @@ class SharedAcademyTests(unittest.TestCase):
         self.assertNotIn(ident,denied["reference_ids"])
         self.assertNotIn("Preserve purple pleated costume",denied["context"])
 
+    def test_academy_upload_sets_scope_and_keeps_scripts_out_of_opportunity_scans(self):
+        upload=self.client.post("/api/meita/references/upload",
+            files={"file":("creative-production-screenplay.txt",b"Example script dialogue","text/plain")},
+            data={"academy_scope":"department:Creative","academy_tags":"creative production screenplay",
+                  "academy_guidance":"Use concise dialogue in new screenplays."})
+        self.assertEqual(upload.status_code,200,upload.text)
+        scoped=upload.json()["id"]
+        self.reference_ids.append(scoped)
+        general=self.upload("creative-production-script.txt",b"Screenplay reference for creative production")
+        with office_db.connect() as db:
+            creative=academy.relevant(db,"creative production screenplay",
+                staff={"department":"Creative"})
+            research=academy.relevant(db,"creative production opportunities",
+                staff={"department":"Research & Intelligence"},
+                task_category="Opportunity Scan")
+        self.assertIn(scoped,creative["reference_ids"])
+        self.assertNotIn(scoped,research["reference_ids"])
+        self.assertNotIn(general,research["reference_ids"])
+
     def test_invalid_department_scope_is_rejected(self):
         ident=self.upload()
         r=self.client.patch("/api/academy/references/"+ident,json={
