@@ -23,6 +23,7 @@ from backend import meita_autowork, meita_decks
 from backend import social, social_publish
 from backend import references as office_references
 from backend import academy as office_academy
+from backend import department_playbooks
 from backend import finance_actuals, finance_gmail, finance_planning
 from backend import ai_provider
 from backend import ceo_security, creative
@@ -299,7 +300,9 @@ def get_staff_configuration(ident:str):
         row=db.execute('SELECT '+org.STAFF_COLUMNS+' FROM staff WHERE id=%s',
                        (ident,)).fetchone()
         if row is None:raise HTTPException(404,'Staff not found')
-        return {'staff':dict(row)}
+        return {'staff':dict(row),
+                'supported_outputs':workforce.supported_outputs(row),
+                'quality_check':department_playbooks.operating_standard(row['department'])}
 
 class StaffAgentBinding(BaseModel):
     agent_id: str = Field(max_length=64, pattern=r"^agent_[A-Za-z0-9_-]{1,58}$")
@@ -675,7 +678,8 @@ def platform_meita_chat(body:MeitaMessage):
         if existing:
             return existing
         config=meita_team.settings(db)
-        roster=[{key: person[key] for key in ("id","name","role","department","expertise")}
+        roster=[{**{key: person[key] for key in ("id","name","role","department","expertise")},
+                 "supported_outputs":workforce.supported_outputs(person)}
                 for person in meita_team.available_staff(db,config["delegation_scope"])
                 if person["status"]=="Available"]
         tasks=[dict(row) for row in db.execute("""SELECT id,LEFT(title,180) AS title,

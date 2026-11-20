@@ -109,6 +109,18 @@ def execute(task,staff):
                 logging.getLogger(__name__).warning("Could not save task runtime finish timestamp")
 
 
+def supported_outputs(staff):
+    outputs = ["report"]
+    if staff.get("department") == "Research & Intelligence":
+        outputs.append("web_research")
+    if staff.get("department") == "Creative":
+        outputs.append("image")
+    for operation in ("produce", "review", "video"):
+        if canva.allowed(staff, operation):
+            outputs.append(f"canva_{operation}")
+    return outputs
+
+
 def _execute(task,staff):
     if os.getenv("AI_ENGINE_ENABLED","false").lower()!="true": raise HTTPException(503,"AI engine is disabled")
     if len(task["title"])>250: raise HTTPException(400,"Task is too long")
