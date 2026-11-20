@@ -6,6 +6,8 @@ An image/video/document attachment becomes downloadable only when actual bytes
 have been uploaded or generated.
 """
 import io
+from threading import Lock
+from contextlib import closing
 import re
 import secrets
 import zipfile
@@ -139,6 +141,31 @@ def get_deliverable(db,run_id):
     assets=db.execute("""SELECT id,filename,kind,media_type,size_bytes
         FROM workforce_assets WHERE run_id=%s ORDER BY created_at,id""",(run_id,)).fetchall()
     return {**dict(row),"assets":[dict(asset) for asset in assets]}
+
+
+# PDFium calls must be serialized within a worker process.
+_pdf_render_lock = Lock()
+
+
+def pdf_page_image(data, page_number):
+    import pypdfium2 as pdfium
+
+    try:
+        with _pdf_render_lock, pdfium.PdfDocument(data) as document:
+            page_count = len(document)
+            if not 1 <= page_number <= page_count:
+                raise HTTPException(404, "PDF page not found")
+            with closing(document[page_number - 1]) as page:
+                width, height = page.get_size()
+                if not 0 < width or not 0 < height:
+                    raise HTTPException(422, "PDF page has invalid dimensions")
+                with closing(page.render(scale=min(2.5, 1600 / max(width, height)))) as bitmap:
+                    with bitmap.to_pil() as image:
+                        output = io.BytesIO()
+                        image.save(output, format="PNG")
+                        return output.getvalue(), page_count
+    except (pdfium.PdfiumError, ValueError, OverflowError):
+        raise HTTPException(422, "This PDF cannot be previewed") from None
 
 
 def video_byte_range(header, size):

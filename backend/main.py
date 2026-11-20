@@ -1022,6 +1022,18 @@ def download_delivery_file(ident:str,asset_id:str,request:Request,preview:bool=F
     return Response(data,media_type=row["media_type"],headers=headers)
 
 
+@app.get('/api/deliverables/{ident}/files/{asset_id}/pages/{page}',dependencies=[Depends(guard)])
+def preview_delivery_pdf_page(ident:str,asset_id:str,page:int):
+    with connect() as db:
+        row=staff_deliverables.get_asset(db,ident,asset_id)
+    if row["media_type"]!="application/pdf":
+        raise HTTPException(415,"Only PDF files have page previews")
+    image,total=staff_deliverables.pdf_page_image(bytes(row["content"]),page)
+    return Response(image,media_type="image/png",headers={
+        "X-PDF-Page-Count":str(total),"X-Content-Type-Options":"nosniff",
+        "Cache-Control":"private, no-store"})
+
+
 @app.get('/api/deliverables/{ident}/report.txt',dependencies=[Depends(guard)])
 def download_delivery_report(ident:str):
     with connect() as db:
