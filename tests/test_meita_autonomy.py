@@ -183,6 +183,17 @@ class AutonomousMeitaTests(unittest.TestCase):
         self.assertEqual(self.client.post(
             "/api/meita/jobs/"+self.job_ids[0]+"/retry").status_code,409)
 
+    def test_explicit_interrupted_recovery_queues_only_once(self):
+        self.assign()
+        with office_db.connect() as db:
+            db.execute("UPDATE coo_jobs SET status='Needs verification' WHERE id=%s",
+                       (self.job_ids[0],))
+        path="/api/meita/jobs/"+self.job_ids[0]+"/retry?retry_interrupted=true"
+        response=self.client.post(path)
+        self.assertEqual(response.status_code,200,response.text)
+        self.assertEqual(response.json()["status"],"Queued")
+        self.assertEqual(self.client.post(path).status_code,409)
+
     def test_preview_uses_real_job_counts_no_fake_kpis(self):
         proposal=self.assign()
         deck=self.client.get("/api/meita/deliverables/"+proposal["id"]).json()
