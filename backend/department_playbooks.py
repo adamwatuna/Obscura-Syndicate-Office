@@ -356,6 +356,17 @@ STRATEGY_WORKFLOW = {
         "by Finance. For a partnership, identify what each party contributes, key dependencies and "
         "any rights questions. Draft outreach for CEO review and keep commitments pending approval."
     ),
+    "Plan new revenue streams": (
+        "Build an Obscura growth roadmap beyond film and video production. Consider complementary "
+        "client opportunities such as public Behance listings where accessible, recurring service "
+        "packages, reusable digital products and licensing where rights permit. Separate active "
+        "client work, recurring services and low-maintenance income. State the initial effort "
+        "and ongoing support each requires. Compare each opportunity with the supplied staff capacity "
+        "and approved portfolio. Flag gaps in skills, tools or evidence. Propose a practical "
+        "30/60/90-day plan with one small validation experiment, proposed owner, expected costs, "
+        "measurable demand signal and a stop condition. Treat unverified listings as leads, "
+        "estimates as assumptions, and submit recommendations for CEO review."
+    ),
     "Recommend a decision": (
         "Give one recommendation: proceed, run a small pilot or defer. Include the strongest alternative, "
         "the main trade-off, assumptions that would change the decision and the first action with an owner. "
