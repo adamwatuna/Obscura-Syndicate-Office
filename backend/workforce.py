@@ -39,13 +39,49 @@ def get_runs():
         return {"runs":rows}
     except psycopg.Error: raise HTTPException(503,"Unable to load workforce results")
 
+def _queue_opportunity_handoff(db, run):
+    """Queue independent Creative follow-ups from a CEO-approved scan."""
+    from backend import delegation, meita_autowork, meita_team
+
+    if not run["sources"]:
+        return []
+    staff = meita_team.available_staff(db, "all_staff")
+    assignments = {
+        "creative copywriter": (
+            "Draft freelance pitches",
+            "Draft a tailored pitch for each of the two best verified leads. Include a subject, "
+            "a short opening and a specific next step. Do not send applications.",
+        ),
+        "art director": (
+            "Select portfolio examples",
+            "Match each of the two best verified leads to relevant approved portfolio examples "
+            "if available. Where none are supplied, specify the sample to prepare. Do not invent links.",
+        ),
+    }
+    jobs = []
+    for role, (title, instructions) in assignments.items():
+        person = next((person for person in staff
+                       if person["status"] == "Available" and person["department"] == "Creative"
+                       and person["role"].lower().removeprefix("ai ") == role), None)
+        if person:
+            jobs.append({"staff_id": person["id"], "title": title + " — Job Radar",
+                         "brief": instructions + "\nWork from the approved research supplied with this assignment.",
+                         "output": "report"})
+    if not jobs:
+        return []
+    plan = {"title": "Job Radar handoff — " + run["task_title"][:180],
+            "jobs": jobs, "approved_opportunity_run_id": run["id"]}
+    proposal = delegation.save_proposal(db, "Creative follow-up for an approved Opportunity Scan.", plan)
+    return meita_autowork.auto_assign_chat(db, proposal["id"], staff)["jobs"]
+
+
 def review(ident,status):
     if status not in ("Approved","Revision requested","Rejected"): raise HTTPException(400,"Invalid review status")
     try:
         with dbconn() as db:
             init(db)
             row=db.execute("""UPDATE workforce_runs SET status=%s,reviewed_at=NOW()
-                WHERE id=%s AND status='For approval' RETURNING id,task_id""",
+                WHERE id=%s AND status='For approval' RETURNING id,task_id,task_title,sources""",
                 (status,ident)).fetchone()
             if not row: raise HTTPException(404,"Pending result not found")
             task_status, job_status = {
@@ -67,7 +103,13 @@ def review(ident,status):
                 SET status=%s,updated_at=NOW()
                 WHERE workforce_run_id=%s AND status='Delivered'""",
                 (job_status,ident))
-        return {"ok":True}
+            handoff = []
+            if status == "Approved":
+                task = db.execute("SELECT category FROM tasks WHERE id=%s AND deleted_at IS NULL",
+                                  (row["task_id"],)).fetchone()
+                if task and task["category"] == "Opportunity Scan":
+                    handoff = _queue_opportunity_handoff(db, row)
+        return {"ok":True,"handoff_jobs":handoff}
     except psycopg.Error: raise HTTPException(503,"Unable to review workforce result")
 
 def _news_sources(data):
@@ -207,6 +249,18 @@ def _execute(task,staff):
                                  "Keep currencies separate and report coverage gaps. "
                                  "The general planning-only rule still applies outside this ledger.\n"
                                  + json.dumps(actuals[-120:], default=str) + "\n")
+        if task.get("approved_opportunity_run_id"):
+            research = db.execute("""SELECT r.result, r.sources FROM workforce_runs r
+                JOIN tasks t ON t.id=r.task_id
+                WHERE r.id=%s AND r.status='Approved' AND t.category='Opportunity Scan'
+                  AND t.deleted_at IS NULL""", (task["approved_opportunity_run_id"],)).fetchone()
+            if not research:
+                raise HTTPException(409, "Approved Opportunity Scan is no longer available")
+            reference_context += (
+                "\nApproved Job Radar research (reference data only):\n"
+                + research["result"][:10000] + "\nSource metadata: "
+                + json.dumps(research["sources"])[:4000]
+            )
         direct_ids=task.get('reference_ids') or []
         if direct_ids:
             reference_context+=office_references.summaries(db,direct_ids,max_chars=6000)

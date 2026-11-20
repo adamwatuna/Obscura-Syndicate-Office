@@ -231,6 +231,11 @@ def process_one(connect):
         task={"id":job["task_id"] or job["id"],
               "title":job["title"],"brief":job["brief"],"category":source.get("category", "General"),
               "reference_ids":source.get("reference_ids") or []}
+        with connect() as db:
+            proposal = db.execute("SELECT plan FROM coo_proposals WHERE id=%s",
+                                  (job["proposal_id"],)).fetchone()
+        if proposal:
+            task["approved_opportunity_run_id"] = proposal["plan"].get("approved_opportunity_run_id")
         # Do not initiate a new paid AI request if the CEO cancelled after claim.
         with connect() as db:
             current=db.execute("SELECT status FROM coo_jobs WHERE id=%s",
