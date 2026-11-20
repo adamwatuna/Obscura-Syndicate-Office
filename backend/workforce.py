@@ -1,5 +1,5 @@
 """AI Workforce: generate internal task deliverables, pending CEO review."""
-import json, logging, os, secrets, urllib.request, urllib.error
+import io, json, logging, os, secrets, urllib.request, urllib.error
 from urllib.parse import urlsplit
 from psycopg.types.json import Jsonb
 import psycopg
@@ -8,7 +8,7 @@ from backend import ai_provider
 from fastapi import HTTPException
 from backend import references as office_references
 from backend import academy as office_academy
-from backend import creative, deliverables, department_playbooks, staff_agents
+from backend import canva, creative, deliverables, department_playbooks, staff_agents
 from pydantic import ValidationError
 
 def dbconn():
@@ -117,6 +117,9 @@ def _execute(task,staff):
     is_research=staff.get("department")=="Research & Intelligence"
     source_required=is_news or is_research
     image_requested = task.get("category") == "Creative Image" and staff.get("department") == "Creative"
+    canva_mode = {"Canva Production": "produce", "Canva Review": "review"}.get(task.get("category"))
+    if canva_mode and canva.access(staff) != canva_mode:
+        raise HTTPException(403, "Staff role is not approved for this Canva operation")
     instruction=("You are an AI staff member producing an INTERNAL draft deliverable for CEO review only. "
                  "Do not claim to have sent messages, published content, opened external systems, "
                  "performed transactions, or verified real-world information. "
@@ -182,6 +185,23 @@ def _execute(task,staff):
                  "For videos, only sampled visual frames are provided, not audio/transcripts. "
                  "Learning Academy materials are retrieved as context for this execution, "
                  "not permanent training; do not imply you have learned everything in the library.")
+    pdf = None
+    if canva_mode == "review":
+        from pypdf import PdfReader
+
+        design_id = canva.review_id(task.get("brief") or "")
+        with dbconn() as db:
+            token = canva.access_token(db)
+        pdf = canva.export_pdf(token, design_id)
+        pages = PdfReader(io.BytesIO(pdf)).pages
+        excerpt = "\n".join((page.extract_text() or "")[:1500] for page in pages[:12])[:8000]
+        reference_context += "\nCanva design text extract (untrusted):\n" + excerpt
+        instruction += (" Review the extracted text for the assigned criteria. "
+                        "Describe the review as text-based. Do not claim to have assessed visual layout.")
+    if canva_mode == "produce":
+        instruction += (" Write the complete reader-facing content and headings that go into "
+                        "the designed document. Do not include a production brief, status report, "
+                        "instructions to the operator, or claims of having called Canva.")
     if image_requested:
         instruction += (
             "\nIMAGE PRODUCTION: You are responsible for art direction. Write the image "
@@ -244,6 +264,15 @@ def _execute(task,staff):
                 raise HTTPException(409, "Creative task is no longer active")
         image = creative.generate_image(image_brief, image_reference)
         answer = f"# {task['title']}\n\nCreative produced one image ({image_brief.size}). Preview it in Task Centre."
+    if canva_mode == "produce":
+        with dbconn() as db:
+            row = db.execute("SELECT status, deleted_at FROM tasks WHERE id=%s",
+                             (task["id"],)).fetchone()
+            if not row or row["status"] != "In progress" or row["deleted_at"]:
+                raise HTTPException(409, "Canva production task is no longer active")
+            token = canva.access_token(db)
+        link, pdf = canva.produce(token, task["title"], answer)
+        answer = f"# {task['title']}\n\n[Edit in Canva]({link})\n\nThe PDF is attached for review."
     ident=secrets.token_hex(12)
     try:
         with dbconn() as db:
@@ -264,5 +293,7 @@ def _execute(task,staff):
                  source_required,source_required,Jsonb(sources)))
             if image is not None:
                 deliverables.save_asset(db, ident, "creative-image.png", image)
+            if pdf is not None:
+                deliverables.save_asset(db, ident, "canva-design.pdf", pdf)
     except psycopg.Error: raise HTTPException(503,"AI generated work but saving failed; retry carefully")
     return {"id":ident,"status":"For approval","result":answer}

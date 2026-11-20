@@ -10,7 +10,7 @@ from fastapi import HTTPException
 
 _JOB_FIELDS = {"staff_id": {"type": "string"}, "title": {"type": "string"},
                "brief": {"type": "string"},
-               "output": {"type": "string", "enum": ["report", "image"]},
+               "output": {"type": "string", "enum": ["report", "image", "canva_produce", "canva_review"]},
                "priority": {"type": "string", "enum": ["Urgent", "High", "Normal", "Low"]},
                "due_date": {"type": ["string", "null"]}}
 _REPLY_FIELDS = {
@@ -52,6 +52,10 @@ def respond(message, context, client_factory=None, images=()):
             "one Creative specialist with output=image. Say what to make and which attached "
             "examples to follow. The specialist writes the production prompt. Use output=report "
             "for scripts, ideas, feedback, research, video briefs and other text deliverables. "
+            "For finished e-book PDFs or explicit Canva design requests, use canva_produce "
+            "with one of AI Graphic Designer, AI Brand Identity Designer or AI Art Director. "
+            "For a review of an existing Canva design, use canva_review with Maryam and "
+            "copy the actual CEO-supplied design URL into the brief. "
             "Use Normal priority unless specified, and an ISO YYYY-MM-DD "
             "due date only when the CEO's deadline is unambiguous, otherwise null. "
             "For ordinary chat use "
