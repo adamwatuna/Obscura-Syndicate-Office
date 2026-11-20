@@ -325,6 +325,25 @@ OPERATIONS_REVIEW = (
 )
 
 
+OPERATIONS_AI_RESEARCH = (
+    "For AI updates or app improvement research, use live public web research when available. "
+    "Check official release notes and product documentation. Cite links and dates and distinguish "
+    "generally available features, previews and announcements. Explain the Obscura problem addressed, "
+    "benefit, possible costs, reliability, data handling and integration dependencies. Rank ideas by "
+    "impact and effort. Propose a small pilot with acceptance criteria, an owner and a rollback plan. "
+    "Use generic public queries without private app, team or customer records."
+)
+
+
+def operations_ai_research_requested(title, brief):
+    request = f"{title} {brief}".casefold()
+    return any(term in request for term in (
+        "ai update", "ai terbaru", "update ai", "ai research", "perkembangan ai",
+        "ai release", "ai tools", "tool ai", "ai technology", "teknologi ai",
+        "research untuk app", "research public", "public research", "live web search",
+    ))
+
+
 def role_deliverable(staff):
     department = staff["department"]
     if department == "Research & Intelligence":
@@ -368,6 +387,7 @@ def work_tree(staff, outputs):
         steps.insert(-1, {"label": "App overhead and sustainability", "detail": FINANCE_OVERHEAD})
     if department == "Operations & Project Management":
         steps.insert(-1, {"label": "Project records and improvements", "detail": OPERATIONS_REVIEW})
+        steps.insert(-1, {"label": "AI updates and app research", "detail": OPERATIONS_AI_RESEARCH})
     return steps
 
 
@@ -402,7 +422,7 @@ def agent_scope(staff):
         "Before submission compare the actual result with the brief and report unmet acceptance criteria."
     )
     if department == "Operations & Project Management":
-        scope += " " + OPERATIONS_REVIEW
+        scope += " " + OPERATIONS_REVIEW + " " + OPERATIONS_AI_RESEARCH
     if department == "Finance & Treasury":
         scope += " " + FINANCE_OVERHEAD
     if department == "Creative":
