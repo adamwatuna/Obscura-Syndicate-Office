@@ -514,6 +514,11 @@
   </div></form>
   <p id="financeBillingStatus" class="muted"></p>
  </div>
+ <div class="card" style="margin-bottom:22px"><h3>Gmail invoices</h3>
+  <p class="muted">Connect Gmail in Integration Centre, then label invoice emails <strong>Obscura Invoices</strong> in Gmail.</p>
+  <button class="secondary" id="financeGmailLoad" type="button">Load labelled invoices</button>
+  <p id="financeGmailStatus" role="status" class="muted"></p><div id="financeGmailList"></div>
+ </div>
  <div class="card" style="margin-bottom:22px"><h3>Recent records</h3><div id="financeActualsRecent"></div></div>
  <div class="toolbar"><div><p>Budget Planning Studio · Phase 1</p>
   <p class="muted">CEO-controlled scenario planning, proposed budgets and estimated cash flow — no banking connections or actual transaction data.</p></div>
@@ -2605,11 +2610,11 @@ function renderSocialProviders(){
     card.append(status);
     if(provider.id==='instagram')card.append(socialEl('p','No Facebook Page or Facebook Login needed.','muted'));
     if(provider.id==='google')card.append(socialEl('p','OAuth ready does not mean connected. Choose your Obscura YouTube channel (not personal) during Google authorization.','muted'));
-    const button=socialEl('button',provider.id==='canva'?'Connect Canva':connected?'Connect another account':'Connect via OAuth','secondary');
+    const button=socialEl('button',provider.id==='canva'?'Connect Canva':provider.id==='gmail'?'Connect Gmail':connected?'Connect another account':'Connect via OAuth','secondary');
     button.type='button';button.disabled=!provider.configured;
     button.onclick=()=>connectSocial(provider.id);
     card.append(button);
-    if(!provider.publishing_available && provider.id!=='canva'){
+    if(!provider.publishing_available && !['canva','gmail'].includes(provider.id)){
       card.append(socialEl('p','Connection supported · media publishing not yet enabled','muted'));
     }
     if(provider.callback){
@@ -2887,6 +2892,23 @@ $('financeActualsForm').onsubmit=async e=>{
     form.elements.amount.value='';$('financeActualsStatus').textContent='Finance record saved.';
     await loadFinanceActuals();$('actualCurrency').value=entry.currency;$('actualCurrency').dataset.chosen='true';renderFinanceActuals();
   }catch(error){$('financeActualsStatus').textContent=error.message}finally{button.disabled=false}
+};
+$('financeGmailLoad').onclick=async ()=>{
+  const button=$('financeGmailLoad'), status=$('financeGmailStatus'), list=$('financeGmailList');
+  button.disabled=true;status.textContent='Loading labelled Gmail invoices…';list.replaceChildren();
+  try{
+    const data=await api('finance/invoices/gmail');
+    status.textContent=!data.label_exists?'Create the Obscura Invoices label and add your invoice emails.':
+      data.messages.length+' labelled emails'+(data.more?' · showing the latest results':'')+'.';
+    for(const item of data.messages){
+      const card=socialEl('div',undefined,'item'), block=socialEl('div');
+      block.append(socialEl('strong',item.subject||'Untitled message'),socialEl('p',item.day+' · '+item.sender),
+                   socialEl('p',item.snippet,'muted'));
+      const link=socialEl('a','Open in Gmail','secondary');
+      link.href='https://mail.google.com/mail/u/0/#all/'+encodeURIComponent(item.id);
+      link.target='_blank';link.rel='noopener noreferrer';card.append(block,link);list.append(card);
+    }
+  }catch(e){status.textContent=e.message}finally{button.disabled=false}
 };
 $('syncOpenAICosts').onclick=async ()=>{
   const button=$('syncOpenAICosts');button.disabled=true;$('financeActualsStatus').textContent='Syncing OpenAI API costs…';
