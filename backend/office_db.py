@@ -70,6 +70,7 @@ def ensure_schema(db):
         role TEXT NOT NULL, content TEXT NOT NULL,
         created BIGINT NOT NULL, legacy_id BIGINT UNIQUE)""")
     db.execute("ALTER TABLE meita_messages ADD COLUMN IF NOT EXISTS thread_id TEXT NOT NULL DEFAULT 'legacy'")
+    db.execute("ALTER TABLE meita_messages ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ")
     db.execute("""CREATE INDEX IF NOT EXISTS meita_messages_thread_history
         ON meita_messages(thread_id, created DESC, id DESC)""")
     db.execute("""CREATE TABLE IF NOT EXISTS audit (
