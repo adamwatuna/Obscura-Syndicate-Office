@@ -495,6 +495,13 @@
   <div class="notice">A research role does not automatically provide access to private databases or hidden accounts. Research runs only when an authorized task is executed. Outputs require Director review and CEO approval.</div>
   <div id="researchStaffSummary" class="task-meta"></div>
  </div>
+ <div class="card" style="margin-top:20px">
+  <div class="toolbar">
+   <h3>Research reports &amp; opportunities</h3>
+   <button class="secondary" type="button" onclick="loadResearchReports()">Refresh reports</button>
+  </div>
+  <div id="researchReports" role="region" aria-label="Research reports"></div>
+ </div>
 </section>
 <section class="view" id="finance">
  <div class="toolbar"><div><p>Budget Planning Studio · Phase 1</p>
@@ -2832,6 +2839,55 @@ function startResearchTask(){
  $('newTaskForm').elements.title.placeholder='e.g. Verify industry trends and competitor positioning';
  $('newTaskForm').elements.description.placeholder='Define research questions, timeframe, permitted public sources, evidence quality and confidence expectations.';
 }
+let researchReportsKey=null,researchReportsLoading=false;
+async function loadResearchReports(){
+ if(researchReportsLoading)return;
+ researchReportsLoading=true;
+ const root=$('researchReports');
+ try{
+  const {items}=await api('deliverables');
+  const reports=(items||[]).filter(item=>item.department==='Research & Intelligence'&&!item.archived_task);
+  const key=JSON.stringify(reports.map(({id,status,reviewed_at})=>[id,status,reviewed_at]));
+  if(key===researchReportsKey)return;
+  researchReportsKey=key;
+  const openIds=new Set([...root.querySelectorAll('details[open]')].map(panel=>panel.dataset.reportId));
+  root.replaceChildren();
+  if(!reports.length)root.append(deliveryText('p','Completed Research & Intelligence reports will appear here.','muted'));
+  for(const item of reports){
+   const panel=deliveryText('details',undefined,'task-entry');
+   panel.dataset.reportId=item.id;
+   const summary=deliveryText('summary',item.task_title);
+   const meta=deliveryText('p',item.staff_name+' · '+item.status+' · '+
+    new Date(item.created_at).toLocaleDateString('en-MY',{timeZone:'Asia/Kuala_Lumpur'}),'muted');
+   const report=deliveryText('div',undefined,'delivery-report');
+   panel.append(summary,meta,report);
+   let loaded=false,loading=false;
+   panel.addEventListener('toggle',async()=>{
+    if(!panel.open||loaded||loading)return;
+    loading=true;report.textContent='Loading report…';
+    try{
+     const full=await api('deliverables/'+encodeURIComponent(item.id));
+     report.replaceChildren(staffReportRender(full.result));
+     if(full.sources?.length){
+      const sources=deliveryText('ul');
+      for(const source of full.sources){
+       const line=deliveryText('li');
+       staffReportSafeLink(source.title||source.url,source.url,line);
+       sources.append(line);
+      }
+      report.append(deliveryText('h4','Verified source links'),sources);
+     }
+     loaded=true;
+    }catch(err){report.textContent='Could not load report: '+err.message}
+    finally{loading=false}
+   });
+   root.append(panel);
+   if(openIds.has(item.id))panel.open=true;
+  }
+ }catch(err){
+  if(researchReportsKey===null)root.textContent='Could not load research reports: '+err.message;
+ }finally{researchReportsLoading=false}
+}
 function renderResearchRoster(){
  const root=$('researchStaffSummary');if(!root)return;
  root.textContent='';
@@ -2841,7 +2897,7 @@ function renderResearchRoster(){
 }
 async function refresh(){state=await api('office');render();renderDirectorSelect()}
 async function updateTask(id,status){try{await api('tasks/'+id,{method:'PATCH',body:JSON.stringify({status})});await refresh();msg('Task updated')}catch(e){msg(e.message);await refresh()}}
-$('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){show(b.dataset.view);if(b.dataset.view==='hq')loadNewsBriefings();if(b.dataset.view==='integrations')loadSocial();if(b.dataset.view==='academy')loadAcademyLibrary();if(b.dataset.view==='finance')loadFinancePlanning();if(b.dataset.view==='deliverables')loadDeliveryInbox();if(b.dataset.view==='meita')loadAiDiagnostics();if(b.dataset.view==='governance')loadCEOSecurityStatus()}});
+$('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){show(b.dataset.view);if(b.dataset.view==='hq')loadNewsBriefings();if(b.dataset.view==='integrations')loadSocial();if(b.dataset.view==='academy')loadAcademyLibrary();if(b.dataset.view==='finance')loadFinancePlanning();if(b.dataset.view==='deliverables')loadDeliveryInbox();if(b.dataset.view==='research')loadResearchReports();if(b.dataset.view==='meita')loadAiDiagnostics();if(b.dataset.view==='governance')loadCEOSecurityStatus()}});
 $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').textContent='';try{await api('login',{method:'POST',body:JSON.stringify({password:$('password').value,otp:$('loginMfaCode').value.trim()})});$('password').value='';$('loginMfaCode').value='';await enter()}catch(err){$('loginError').textContent=err.message}});
 async function enter(){$('login').classList.add('hidden');$('app').classList.remove('hidden');try{await refresh();await refreshLiveActivity();await loadMeita();await loadMeitaConfiguration();await loadMeitaTaskHistory();await loadAiDiagnostics();await loadCEOSecurityStatus();await loadMeitaDeck();await loadMemory();await loadAcademyLibrary();await loadFinancePlanning();await loadDeliveryInbox();await loadRuns();await loadDirectorPlans();$('monthlyPeriod').value=malaysiaPeriod();await loadMonthly();await loadNewsBriefings();await loadSocial();const oauthParams=new URLSearchParams(window.location.search);
 const integ=oauthParams.get('integration');
@@ -2865,6 +2921,7 @@ $('logout').onclick=async()=>{await api('logout',{method:'POST'});location.reloa
 for(const [form,path] of [['newLessonForm','lessons']])$(form).addEventListener('submit',async e=>{e.preventDefault();const body=Object.fromEntries(new FormData(e.target));try{await api(path,{method:'POST',body:JSON.stringify(body)});e.target.reset();e.target.closest('.card').classList.add('hidden');await refresh();await loadAcademyLibrary();msg('Saved successfully')}catch(err){msg(err.message)}});
 $('today').textContent=new Date().toLocaleDateString('en-MY',{weekday:'long',day:'numeric',month:'long',year:'numeric'});api('me').then(x=>{if(x.authenticated)enter();else loadLoginSecurityOptions()}).catch(()=>loadLoginSecurityOptions());
 setInterval(()=>{if(!$('app').classList.contains('hidden')&&['meita','tasks','desks','hq'].some(x=>$(x).classList.contains('active'))){Promise.all([refresh(),refreshLiveActivity(),loadMeitaTaskHistory()]).catch(()=>{})}},10000);
+setInterval(()=>{if($('research').classList.contains('active')&&!$('app').classList.contains('hidden'))loadResearchReports()},30000);
 setInterval(()=>{if($('hq').classList.contains('active')
      &&!$('app').classList.contains('hidden'))loadNewsBriefings()},60000);
 </script></body></html>
