@@ -32,12 +32,14 @@ def allowed(staff, operation):
                 or role == "creative director" and (staff.get("name") or "").casefold() == "maryam")
     return False
 
-def access_token(db):
+def access_token(db, *, require_asset_write=False):
     accounts = db.execute("""SELECT * FROM social_accounts WHERE provider='canva'
         ORDER BY connected_at DESC LIMIT 2 FOR UPDATE""").fetchall()
     if len(accounts) != 1:
         raise HTTPException(409, "Connect exactly one Canva workspace in Integration Centre")
     account = accounts[0]
+    if require_asset_write and "asset:write" not in (account.get("granted_scopes") or "").split():
+        raise HTTPException(409, "Reconnect Canva with asset:write permission to fill image fields.")
     expires = account["token_expires_at"]
     if expires and expires > datetime.now(timezone.utc) + timedelta(minutes=5):
         return social.decrypt(account["access_token_cipher"])
@@ -164,3 +166,39 @@ def import_design(token, title, content):
 
 def produce(token, title, answer):
     return import_design(token, title, make_layout(title, answer))
+
+
+def autofill_dataset(token, design_id):
+    try:
+        raw = request(APP + "/designs/" + design_id + "/dataset",
+                      headers={"Authorization": f"Bearer {token}"})
+    except HTTPException as error:
+        raise HTTPException(502, "Canva could not read the template fields. Check the design access and Canva connection.") from error
+    dataset = json.loads(raw).get("dataset") or {}
+    fields = {name: spec["type"] for name, spec in dataset.items()
+              if spec.get("type") in {"text", "image"}}
+    if not fields:
+        raise HTTPException(400, "This Canva design has no labelled text or image fields. Add Autofill labels in Canva.")
+    if len(fields) > 30 or sum(kind == "image" for kind in fields.values()) > 4:
+        raise HTTPException(400, "Use a template with at most 30 fields and four image fields per task")
+    return fields
+
+
+def upload_autofill_image(token, content):
+    metadata = json.dumps({"name_base64": base64.b64encode(b"Obscura template artwork.png").decode()})
+    result = job(token, "/asset-uploads", content, "application/octet-stream",
+                 {"Asset-Upload-Metadata": metadata})
+    asset_id = (result.get("asset") or {}).get("id")
+    if not asset_id:
+        raise HTTPException(502, "Canva did not return an uploaded artwork ID")
+    return asset_id
+
+
+def autofill_design(token, source_id, title, fields):
+    payload = json.dumps({"type": "create_from_design", "design_id": source_id,
+                          "title": title[:255], "data": fields}).encode()
+    result = job(token, "/autofills", payload, "application/json")
+    design_id = ((result.get("result") or {}).get("design") or {}).get("id", "")
+    if design_id == source_id or not re.fullmatch(r"[A-Za-z0-9_-]+", design_id):
+        raise HTTPException(502, "Canva did not return a new editable design")
+    return f"https://www.canva.com/design/{design_id}/edit", export_pdf(token, design_id)
