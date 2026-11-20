@@ -288,6 +288,28 @@ CREATIVE_PRODUCTION = {
 }
 
 
+FINANCE_OVERHEAD = (
+    "For app sustainability, read the supplied monthly Finance & Audit totals. Show recorded "
+    "hosting, database, AI/API, browser and subscription costs by source where recorded. "
+    "Separate recurring, usage-based and one-off costs only when the records support it. "
+    "Mark incomplete months and unknown providers. Keep native currencies separate unless "
+    "an exchange rate is supplied. Estimate a baseline and higher-usage budget with clearly "
+    "labelled assumptions. Show the monthly revenue needed to cover overhead and, if the CEO "
+    "provides a contribution margin, estimate break-even revenue. Prepare recommendations "
+    "for CEO review without changing subscriptions, budgets or making payments."
+)
+
+
+def finance_ledger_requested(staff, title, brief):
+    if staff.get("department") != "Finance & Treasury":
+        return False
+    request = f"{title} {brief}".casefold()
+    return any(term in request for term in (
+        "billing", "overhead", "finance & audit", "rekod perbelanjaan", "recorded income",
+        "kos operasi", "kos bulanan", "kos app", "kos maintain", "sustain", "kos jalankan",
+    ))
+
+
 def role_deliverable(staff):
     department = staff["department"]
     if department == "Research & Intelligence":
@@ -327,6 +349,8 @@ def work_tree(staff, outputs):
         steps.insert(-1, {"label": "Paid media planning", "detail": MARKETING_PAID_MEDIA})
     if department == "Creative":
         steps[-1:-1] = [{"label": name, "detail": detail} for name, detail in CREATIVE_PRODUCTION.items()]
+    if department == "Finance & Treasury":
+        steps.insert(-1, {"label": "App overhead and sustainability", "detail": FINANCE_OVERHEAD})
     return steps
 
 
@@ -360,6 +384,8 @@ def agent_scope(staff):
         "If no relevant material is available, work from the brief and state any material gaps. "
         "Before submission compare the actual result with the brief and report unmet acceptance criteria."
     )
+    if department == "Finance & Treasury":
+        scope += " " + FINANCE_OVERHEAD
     if department == "Creative":
         scope += " Follow the relevant Creative workflow: " + " ".join(
             f"{name}: {detail}" for name, detail in CREATIVE_PRODUCTION.items())
