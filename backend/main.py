@@ -624,12 +624,13 @@ def meita_live_activity():
     return {'jobs':combined[:400]}
 
 @app.get('/api/meita/threads', dependencies=[Depends(guard)])
-def meita_threads():
+def meita_threads(include_archived:bool=False):
     with connect() as db:
         rows = db.execute("""
-            SELECT thread_id, MAX(id) AS last_id
-            FROM meita_messages GROUP BY thread_id ORDER BY last_id DESC
-        """).fetchall()
+            SELECT thread_id, MAX(id) AS last_id, BOOL_AND(archived_at IS NOT NULL) AS archived
+            FROM meita_messages WHERE (%s OR archived_at IS NULL)
+            GROUP BY thread_id ORDER BY last_id DESC
+        """,(include_archived,)).fetchall()
         titles = db.execute("""
             SELECT DISTINCT ON (thread_id) thread_id, LEFT(content, 100) AS title
             FROM meita_messages WHERE role='user'
@@ -637,14 +638,22 @@ def meita_threads():
         """).fetchall()
     by_thread = {row["thread_id"]: row["title"] for row in titles}
     return {"threads": [
-        {"id": row["thread_id"], "title": "Previous conversations" if row["thread_id"] == "legacy"
+        {"id": row["thread_id"], "archived":row["archived"], "title": "Previous conversations" if row["thread_id"] == "legacy"
          else by_thread.get(row["thread_id"], "Meita conversation")}
         for row in rows
     ]}
 
 
+@app.post('/api/meita/threads/archive-all', dependencies=[Depends(guard)])
+def meita_archive_threads():
+    with connect() as db:
+        result = db.execute("UPDATE meita_messages SET archived_at=NOW() WHERE archived_at IS NULL")
+        audit(db, 'meita.chats.archived', str(result.rowcount))
+        return {"archived_messages": result.rowcount}
+
+
 @app.get('/api/meita/history',dependencies=[Depends(guard)])
-def meita_history(thread_id: str = "legacy"):
+def meita_history(thread_id: str = "legacy", include_archived:bool=False):
     with connect() as db:
         office_delegation.init(db)
         rows=db.execute("""SELECT m.id,m.role,m.content,m.created,
@@ -653,7 +662,8 @@ def meita_history(thread_id: str = "legacy"):
             p.auto_execute AS proposal_automatic,m.reference_ids AS reference_ids
             FROM meita_messages m
             LEFT JOIN coo_proposals p ON p.chat_message_id=m.id
-            WHERE m.thread_id=%s ORDER BY m.created,m.id""", (thread_id,)).fetchall()
+            WHERE m.thread_id=%s AND (%s OR m.archived_at IS NULL)
+            ORDER BY m.created,m.id""", (thread_id,include_archived)).fetchall()
     messages=[]
     for r in rows:
         message={k:r[k] for k in ("id","role","content","created","reference_ids")}
@@ -695,7 +705,7 @@ def platform_meita_chat(body:MeitaMessage):
             assignee,status FROM tasks WHERE deleted_at IS NULL
             ORDER BY created DESC,id DESC LIMIT 40""").fetchall()]
         history=[dict(row) for row in reversed(db.execute("""SELECT role,
-            LEFT(content,1200) AS content FROM meita_messages WHERE thread_id=%s
+            LEFT(content,1200) AS content FROM meita_messages WHERE thread_id=%s AND archived_at IS NULL
             ORDER BY created DESC,id DESC LIMIT 8""", (body.thread_id,)).fetchall())]
         references=office_references.summaries(db,body.reference_ids,max_chars=3000)
         images=office_references.images(db,body.reference_ids)
@@ -778,7 +788,7 @@ def meita_chat(body:MeitaMessage):
                                 related['context'][:3500])
         reference_images=(office_references.images(db,body.reference_ids)+
                           related['images'])[:4]
-        history=list(reversed(db.execute("""SELECT role,content FROM meita_messages WHERE thread_id=%s
+        history=list(reversed(db.execute("""SELECT role,content FROM meita_messages WHERE thread_id=%s AND archived_at IS NULL
             ORDER BY created DESC,id DESC LIMIT 12""", (body.thread_id,)).fetchall()))
         leadership=[dict(x) for x in db.execute("""SELECT name,role,department
             FROM staff WHERE org_role='Director' ORDER BY department LIMIT 15""")]
