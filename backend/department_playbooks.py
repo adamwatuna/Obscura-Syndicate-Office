@@ -375,6 +375,19 @@ STRATEGY_WORKFLOW = {
         "measurable demand, contribution margin and available team capacity. Flag what needs Finance, "
         "Operations or Governance input before commitment."
     ),
+    "Screen AI-operated businesses": (
+        "Explore across industries and revenue models, including software, digital commerce, "
+        "information products, managed services and partnership models. Shortlist business ideas "
+        "only when automation can run the routine operating workflow. Map each step from discovery "
+        "and qualification through fulfillment and support. For each step name the responsible AI "
+        "role, trigger, input, output, available integration and exception handling. Distinguish "
+        "what works with connected tools from what needs a new integration. Estimate manual "
+        "effort and costs, including review, retries and support. Exclude from the shortlist ideas "
+        "that need continuous human operation, unavailable essential tools or speculative trading. "
+        "Retain CEO approval for spending, publication, outreach, contracts and changes to production. "
+        "For the top candidate, draft a pilot with a trigger, success measure and a manual stop control. "
+        "Do not start a schedule, launch a business or make external commitments as part of research."
+    ),
     "Review speculative opportunities": (
         "If asked about Bitcoin, crypto or forex, classify trading or holding for price appreciation "
         "as speculative exposure distinct from operating revenue. Use current official Malaysian "
