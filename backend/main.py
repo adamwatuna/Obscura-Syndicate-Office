@@ -25,7 +25,7 @@ from backend import references as office_references
 from backend import academy as office_academy
 from backend import finance_planning
 from backend import ai_provider
-from backend import ceo_security
+from backend import ceo_security, creative
 from backend import deliverables as staff_deliverables
 
 ROOT=Path(__file__).resolve().parent.parent
@@ -907,6 +907,39 @@ def delete_memory(ident:str):
     with connect() as db: audit(db,'memory.deleted',ident)
     return result
 
+
+
+@app.post('/api/creative/image', dependencies=[Depends(guard)])
+def creative_image(brief: creative.ImageBrief):
+    return Response(creative.generate_image(brief), media_type="image/png")
+
+
+@app.post('/api/creative/image/edit', dependencies=[Depends(guard)])
+async def creative_image_edit(file: UploadFile = File(...),
+                              prompt: str = Form(..., min_length=3, max_length=4000),
+                              size: str = Form(..., pattern=r"^(1024x1024|1024x1536|1536x1024)$")):
+    try:
+        data = await file.read(staff_deliverables.MAX_ASSET_BYTES + 1)
+    finally:
+        await file.close()
+    name = staff_deliverables.safe_filename(file.filename)
+    ext = staff_deliverables.check_file(name, data)
+    if ext not in ("png", "jpg", "jpeg", "webp"):
+        raise HTTPException(400, "Upload a PNG, JPEG or WebP reference image")
+    brief = creative.ImageBrief(prompt=prompt, size=size)
+    reference = (name, data, staff_deliverables.MIME[ext])
+    image = await run_in_threadpool(creative.generate_image, brief, reference)
+    return Response(image, media_type="image/png")
+
+
+@app.post('/api/creative/video/trim', dependencies=[Depends(guard)])
+async def creative_trim(file: UploadFile = File(...), start: float = Form(...), end: float = Form(...)):
+    try:
+        data = await file.read(staff_deliverables.MAX_ASSET_BYTES + 1)
+    finally:
+        await file.close()
+    rendered = await run_in_threadpool(creative.trim_video, file.filename or "clip", data, start, end)
+    return Response(rendered, media_type="video/mp4")
 
 
 @app.get('/api/deliverables',dependencies=[Depends(guard)])
