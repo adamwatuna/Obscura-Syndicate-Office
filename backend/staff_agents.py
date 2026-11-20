@@ -30,12 +30,17 @@ def response(staff, payload, *, operation, timeout):
 
     agent_id = staff.get("platform_agent_id") or bindings.get(staff["id"], "")
     search = bool(payload.get("tools"))
+    text = payload.get("text", {"format": {"type": "text"}})
+    response_format = text["format"]
+    if response_format["type"] == "json_schema":
+        # Agents sessions accept the schema, without Responses-specific fields.
+        text = {"format": {"type": "json_schema", "schema": response_format["schema"]}}
     config = {
         "model": payload["model"],
         "instructions": payload["instructions"],
         "tools": [{"type": "web_search", "mode": "live"}] if search else [],
         "multi_agent": {"enabled": False},
-        "text": payload.get("text", {"format": {"type": "text"}}),
+        "text": text,
     }
     if search:
         config["instructions"] += (
