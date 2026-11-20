@@ -42,8 +42,23 @@ def init(db):
     db.execute("ALTER TABLE meita_references ADD COLUMN IF NOT EXISTS academy_scope TEXT NOT NULL DEFAULT 'all'")
     db.execute("ALTER TABLE meita_references ADD COLUMN IF NOT EXISTS academy_archived BOOLEAN NOT NULL DEFAULT FALSE")
     db.execute("ALTER TABLE lessons ADD COLUMN IF NOT EXISTS source_message_id BIGINT")
+    db.execute("ALTER TABLE lessons ADD COLUMN IF NOT EXISTS academy_archived BOOLEAN NOT NULL DEFAULT FALSE")
+    from backend import delegation
+    delegation.init(db)
+    db.execute("ALTER TABLE coo_proposals ADD COLUMN IF NOT EXISTS academy_archived BOOLEAN NOT NULL DEFAULT FALSE")
     db.execute("""CREATE UNIQUE INDEX IF NOT EXISTS academy_vision_message_unique
         ON lessons(source_message_id) WHERE source_message_id IS NOT NULL""")
+
+
+def archive_all(db):
+    init(db)
+    references_count = db.execute("""UPDATE meita_references SET academy_archived=TRUE
+        WHERE NOT academy_archived""").rowcount
+    projects_count = db.execute("""UPDATE coo_proposals SET academy_archived=TRUE
+        WHERE chat_message_id IS NOT NULL AND NOT academy_archived""").rowcount
+    notes_count = db.execute("""UPDATE lessons SET academy_archived=TRUE
+        WHERE NOT academy_archived""").rowcount
+    return {"archived": references_count + projects_count + notes_count}
 
 
 def _scope_valid(db, scope):
@@ -139,26 +154,30 @@ def library(db, search="", kind="all", limit=250, include_archived=False):
         if kind in ("all","reference",r["kind"]) and _search_matches(search,item):
             items.append(item)
     projects=db.execute("""SELECT p.id,p.title,p.brief,p.created_at,
-        p.reference_ids,(SELECT COUNT(*) FROM coo_jobs j
+        p.academy_archived,p.reference_ids,(SELECT COUNT(*) FROM coo_jobs j
         WHERE j.proposal_id=p.id) AS linked_tasks
         FROM coo_proposals p WHERE p.chat_message_id IS NOT NULL
-        ORDER BY p.created_at DESC LIMIT %s""",(limit,)).fetchall()
+        AND (%s OR NOT p.academy_archived)
+        ORDER BY p.created_at DESC LIMIT %s""",(include_archived,limit)).fetchall()
     for p in projects:
         item={"id":p["id"],"type":"project","kind":"CEO Project Vision",
               "title":p["title"],"source_preview":p["brief"][:1000],
               "notes":"","tags":"","scope":"all",
               "reference_ids":p["reference_ids"],"linked_tasks":p["linked_tasks"],
+              "archived":p["academy_archived"],
               "created_at":p["created_at"]}
         if kind in ("all","project") and _search_matches(search,item):
             items.append(item)
     rows=db.execute("""SELECT id,title,kind,source,assigned,status,created,
-        source_message_id FROM lessons ORDER BY created DESC LIMIT %s""",(limit,)).fetchall()
+        source_message_id,academy_archived FROM lessons WHERE (%s OR NOT academy_archived)
+        ORDER BY created DESC LIMIT %s""",(include_archived,limit)).fetchall()
     for lesson in rows:
         r=dict(lesson)
         item={"id":r["id"],"type":"lesson","kind":r["kind"],
               "title":r["title"],"source_preview":r["source"][:1000],
               "notes":"","tags":"","scope":r["assigned"] or "all",
               "status":r["status"],"source_message_id":r["source_message_id"],
+              "archived":r["academy_archived"],
               "created_at":r["created"]}
         if kind in ("all","lesson",r["kind"]) and _search_matches(search,item):
             items.append(item)
@@ -245,7 +264,7 @@ def relevant(db, query, staff=None, exclude_ids=(), limit=3, include_visual=True
     # Previously delegated CEO project visions are reusable guidance for
     # related new work, without reading unrelated conversations.
     projects=db.execute("""SELECT title,brief FROM coo_proposals
-        WHERE chat_message_id IS NOT NULL
+        WHERE chat_message_id IS NOT NULL AND NOT academy_archived
         ORDER BY created_at DESC LIMIT 100""").fetchall()
     ranked_projects=[]
     for project in ([] if public_opportunity else projects):
@@ -259,7 +278,7 @@ def relevant(db, query, staff=None, exclude_ids=(), limit=3, include_visual=True
     # Only saved textual notes and explicitly promoted visions are usable as
     # source content. Do not claim that YouTube or linked pages were ingested.
     lessons=db.execute("""SELECT title,kind,source,assigned FROM lessons
-        WHERE kind IN ('Note','CEO Vision') ORDER BY created DESC LIMIT 150""").fetchall()
+        WHERE kind IN ('Note','CEO Vision') AND NOT academy_archived ORDER BY created DESC LIMIT 150""").fetchall()
     ranked=[]
     for lesson in lessons:
         if not _eligible(lesson["assigned"] or "",staff):
